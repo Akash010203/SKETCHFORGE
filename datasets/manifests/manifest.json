@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-19",
+  "datasets": [
+    {
+      "id": "salt-sketch2code",
+      "name": "SALT-NLP Sketch2Code",
+      "source_url": "https://github.com/SALT-NLP/Sketch2Code",
+      "revision": "dataset-v1-cleaned (upstream does not expose a dataset commit in its README)",
+      "license_spdx": "ODC-By-1.0",
+      "license_source_url": "https://github.com/SALT-NLP/Sketch2Code#dataset-access",
+      "access": "public",
+      "intended_use": ["research", "evaluation"],
+      "expected_download_bytes": null,
+      "artifacts": [],
+      "notes": "The upstream code is MIT, but the dataset inherits Design2Code data terms; do not treat the code license as a data license. Design2Code states research-only terms and ODC-By provenance from C4. Excluded from training pending rights review."
+    },
+    {
+      "id": "websight",
+      "name": "HuggingFaceM4 WebSight v0.1",
+      "source_url": "https://huggingface.co/datasets/HuggingFaceM4/WebSight",
+      "revision": "10d8285c49c88608dcf82f3f76ee58377a3a1216",
+      "license_spdx": "CC-BY-4.0",
+      "license_source_url": "https://huggingface.co/datasets/HuggingFaceM4/WebSight/blob/10d8285c49c88608dcf82f3f76ee58377a3a1216/README.md",
+      "access": "public",
+      "intended_use": ["research", "training"],
+      "expected_download_bytes": 31394170440,
+      "artifacts": [],
+      "notes": "Dataset card requires compliance with source-content licenses and disclosure of dataset use when releasing a trained model or ML application. Full compressed dataset exceeds the requested 1 GB pilot and is not on the approved license allowlist."
+    },
+    {
+      "id": "imageclef-drawnui-2021",
+      "name": "ImageCLEFdrawnUI 2021 wireframe task",
+      "source_url": "https://www.imageclef.org/2021/drawnui",
+      "revision": "ImageCLEFdrawnUI-2021",
+      "license_spdx": "NOASSERTION",
+      "license_source_url": "https://www.imageclef.org/2021/drawnui",
+      "access": "gated",
+      "intended_use": ["research", "evaluation"],
+      "expected_download_bytes": null,
+      "artifacts": [],
+      "notes": "Official task page describes the 4,291 image wireframe set but does not state a dataset license or provide an unconditional public download. Excluded until the rights holder confirms terms and access."
+    }
+  ]
+}

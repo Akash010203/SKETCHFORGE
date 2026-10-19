@@ -1,51 +1,45 @@
-# File structure: what exists, what is planned, where it deviates
+# File structure
 
-Responsibilities follow the original specification. Only modules whose milestone has started
-exist; the rest are listed under *Planned* and are deliberately **not** created as empty files.
+The repository follows the directory layout in the master engineering specification. The requested directories now exist in their specified locations. Python modules and operational documents are added when their milestone begins; planned areas are intentionally kept free of fake or empty implementation files.
 
-## Implemented
+## Repository map
 
-| Path | Responsibility |
-|---|---|
-| `src/sketchforge/__main__.py`, `app.py` | CLI (`demo`, `gui`, `info`) and GUI bootstrap (Qt imported lazily) |
-| `bootstrap.py`, `constants.py`, `exceptions.py`, `logging_setup.py` | typed config (defaults + `config/*.yaml`), shared constants, exception hierarchy |
-| `design_ir/` | schema (pydantic v2), document/tree ops, geometry, constraints & regression policy, validation, serialization, migrations |
-| `vision/` | image loading, normalization, thresholding, morphology, preprocessing, line/contour/text detection, region proposals, classification, hierarchy, confidence, visualization, pipeline |
-| `layout/` | grouping (alignment families, repeated groups), alignment, spacing, overlap/sliver trimming, `design_refinement.build_document` (detections → IR) |
-| `domain/` | `typography` (text width model, placeholders), `color_system` (WCAG contrast) |
-| `rendering/` | SVG, HTML, CSS, raster snapshot, theme engine, facade (`renderer.render_all`) |
-| `editor/` | undoable commands, undo stack, selection/hit-testing, property editing, layer ordering, change history |
-| `evaluation/` | issue vocabulary, layout/geometry/text/image metrics, evaluator, report, detection metrics + benchmark runner |
-| `repair/` | issue detector, diagnosis, rules, planner, patch, regression check, rollback, error injection |
-| `orchestration/` | step registry, workflow runner/state/history, retry policy, budget, stopping rules, sketch + repair workflows |
-| `application/` | `AppController`, `EventBus`, `TaskManager`, project manager, import/export |
-| `storage/` | project folder format (`project.json`, `design.json`, source, renders, reports) |
-| `datasets/synthetic_generator.py` | original sketch generator with exact ground truth (wobbly strokes, shadows, noise) |
-| `ui/` | main window, canvas, component tree, properties, measure & repair, code preview, sketch view, task progress, controller→Qt bridge |
-| `utilities/` | paths (atomic writes), hashing, timing |
-| `integrations/` | `provider_interface` (typed contract + error family), `nebius/` (Token Factory client: consent gate, privacy limits, bounded retries, usage log, model registry, health check), `nvidia/` (model catalogue). The only package that talks to the network |
-| `assist/` | natural-language edits (Phase 7): `edit_plan` (typed allowlisted ops, validation, atomic undoable command), `design_summary` (privacy-aware summary), `local_parser` (rule-based baseline), `model_planner` (strict-JSON planner over any provider), `verified_edit` (apply on a copy, evaluate, repair only what the edit broke) |
-| `scripts/` | `inspect_environment`, `inspect_storage`, `make_sample_sketches`, `evaluate_layout`, `evaluate_repair`, `bundle_project` (whole project in one file, round-trip tested) |
-| `tests/` | `unit/` (11 files incl. assist, bundle), `integration/` (controller, UI smoke, Nebius client against a fake transport), `end_to_end/` (demo), `evaluation/edit_tasks.json` (benchmark task set, in progress) |
-| `docs/SPEC_TREE.txt` | the specification's tree verbatim; `bundle_project.py` uses it to mark each entry ✔ exists / ○ planned |
-
-## Deviations from the original plan (and why)
-
-| Planned | Actual | Reason |
+| Path | Responsibility | Current state |
 |---|---|---|
-| `application/commands.py` | not created | the editor's `Command` classes already are the application commands; a second layer would only forward calls |
-| `domain/{project,component,layout,interaction,validation}.py` | only `typography.py`, `color_system.py` | Project/Component live in `application/` and `design_ir/`; duplicating them in `domain/` would create two representations of one thing |
-| `evaluation/{functional,text,layout}_metrics`, `report` | `text_metrics`, `layout_metrics`, `geometry_metrics`, `image_metrics`, `evaluator`, `issues`, `report` | `issues.py` is the vocabulary shared with `repair/`; `evaluator.py` composes the metrics. `functional_metrics` waits for generated apps (Phase 8) |
-| `layout/{hierarchy,responsive_rules}.py` | hierarchy lives in `vision/layout_inference.py` (containment) and `layout/grouping.py`; added `layout/overlap.py` | hierarchy is derived from detections; responsive rules are not needed until generation |
-| `orchestration/workflow.py` only | added `repair_workflow.py`, `sketch_workflow.py` | the two concrete workflows |
-| `ui/{layer_panel,training_panel,dataset_panel,settings_dialog,workspace,widgets/}` | not created | no layers/training/datasets features yet; the tree doubles as layer view |
-| `vision/perspective.py` | not created | perspective correction is not started (see KNOWN_LIMITATIONS) |
-| (not in the specification) `assist/` | added | natural-language edits need a home that may depend on `integrations/` (only via the provider interface) while `vision/ layout/ evaluation/ repair/ rendering/ editor/ design_ir/ domain/` stay import-free of providers; an architecture test enforces that |
-| `uv.lock`, `LICENSE` | absent | lockfile not produced; licence is the owner's decision |
+| `config/` | Application, logging, model, training, dataset, evaluation, and provider defaults | Active application/provider/evaluation settings; model/training/dataset defaults are disabled or license-gated |
+| `docs/` | Architecture, implementation, Design IR, dataset, model, security, performance, and operational documentation | Architecture, Design IR, plan, dataset audit, security, integration, limitations, and experiment log exist; milestone-specific docs state current status |
+| `assets/` | Icons, themes, and sample sketches | Sample sketches are implemented; icons and themes are reserved |
+| `datasets/` | Dataset manifest and local raw, processed, synthetic, quarantine, and evaluation data | Manifest under `manifests/`; only synthetic sample sketches are currently used |
+| `checkpoints/` | Locally trained model artifacts | No trained model checkpoint yet |
+| `experiments/` | Reproducible configurations and measured results | Result directory exists; new experiments are added with evidence |
+| `scripts/` | Environment inspection, dataset audit, demo, benchmarks, and packaging commands | Environment/storage inspection, synthetic samples, dataset audit, visual evaluation, and packaging scripts exist |
+| `src/sketchforge/` | Desktop application and local engineering workflows | Implemented areas listed below; later-phase packages are reserved |
+| `tests/` | Unit, integration, end-to-end, fixtures, and evaluation assets | Unit/integration/end-to-end tests and edit benchmark exist |
+| `output/` | Generated projects, renders, reports, and logs | Runtime output; ignored by Git |
 
-## Planned (not started)
+## Implemented Python areas
 
-`models/` (component detector, layout model), `training/`, `datasets/` (registry, manifest schema,
-adapters, licence audit, dedup, splitting), `integrations/nvidia/{runtime,local_inference,compatibility}`, `generation/`
-(frontend, backend), `execution/` (sandbox), `verification/`, `retrieval/`, plus the matching
-`config/*.yaml`, `scripts/*` and docs from the specification. Each is created when its phase begins.
+- `application/`, `ui/`, `domain/`, `design_ir/`, `vision/`, `layout/`, `rendering/`, and `editor/` implement the desktop workflow, structured design, image pipeline, editable rendering, and editing commands.
+- `evaluation/`, `repair/`, and `orchestration/` implement measurement, bounded repairs, and workflow control.
+- `storage/`, `utilities/`, and `datasets/synthetic_generator.py` provide local project storage, common utilities, and original synthetic sketches.
+- `integrations/` contains the provider contract and isolated Nebius/NVIDIA integrations. Network calls remain disabled unless configured and consented to.
+- `assist/` contains natural-language edit planning. This additional package was added for the later natural-language editing milestone and preserves the provider boundary; its placement is an explicit extension to the specification.
+
+## Intentionally planned areas
+
+The following package directories are present at the specified locations, but do not yet contain implementations: `models/layout_model/`, `training/`, `execution/`, `verification/`, `retrieval/`, `generation/frontend/`, `generation/backend/`, and `generation/templates/`. The component detector package currently contains its architecture and dataset code, but not the full training/inference lifecycle. Additional UI panels, dataset tooling, and scripts are added when their corresponding milestone starts.
+
+## Structural choices and extensions
+
+| Specification path | Repository choice | Reason |
+|---|---|---|
+| `application/commands.py` | Editor command classes remain in `editor/` | Avoids a forwarding-only second command layer |
+| `domain/{project,component,layout,interaction,validation}.py` | Project/component contracts live in `application/` and `design_ir/` | Prevents duplicate representations of the same design objects |
+| `layout/hierarchy.py` | Hierarchy inference remains in `vision/layout_inference.py` and `layout/grouping.py` | It is derived from image detections and layout grouping |
+| `layout/responsive_rules.py` | Reserved until responsive code generation begins | No current workflow consumes responsive rules |
+| `orchestration/workflow.py` | Concrete sketch and repair workflows are split into `sketch_workflow.py` and `repair_workflow.py` | Each workflow has separate state transitions |
+| `assist/` | Added as a separate package | Natural-language editing is implemented and isolated from core design modules |
+| `uv.lock` | Not present | The project does not currently use uv |
+| `LICENSE` | Present | Retained as a project-root file; its terms are owned by the project author |
+
+Do not treat reserved directories as implemented features. Track feature progress in `TASKS.md` and update this map as modules move from planned to implemented.

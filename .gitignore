@@ -20,6 +20,8 @@ dist/
 datasets/raw/
 datasets/processed/
 datasets/quarantine/
+datasets/evaluation/*
+!datasets/evaluation/.gitkeep
 datasets/synthetic/*
 !datasets/synthetic/.gitkeep
 checkpoints/*
@@ -28,8 +30,22 @@ checkpoints/*
 experiments/results/*
 !experiments/results/.gitkeep
 !experiments/results/*.json  # small benchmark results are the evidence for documented numbers
+experiments/configs/*
+!experiments/configs/.gitkeep
 output/*
 !output/.gitkeep
+!output/projects/
+!output/renders/
+!output/reports/
+!output/logs/
+output/projects/*
+output/renders/*
+output/reports/*
+output/logs/*
+!output/projects/.gitkeep
+!output/renders/.gitkeep
+!output/reports/.gitkeep
+!output/logs/.gitkeep
 
 # Editors / OS
 .idea/
