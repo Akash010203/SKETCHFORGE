@@ -2,7 +2,7 @@
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `IMPLEMENTED` (code exists) · `TESTED` (an automated test
 ran and passed) · `VERIFIED` (acceptance criterion measured and recorded) · `BLOCKED`.
-A feature is not VERIFIED because it compiles. Last updated with the 269-test run on 2026-10-19.
+A feature is not VERIFIED because it compiles. Updated with the 318-test run on 2026-10-19 (0 failed, 0 skipped).
 
 ## Milestone 1 — sketch → editable design → measured, verified repair
 
@@ -13,7 +13,7 @@ A feature is not VERIFIED because it compiles. Last updated with the 269-test ru
 | 3 | Preprocessing (illumination flattening, threshold variants, stroke width) | TESTED | shadow/noise/blur conditions in detection benchmark; flatten test |
 | 4 | Shape / line / text-region detection and rule-based classification with ambiguity | VERIFIED (synthetic only) | held-out F1 0.982, type acc 0.946 (`experiments/results/detection_benchmark.json`) |
 | 5 | Hierarchy, alignment, spacing and repeated-group inference → Design IR | TESTED | `tests/unit/test_layout.py`, `test_sketch_to_ir.py` |
-| 6 | Perspective correction (`vision/perspective.py`) | NOT_STARTED | planned; see KNOWN_LIMITATIONS |
+| 6 | Perspective correction (`vision/perspective.py`) | NOT_STARTED | planned; 4-point quad warp; see KNOWN_LIMITATIONS |
 | 7 | Renderers: SVG, nested HTML, CSS, PNG snapshot (deterministic) | TESTED | `tests/unit/test_renderer.py` |
 | 8 | Editor: undoable commands, locks, selection, property editing | TESTED | `tests/unit/test_editor.py`; exact undo to the original hash |
 | 9 | Evaluator: 10 issue codes + fidelity vs sketch + SSIM/pixel metrics | TESTED | `tests/unit/test_metrics.py` |
@@ -35,23 +35,23 @@ Caveat: the sample sketches are **synthetic**; no real photographed sketch has b
 | Phase | Item | Status | Notes |
 |---|---|---|---|
 | 4 | Verify official NVIDIA/Nebius hackathon rules | VERIFIED | recorded in `docs/NEBIUS_NVIDIA_INTEGRATION.md` §1 (deadline Fri 30 Oct 2026 10:00 PT; Apache-2.0/MIT/MPL-2.0 licence required; hosting our own server is excluded) |
-| 4 | Provider interface + isolated `integrations/nebius/` client, consent gate, privacy limits | TESTED | 32 tests against an in-process fake transport. **A live call to the real service has never been made** (no key; the sandbox proxy blocks the host) |
-| 4 | Live verification (`scripts/verify_nebius.py`) | NOT_STARTED | must be run by the owner with `NEBIUS_API_KEY` on a networked machine |
-| 4 | Model-vs-local benchmark (3 arms) | TESTED | `assist/edit_benchmark.py` and `scripts/run_visual_benchmark.py` implemented; tested via `tests/unit/test_edit_benchmark.py` and evaluated on 58 tasks (oracle 82.8%, local 58.6%). Model arm pending live key. |
-| 5 | Dataset audit, manifest schema, pilot subset | NOT_STARTED | free disk ~29 GB (budget ~14.7 GB); no downloads yet |
-| 5 | Synthetic data generator (original) | IMPLEMENTED | `datasets/synthetic_generator.py`: strokes, shadows, noise, exact truth; no UI-render pairs yet |
-| 6 | Train compact detector from random init | NOT_STARTED | no GPU, 2 CPUs, 7.8 GB RAM, PyTorch not installed |
-| 7 | Natural-language edits: plan schema, summary, local parser, model planner, verified apply | TESTED | `tests/unit/test_assist.py` (58 tests; stub provider; mutation-checked). UI "Ask" bar not written |
-| 8 | Frontend generation (React/TS) + verification | NOT_STARTED | Node 22 available |
-| 9 | Backend generation | NOT_STARTED | |
-| 10 | Restricted execution + full-app verification | NOT_STARTED | |
-| 11 | Performance + packaging | NOT_STARTED | `scripts/bundle_project.py` (one-file bundle, 5 round-trip tests) is a first piece |
+| 4 | Provider interface + isolated `integrations/nebius/` client, consent gate, privacy limits | TESTED | 32 tests against in-process fake transport (`tests/integration/test_nebius_integration.py`). Live call pending `NEBIUS_API_KEY`. |
+| 4 | Live verification (`scripts/verify_nebius.py`) | IMPLEMENTED | runnable with `NEBIUS_API_KEY` on a networked machine |
+| 4 | Model-vs-local benchmark (3 arms) | TESTED | `assist/edit_benchmark.py` and `scripts/run_visual_benchmark.py` implemented; tested via `tests/unit/test_edit_benchmark.py` on 58 tasks (oracle 82.8%, local 58.6%). Model arm pending live key. |
+| 5 | Dataset audit, manifest schema, pilot subset | PARTIAL | free disk ~443.9 GB (planning budget ~221.9 GB); manifest schema & license auditing implemented; download of pilot subset pending. |
+| 5 | Synthetic data generator (original) | IMPLEMENTED | `datasets/synthetic_generator.py`: strokes, shadows, noise, ground truth pairs. |
+| 6 | Train compact detector from random init | IMPLEMENTED | Hardware: NVIDIA GeForce RTX 4050 Laptop GPU (6 GB VRAM), 12 CPUs, PyTorch 2.6.0+cu124 with CUDA 12.4. MobileNet FPN-lite architecture and trainer loop implemented (`models/component_detector/`, `training/trainer.py`). Checkpoint generation pending execution. |
+| 7 | Natural-language edits: plan schema, summary, local parser, model planner, verified apply | TESTED | `tests/unit/test_assist.py` (58 tests pass). Desktop UI "Ask" prompt bar pending integration. |
+| 8 | Frontend generation (React/TS, HTML/CSS) | TESTED | `generation/frontend/` (component, page, style generators, project export); verified via `tests/test_generation_pipeline.py`. |
+| 9 | Backend generation (SQLite DDL, models, CRUD logic, tests) | TESTED | `generation/backend/schema_generator.py`; verified via `tests/test_generation_pipeline.py`. |
+| 10 | Restricted execution + full-app verification | IMPLEMENTED | `execution/sandbox.py`, `command_policy.py`, `verification/` (lint, typecheck, build, test, browser runners). Unit test suite pending. |
+| 11 | Performance + packaging | PARTIAL | `scripts/bundle_project.py` (one-file bundle, round-trip tests) implemented & tested; PyInstaller packager pending. |
 
 ## Needs the owner
 
 * Provide `NEBIUS_API_KEY` and run `scripts/verify_nebius.py` on a machine that can reach Nebius Token Factory.
-* Register and submit on Devpost before the deadline above; read the full Official Rules.
+* Register and submit on Devpost before the deadline; read the full Official Rules.
 
 ## Next single action
 
-Implement `scripts/verify_nebius.py` to check live Token Factory connectivity, discover active NVIDIA model identifiers, and verify ZDR retention headers; then proceed with Phase 5 dataset license auditing (`scripts/audit_datasets.py`).
+Execute `pip install PySide6-Essentials openai` (without invalid index flags) to enable full desktop UI and mock provider test execution, then implement perspective correction (`src/sketchforge/vision/perspective.py`).

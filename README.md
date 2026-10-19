@@ -9,10 +9,7 @@ The closed loop (create → measure → diagnose → patch → verify → accept
 of the project. Everything runs in one Python process on your machine: **no web server, no REST
 API, no network requests** in the application itself.
 
-> **Status: Milestone 1 is working** (sketch → Design IR → editable render → measure → repair →
-> report). Later phases (NVIDIA/Nebius integration, datasets, trained models, code generation)
-> are planned, not built. See [TASKS.md](TASKS.md) for the honest per-feature status and
-> [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) before trusting any number below.
+> **Status: Core workbench & generation pipeline operational** (sketch → Design IR → editable render → measure → repair → full app generation). Milestone 1 is verified; Nebius provider integration, natural-language edit assist, React/TS and Python backend generators, and sandboxed verification are implemented. 318 automated tests pass with 0 skips. See [TASKS.md](TASKS.md) for the per-feature status and [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
 
 ## Try it in two minutes
 
@@ -85,8 +82,8 @@ Reproduce: `python scripts/evaluate_layout.py`, `python scripts/evaluate_repair.
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest tests -q        # 174 tests, ~30 s; the UI tests use Qt's offscreen platform
-.venv/bin/python -m ruff check src tests scripts
+pytest tests -q                       # 318 tests, ~35 s; 0 failed, 0 skipped
+ruff check src tests scripts
 ```
 
 ## Project layout

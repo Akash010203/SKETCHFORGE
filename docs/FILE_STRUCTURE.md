@@ -23,11 +23,18 @@ The repository follows the directory layout in the master engineering specificat
 - `evaluation/`, `repair/`, and `orchestration/` implement measurement, bounded repairs, and workflow control.
 - `storage/`, `utilities/`, and `datasets/synthetic_generator.py` provide local project storage, common utilities, and original synthetic sketches.
 - `integrations/` contains the provider contract and isolated Nebius/NVIDIA integrations. Network calls remain disabled unless configured and consented to.
-- `assist/` contains natural-language edit planning. This additional package was added for the later natural-language editing milestone and preserves the provider boundary; its placement is an explicit extension to the specification.
+- `assist/` contains natural-language edit planning and validation.
+- `generation/` implements full application generation: `generation/frontend/` (React+TS, HTML/CSS component, page, and style generators) and `generation/backend/` (SQLite DDL schema, dataclass models, DB connectors, CRUD logic, and automated tests).
+- `execution/` and `verification/` implement sandboxed execution with strict command allowlists, resource limits, and lint/typecheck/build/test/browser verification runners.
+- `models/component_detector/` and `training/` implement the lightweight CNN detector architecture (MobileNet-style FPN-lite) and training loop (dataloader, early stopping, metrics, checkpointing).
 
 ## Intentionally planned areas
 
-The following package directories are present at the specified locations, but do not yet contain implementations: `models/layout_model/`, `training/`, `execution/`, `verification/`, `retrieval/`, `generation/frontend/`, `generation/backend/`, and `generation/templates/`. The component detector package currently contains its architecture and dataset code, but not the full training/inference lifecycle. Additional UI panels, dataset tooling, and scripts are added when their corresponding milestone starts.
+The following package directories are reserved for upcoming milestones:
+- `models/layout_model/`: Compact layout model predicting bounding boxes and flex groupings.
+- `retrieval/`: RAG indexing for design guidelines and code snippets.
+- `generation/templates/`: Reusable boilerplate files (currently generated dynamically via code strings).
+- Secondary UI dialogs: `layer_panel.py`, `settings_dialog.py`, `training_panel.py`, `dataset_panel.py`.
 
 ## Structural choices and extensions
 

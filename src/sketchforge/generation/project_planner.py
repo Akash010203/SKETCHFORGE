@@ -77,7 +77,10 @@ def plan_react_ts(spec: AppSpec) -> ProjectPlan:
         "src/types/design.ts",
         "types",
         description="Shared TypeScript interfaces derived from Design IR",
-        components=[c.type for c in spec.pages[0].components] if spec.pages else [],
+        components=[
+            c.get("type", "unknown") if isinstance(c, dict) else getattr(c, "type", "unknown")
+            for c in spec.pages[0].components
+        ] if spec.pages else [],
     )
 
     # ---- per-page files -------------------------------------------------------

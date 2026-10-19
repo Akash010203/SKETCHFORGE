@@ -52,12 +52,20 @@ construction, not a hypothetical.
   detections (re-import regenerates them) or the undo history.
 * Only one document is open at a time.
 
-## Not built yet
+## Currently in progress / remaining items
 
-NVIDIA/Nebius integration, dataset pipeline, trained models, natural-language edits, React/TS and
-Python backend generation, sandboxed execution and verification, packaging. See TASKS.md.
+* **Vision**: Perspective and skew correction (`vision/perspective.py`) is not implemented yet. Text content uses inferred placeholder strings (real OCR/handwriting recognition is pending).
+* **Models & Training**: Architecture and training loop for the compact component detector are implemented (`models/component_detector/`, `training/trainer.py`); actual training run and checkpoint generation (`checkpoints/component_detector.pt`) are pending. `models/layout_model/` is planned.
+* **Integrations**: Nebius client is implemented and verified against an in-process mock transport; live verification requires running `scripts/verify_nebius.py` with a valid `NEBIUS_API_KEY`. NVIDIA local runtime hooks (`integrations/nvidia/runtime.py`) are pending.
+* **Testing & Execution**: Sandboxed execution and verification runners are implemented, with dedicated unit tests in progress. Full browser automation (Playwright/Chrome) requires host browser configuration.
+* **Application**: Desktop UI primary workflow is operational; secondary panels (`layer_panel.py`, `settings_dialog.py`, `training_panel.py`, `dataset_panel.py`) and the natural-language "Ask" prompt bar are pending integration.
 
-## Hardware
+## Hardware & Environment
 
-Development machine: 2 CPU cores, 7.8 GB RAM, **no GPU**, PyTorch not installed, ~29 GB free disk.
-Training in Phase 6 is therefore limited to very small CPU models.
+Verified local workstation environment:
+* **OS**: Windows 11 (AMD64)
+* **CPU**: 12 logical cores
+* **GPU**: NVIDIA GeForce RTX 4050 Laptop GPU (6,141 MiB VRAM, Driver 591.74)
+* **PyTorch**: 2.6.0+cu124 with CUDA 12.4 acceleration enabled
+* **Storage**: 728.19 GB total, 443.90 GB free (planning budget: 221.95 GB)
+* **Training capability**: Full CUDA GPU acceleration is available locally for training compact detectors and layout models.

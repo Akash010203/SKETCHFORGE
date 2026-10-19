@@ -9,11 +9,7 @@ true), trained with fixed seeds and a train/validation/test split by source layo
 leakage, and compared with the heuristic baseline on held-out real *and* synthetic sets reported
 separately.
 
-**Constraints that shape it.** Current machine: 2 CPU cores, 7.8 GB RAM, no GPU, PyTorch not
-installed, ~14.7 GB planning budget for data. So: tiny convolutional detector, small images, bounded
-batch sizes, CPU fallback, checkpoints + resume, early stopping on validation, a smoke test (batch
-loads → forward → finite loss → backward → checkpoint round-trip → valid inference) before any full
-run. No claim of success from training loss alone.
+**Constraints that shape it.** Local machine: 12 CPU cores, NVIDIA GeForce RTX 4050 Laptop GPU (6 GB VRAM), PyTorch 2.6.0+cu124 with CUDA 12.4 enabled, ~443.9 GB free disk space. Strategy: compact MobileNet-style convolutional detector, bounded batch sizes, CUDA acceleration with CPU fallback, checkpoints + resume, early stopping on validation, and a smoke test (batch loads → forward → finite loss → backward → checkpoint round-trip → valid inference) before any full training run. No claim of success from training loss alone.
 
 **Third-party models** (e.g. the NVIDIA/Nebius integration) are separate, isolated, labelled as not
 trained by us, and never counted as "from scratch".
