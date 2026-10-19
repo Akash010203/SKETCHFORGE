@@ -15,16 +15,31 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from sketchforge.assist.edit_benchmark import load_tasks, run_benchmark  # noqa: E402
+from sketchforge.integrations.nebius import ConsentGate, NebiusClient, egress_notice, load_nebius_config  # noqa: E402
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--tasks", default="tests/evaluation/edit_tasks.json")
-    parser.add_argument("--arms", nargs="+", choices=("oracle", "local", "hybrid"),
+    parser.add_argument("--arms", nargs="+", choices=("oracle", "local", "model", "hybrid"),
                         default=("oracle", "local", "hybrid"))
+    parser.add_argument("--accept-egress", action="store_true",
+                        help="acknowledge the Nebius egress notice before running the model arm")
     parser.add_argument("--out", default="experiments/results/edit_benchmark.json")
     args = parser.parse_args()
-    result = run_benchmark(load_tasks(args.tasks), arms=tuple(args.arms))
+    provider = None
+    if "model" in args.arms or "hybrid" in args.arms:
+        config = load_nebius_config()
+        if config.enabled:
+            print(egress_notice(config))
+            if not args.accept_egress:
+                parser.error("model/hybrid arms need --accept-egress after reviewing the notice")
+            consent = ConsentGate()
+            consent.acknowledge()
+            provider = NebiusClient(config, consent)
+        elif "model" in args.arms:
+            parser.error("the model arm requires nebius.enabled: true in config/providers.yaml")
+    result = run_benchmark(load_tasks(args.tasks), arms=tuple(args.arms), provider=provider)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")

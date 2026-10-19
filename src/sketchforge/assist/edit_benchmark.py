@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 from sketchforge.assist.edit_plan import EditPlan, InvalidPlan, parse_plan, resolve_color, validate_plan
 from sketchforge.assist.local_parser import parse_instruction
+from sketchforge.assist.model_planner import plan_with_model
 from sketchforge.assist.verified_edit import apply_plan, introduced_issues
 from sketchforge.bootstrap import load_config
 from sketchforge.datasets.synthetic_generator import ALL_LAYOUTS, render_sketch
@@ -24,6 +25,7 @@ from sketchforge.design_ir.serialization import from_dict
 from sketchforge.evaluation.evaluator import evaluate_document
 from sketchforge.exceptions import SketchForgeError
 from sketchforge.layout.design_refinement import build_document
+from sketchforge.integrations.provider_interface import ModelProvider
 from sketchforge.vision.image_loader import from_array
 from sketchforge.vision.pipeline import analyze
 
@@ -171,7 +173,8 @@ def local_plan(task: dict, doc: DesignDocument) -> EditPlan | None:
 
 
 def run_benchmark(data: dict, *, arms: tuple[str, ...] = ("oracle", "local", "hybrid"),
-                  docs: dict[str, DesignDocument] | None = None) -> dict:
+                  docs: dict[str, DesignDocument] | None = None,
+                  provider: ModelProvider | None = None) -> dict:
     cfg = load_config()
     docs = docs or build_fixtures(data)
     rows = []
@@ -180,20 +183,29 @@ def run_benchmark(data: dict, *, arms: tuple[str, ...] = ("oracle", "local", "hy
         if task["doc"] not in docs:
             raise ValueError(f"task {task['id']} references unavailable fixture {task['doc']!r}")
         for arm in arms:
-            if arm not in (*planners, "hybrid"):
+            if arm not in (*planners, "hybrid", "model"):
                 raise ValueError(f"unknown benchmark arm {arm!r}")
             base = _copy_fixture(docs[task["doc"]])
             try:
-                if arm == "hybrid":
-                    parsed = local_plan(task, base)
-                    # Bounded repair lives in apply_plan; planner fallback remains local until a
-                    # remote provider is explicitly configured by the caller.
-                    row = _outcome(task, base, parsed, arm=arm, constraints=cfg.constraints, repair=True)
-                    row["planner"] = "local"
+                if arm in ("hybrid", "model"):
+                    model_result = plan_with_model(provider, base, task["instruction"]) if provider else None
+                    parsed = model_result.plan if model_result and model_result.ok else None
+                    if arm == "hybrid" and parsed is None:
+                        parsed = local_plan(task, base)
+                    row = _outcome(task, base, parsed, arm=arm, constraints=cfg.constraints,
+                                   repair=arm == "hybrid")
+                    row["planner"] = "model" if model_result and model_result.ok else (
+                        "local_fallback" if arm == "hybrid" else "model_unavailable")
+                    if model_result:
+                        row["planner_outcome"] = model_result.kind
+                        row["planner_reason"] = model_result.reason
+                        row["model_latency_ms"] = round(model_result.latency_ms, 2)
+                        row["total_tokens"] = model_result.total_tokens
+                        row["model"] = model_result.results[-1].model if model_result.results else None
                 else:
                     plan = planners[arm](task, base)
                     row = _outcome(task, base, plan, arm=arm, constraints=cfg.constraints,
-                                   repair=(arm == "hybrid"))
+                                   repair=False)
             except (InvalidPlan, ValidationError, SketchForgeError, ValueError) as exc:
                 row = {"task_id": task["id"], "arm": arm, "expected": task["expect"]["kind"],
                        "actual": "error", "passed": False, "errors": [str(exc)], "duration_ms": 0.0}
