@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# Secrets (never commit credentials)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Large / generated artifacts
+datasets/raw/
+datasets/processed/
+datasets/quarantine/
+datasets/synthetic/*
+!datasets/synthetic/.gitkeep
+checkpoints/*
+!checkpoints/.gitkeep
+!checkpoints/README.md
+experiments/results/*
+!experiments/results/.gitkeep
+!experiments/results/*.json  # small benchmark results are the evidence for documented numbers
+output/*
+!output/.gitkeep
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

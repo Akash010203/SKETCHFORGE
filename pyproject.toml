@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sketchforge"
+version = "0.1.0"
+description = "Local-first desktop workbench that turns hand-drawn UI sketches into editable, measured, self-correcting designs."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "opencv-python-headless>=4.9",
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+    "pillow>=10.1",
+]
+
+[project.optional-dependencies]
+# Desktop UI. Essentials is enough: QtWidgets, QtGui, QtSvg.
+ui = ["PySide6-Essentials>=6.6"]
+# Optional remote provider client (NVIDIA models on Nebius Token Factory). Off by default.
+remote = ["openai>=1.40"]
+# Own-model training (Phase 6). Not needed for Milestone 1.
+ml = ["torch>=2.2"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+sketchforge = "sketchforge.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "ui: needs PySide6 (runs headless with the Qt 'offscreen' platform)",
+    "slow: takes more than a few seconds",
+]
+filterwarnings = ["error::DeprecationWarning:sketchforge.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501", "UP042"]  # UP042: keep (str, Enum) so values serialise as plain strings
