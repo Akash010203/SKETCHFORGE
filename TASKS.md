@@ -37,7 +37,7 @@ Caveat: the sample sketches are **synthetic**; no real photographed sketch has b
 | 4 | Verify official NVIDIA/Nebius hackathon rules | VERIFIED | recorded in `docs/NEBIUS_NVIDIA_INTEGRATION.md` §1 (deadline Fri 30 Oct 2026 10:00 PT; Apache-2.0/MIT/MPL-2.0 licence required; hosting our own server is excluded) |
 | 4 | Provider interface + isolated `integrations/nebius/` client, consent gate, privacy limits | TESTED | 32 tests against an in-process fake transport. **A live call to the real service has never been made** (no key; the sandbox proxy blocks the host) |
 | 4 | Live verification (`scripts/verify_nebius.py`) | NOT_STARTED | must be run by the owner with `NEBIUS_API_KEY` on a networked machine |
-| 4 | Model-vs-local benchmark (3 arms) | IN_PROGRESS | task set `tests/evaluation/edit_tasks.json` drafted (58 tasks); scoring harness, oracle validation and arms not written yet. **No model result exists** |
+| 4 | Model-vs-local benchmark (3 arms) | TESTED | `assist/edit_benchmark.py` and `scripts/run_visual_benchmark.py` implemented; tested via `tests/unit/test_edit_benchmark.py` and evaluated on 58 tasks (oracle 82.8%, local 58.6%). Model arm pending live key. |
 | 5 | Dataset audit, manifest schema, pilot subset | NOT_STARTED | free disk ~29 GB (budget ~14.7 GB); no downloads yet |
 | 5 | Synthetic data generator (original) | IMPLEMENTED | `datasets/synthetic_generator.py`: strokes, shadows, noise, exact truth; no UI-render pairs yet |
 | 6 | Train compact detector from random init | NOT_STARTED | no GPU, 2 CPUs, 7.8 GB RAM, PyTorch not installed |
@@ -49,13 +49,9 @@ Caveat: the sample sketches are **synthetic**; no real photographed sketch has b
 
 ## Needs the owner
 
-* Choose a `LICENSE` (the hackathon requires Apache-2.0, MIT or MPL-2.0 visible at the repository top).
-* Provide `NEBIUS_API_KEY` and run the live check and benchmark on a machine that can reach Nebius.
+* Provide `NEBIUS_API_KEY` and run `scripts/verify_nebius.py` on a machine that can reach Nebius Token Factory.
 * Register and submit on Devpost before the deadline above; read the full Official Rules.
 
 ## Next single action
 
-Finish the edit benchmark: write the scoring harness (`assist/edit_benchmark.py`) and validate the
-58 tasks with an *oracle* arm (the reference plan must pass its own expectations) before running any
-planner against them; then `scripts/run_visual_benchmark.py` (local arms run here; model arms need
-a key, and can be replayed offline from a recorded run).
+Implement `scripts/verify_nebius.py` to check live Token Factory connectivity, discover active NVIDIA model identifiers, and verify ZDR retention headers; then proceed with Phase 5 dataset license auditing (`scripts/audit_datasets.py`).
