@@ -17,9 +17,12 @@ dist/
 *.key
 
 # Large / generated artifacts
-datasets/raw/
-datasets/processed/
-datasets/quarantine/
+datasets/raw/*
+!datasets/raw/.gitkeep
+datasets/processed/*
+!datasets/processed/.gitkeep
+datasets/quarantine/*
+!datasets/quarantine/.gitkeep
 datasets/evaluation/*
 !datasets/evaluation/.gitkeep
 datasets/synthetic/*
@@ -29,7 +32,8 @@ checkpoints/*
 !checkpoints/README.md
 experiments/results/*
 !experiments/results/.gitkeep
-!experiments/results/*.json  # small benchmark results are the evidence for documented numbers
+# small benchmark results are the evidence for documented numbers
+!experiments/results/*.json
 experiments/configs/*
 !experiments/configs/.gitkeep
 output/*
