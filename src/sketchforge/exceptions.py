@@ -39,6 +39,10 @@ class RenderError(SketchForgeError):
     """A design could not be rendered."""
 
 
+class AssetError(SketchForgeError):
+    """An image asset could not be validated, stored, or retrieved."""
+
+
 class EditError(SketchForgeError):
     """An edit command was invalid or could not be applied."""
 
