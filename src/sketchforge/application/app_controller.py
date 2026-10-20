@@ -29,6 +29,7 @@ from sketchforge.editor.selection import hit_test
 from sketchforge.evaluation.evaluator import EvaluationResult, evaluate_document
 from sketchforge.evaluation.report import RepairReport
 from sketchforge.exceptions import EditError, SketchForgeError
+from sketchforge.integrations.provider_interface import ModelProvider
 from sketchforge.orchestration.repair_workflow import run_repair
 from sketchforge.orchestration.sketch_workflow import IMPORT_STEPS, run_sketch_workflow
 from sketchforge.orchestration.workflow_state import RunStatus
@@ -42,10 +43,14 @@ class NoProjectError(SketchForgeError):
 
 
 class AppController:
-    def __init__(self, config: AppConfig | None = None, tasks: TaskManager | None = None) -> None:
+    def __init__(self, config: AppConfig | None = None, tasks: TaskManager | None = None,
+                 model_provider: ModelProvider | None = None) -> None:
         self.config = config or load_config()
         self.tasks = tasks or TaskManager()
         self.events = EventBus()
+        # Optional and explicitly injected: remote assistance stays off unless the host has
+        # configured and consented to a provider.
+        self.model_provider = model_provider
         self._project: Project | None = None
         self._render_cache: tuple[int, RenderedDesign] | None = None
         self._lock = threading.RLock()  # serialises document mutations (GUI thread vs repair thread)
@@ -222,6 +227,7 @@ class AppController:
         report = run_repair(
             copy, constraints=self.config.constraints, policy=self.config.regression,
             limits=self.config.workflow, injection=injection.to_dict() if injection else None,
+            model_provider=self.model_provider,
             on_event=lambda name, data: self.events.emit("repair_event", name=name, **data),
         )
         self._apply_repair(report, copy, revision)
@@ -238,6 +244,7 @@ class AppController:
             report = run_repair(
                 copy, constraints=self.config.constraints, policy=self.config.regression,
                 limits=self.config.workflow, cancelled=lambda: task.cancelled,
+                model_provider=self.model_provider,
                 injection=injection.to_dict() if injection else None,
                 on_event=lambda name, data: (
                     progress(task, f"{name}: {data.get('issue', data.get('decision', ''))}"),

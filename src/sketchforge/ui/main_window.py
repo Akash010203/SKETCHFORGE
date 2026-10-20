@@ -8,14 +8,22 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QMainWindow,
     QMessageBox,
+    QPushButton,
     QSplitter,
     QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from sketchforge import __version__
 from sketchforge.application.app_controller import AppController
+from sketchforge.assist.edit_plan import PlanCommand, validate_plan
+from sketchforge.assist.local_parser import parse_instruction
 from sketchforge.exceptions import SketchForgeError
 from sketchforge.ui.bridge import ControllerBridge
 from sketchforge.ui.component_tree import ComponentTree
@@ -80,7 +88,26 @@ class MainWindow(QMainWindow):
             splitter.addWidget(w)
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([300, 760, 420])
-        self.setCentralWidget(splitter)
+        # A local, validated natural-language edit entry point. The SVG canvas remains the
+        # interactive design surface; this bar translates requests into undoable IR commands.
+        self.edit_prompt = QLineEdit()
+        self.edit_prompt.setObjectName("naturalLanguageEditPrompt")
+        self.edit_prompt.setPlaceholderText("Describe an edit, e.g. “make the button blue”")
+        self.edit_prompt.setAccessibleName("Natural language design edit")
+        self.edit_prompt.returnPressed.connect(self.apply_prompt)
+        self.apply_prompt_button = QPushButton("Apply edit")
+        self.apply_prompt_button.clicked.connect(self.apply_prompt)
+        prompt_row = QHBoxLayout()
+        prompt_row.addWidget(QLabel("Ask"))
+        prompt_row.addWidget(self.edit_prompt, 1)
+        prompt_row.addWidget(self.apply_prompt_button)
+
+        central = QWidget(self)
+        central_layout = QVBoxLayout(central)
+        central_layout.setContentsMargins(8, 8, 8, 8)
+        central_layout.addLayout(prompt_row)
+        central_layout.addWidget(splitter, 1)
+        self.setCentralWidget(central)
         self.statusBar().addPermanentWidget(self.progress)
 
         self._build_actions()
@@ -214,6 +241,8 @@ class MainWindow(QMainWindow):
 
     def _update_actions(self) -> None:
         has = self.controller.has_project
+        self.edit_prompt.setEnabled(has)
+        self.apply_prompt_button.setEnabled(has)
         stack = self.controller.project.stack if has else None
         self.act_undo.setEnabled(bool(stack and stack.can_undo))
         self.act_redo.setEnabled(bool(stack and stack.can_redo))
@@ -230,6 +259,25 @@ class MainWindow(QMainWindow):
             fn()
         except SketchForgeError as exc:
             self.statusBar().showMessage(str(exc), 8000)
+
+    def apply_prompt(self) -> None:
+        """Parse a local natural-language edit and apply it as one undoable command."""
+        instruction = self.edit_prompt.text().strip()
+        if not instruction or not self.controller.has_project:
+            return
+        result = parse_instruction(instruction, self.controller.document)
+        if not result.ok:
+            self.statusBar().showMessage(result.reason or "Could not understand that edit.", 8000)
+            return
+        try:
+            validate_plan(result.plan, self.controller.document)
+            self.controller.execute(PlanCommand(result.plan))
+        except SketchForgeError as exc:
+            self.statusBar().showMessage(str(exc), 8000)
+            return
+        self.edit_prompt.clear()
+        explanation = result.plan.explanation or "Edit applied"
+        self.statusBar().showMessage(explanation, 6000)
 
     def choose_sketch(self) -> None:
         start = str(self.controller.sample_sketches()[0].parent) if self.controller.sample_sketches() else ""

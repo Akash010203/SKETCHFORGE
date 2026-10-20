@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from sketchforge.design_ir.document import preorder
 from sketchforge.design_ir.schema import Component, ComponentType, DesignDocument
+from sketchforge.layout.responsive_rules import responsive_css
 from sketchforge.rendering.svg_renderer import BUTTON_PAD, INPUT_PAD, _num
 
 BASE_CSS = """\
@@ -79,4 +80,5 @@ def render_css(doc: DesignDocument) -> str:
             )
             continue
         rules.append(rule_for(doc, comp))
-    return "\n".join(rules) + "\n"
+    rules.append(responsive_css(doc).rstrip())
+    return "\n".join(rule for rule in rules if rule) + "\n"

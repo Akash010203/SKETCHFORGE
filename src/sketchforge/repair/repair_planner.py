@@ -68,6 +68,15 @@ def next_plan(
             notes.append(f"{issue.key}: gave up after {len(done)} attempts ({', '.join(done)})")
             continue
         diag = diagnose(doc, issue, constraints)
+        # When a provider is explicitly configured, let it propose first. Its patch goes through
+        # the same edit validation, render/evaluation, and regression gate as every local rule;
+        # rejected or unavailable proposals fall through to deterministic candidates.
+        if model_provider is not None and "model_proposal:single" not in done:
+            from sketchforge.assist.model_proposer import propose_repair
+            proposed = propose_repair(model_provider, doc, issue)
+            if proposed.patch is not None:
+                return Plan(issue, diag, proposed.patch), notes
+            notes.append(f"{issue.key}: {proposed.reason}")
         applicable = False
         for strategy in diag.strategies:
             candidates = RULES[strategy](doc, issue, constraints)
@@ -78,12 +87,6 @@ def next_plan(
                 applicable = True
                 if patch.candidate_id not in done:
                     return Plan(issue, diag, patch), notes
-        if model_provider is not None and "model_proposal:single" not in done:
-            from sketchforge.assist.model_proposer import propose_repair
-            proposed = propose_repair(model_provider, doc, issue)
-            if proposed.patch is not None:
-                return Plan(issue, diag, proposed.patch), notes
-            notes.append(f"{issue.key}: {proposed.reason}")
         if not applicable:
             notes.append(f"{issue.key}: no applicable repair")
     return None, notes
