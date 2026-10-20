@@ -17,6 +17,7 @@ from sketchforge.evaluation.benchmark_runner import run_benchmark
 from sketchforge.exceptions import ImageLoadError, PreprocessingError
 from sketchforge.vision.image_loader import from_array, load_image, load_image_bytes
 from sketchforge.vision.normalization import flatten_illumination, normalize
+from sketchforge.vision.perspective import correct_perspective
 from sketchforge.vision.pipeline import analyze
 
 
@@ -180,6 +181,31 @@ def test_phone_and_desktop_sketches_get_different_design_widths():
     cfg = VisionConfig()
     assert phone.proposals.frame.bbox[2] * phone.design_scale == pytest.approx(cfg.design_width_portrait, rel=0.01)
     assert desk.proposals.frame.bbox[2] * desk.design_scale == pytest.approx(cfg.design_width_landscape, rel=0.01)
+
+
+def test_perspective_corrects_a_tilted_page_and_maps_boxes_to_source():
+    img = np.full((700, 900, 3), 235, np.uint8)
+    quad = np.array([[160, 90], [730, 150], [680, 610], [115, 550]], np.int32)
+    cv2.fillConvexPoly(img, quad, (255, 255, 255))
+    cv2.polylines(img, [quad], True, (20, 20, 20), 5)
+    cv2.rectangle(img, (270, 260), (600, 280), (20, 20, 20), 4)
+
+    corrected = correct_perspective(img)
+    assert corrected.corrected
+    assert corrected.matrix is not None
+    assert corrected.bgr.shape[1] != img.shape[1]
+    mapped = cv2.perspectiveTransform(
+        np.array([[[0.0, 0.0]]], np.float32), np.linalg.inv(corrected.matrix)
+    )[0, 0]
+    assert np.linalg.norm(mapped - corrected.quad_pts[0]) < 2
+
+
+def test_perspective_leaves_a_blank_image_unchanged():
+    img = np.full((300, 400, 3), 245, np.uint8)
+    result = correct_perspective(img)
+    assert not result.corrected
+    assert result.matrix is None
+    assert result.bgr is img
 
 
 # --------------------------------------------------------------------------- regression floors

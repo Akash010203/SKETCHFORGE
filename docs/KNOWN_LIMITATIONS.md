@@ -14,8 +14,9 @@ construction, not a hypothetical.
 
 ## Vision
 
-* **No perspective / skew correction** (`vision/perspective.py` not implemented). A photographed
-  sketch taken at an angle will mis-measure.
+* Perspective correction now attempts to detect and rectify one dominant page quadrilateral.
+  This is heuristic and may fail on cluttered scenes, curled pages, weak borders or shadows;
+  the photo benchmark remains unrun because no photographed samples/annotations are checked in.
 * **No OCR / handwriting recognition.** Sketch text is scribble; text content is *unknown* and is
   replaced by clearly flagged placeholder strings (`text_is_inferred = true`), e.g. "Lorem ipsum".
 * A sketch needs a visible page frame or consistent margins to find the page area; with no drawn
@@ -54,7 +55,7 @@ construction, not a hypothetical.
 
 ## Currently in progress / remaining items
 
-* **Vision**: Perspective and skew correction (`vision/perspective.py`) is not implemented yet. Text content uses inferred placeholder strings (real OCR/handwriting recognition is pending).
+* **Vision**: Collect and annotate licensed photographed sketches, then run `scripts/benchmark_photographs.py`. Text content uses inferred placeholder strings (lightweight OCR/handwriting classification is future work).
 * **Models & Training**: Architecture and training loop for the compact component detector are implemented (`models/component_detector/`, `training/trainer.py`); actual training run and checkpoint generation (`checkpoints/component_detector.pt`) are pending. `models/layout_model/` is planned.
 * **Integrations**: Nebius client is implemented and verified against an in-process mock transport; live verification requires running `scripts/verify_nebius.py` with a valid `NEBIUS_API_KEY`. NVIDIA local runtime hooks (`integrations/nvidia/runtime.py`) are pending.
 * **Testing & Execution**: Sandboxed execution and verification runners are implemented, with dedicated unit tests in progress. Full browser automation (Playwright/Chrome) requires host browser configuration.
