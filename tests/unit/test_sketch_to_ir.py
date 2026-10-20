@@ -53,6 +53,17 @@ def test_text_is_placeholder_and_flagged(login):
             assert c.text is None and not c.text_is_inferred
 
 
+def test_recognized_handwriting_is_user_text(monkeypatch):
+    from sketchforge.vision import pipeline
+
+    monkeypatch.setenv("SKETCHFORGE_OCR_MODEL", "test-model")
+    monkeypatch.setattr(pipeline, "recognize_regions", lambda gray, regions: ["Welcome"] * len(regions))
+    img, _ = render_sketch(ALL_LAYOUTS["login_page"](), seed=11, condition="clean")
+    doc, _ = build_document(analyze(from_array(img, name="login.png")))
+    recognized = [c for c in doc.components if c.text == "Welcome"]
+    assert recognized and all(not c.text_is_inferred for c in recognized)
+
+
 def test_provenance_is_recorded(login):
     img, _, result, doc, _ = login
     meta = doc.metadata

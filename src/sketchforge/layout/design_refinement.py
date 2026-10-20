@@ -3,15 +3,15 @@
 Two separable steps:
 
 ``build_document``  maps a :class:`VisionResult` into the IR: page size and source transform,
-                    component types/ids/hierarchy, theme styling, inferred placeholder text and
+                    component types/ids/hierarchy, theme styling, recognized or inferred text and
                     per-component detection provenance.
 ``refine_document`` makes the geometry self-consistent: children inside parents, near-aligned
                     siblings snapped, repeated groups evenly spaced. It reuses the same
                     alignment/spacing definitions the evaluator and repair engine use, so a freshly
                     built document does not start out with issues the evaluator would flag.
 
-Nothing here claims to know what the sketch *says*: text is placeholder content flagged
-``text_is_inferred`` and colours come from the theme.
+Text recognized by an enabled OCR model is preserved as user text; otherwise placeholder text is
+flagged ``text_is_inferred``. Colours come from the theme.
 """
 
 from __future__ import annotations
@@ -50,6 +50,7 @@ from sketchforge.layout.overlap import sliver_trim
 from sketchforge.layout.spacing import apply_spacing
 from sketchforge.rendering.theme_engine import DEFAULT_THEME, Theme
 from sketchforge.vision.component_detection import Detection
+from sketchforge.vision.perspective import map_point_to_source
 from sketchforge.vision.pipeline import VisionResult
 
 MIN_FONT = 10.0
@@ -103,12 +104,12 @@ def _text_fields(
         font = _font_from_height(bbox.h)
         typo = theme.typography_for(ctype, font)
         assert typo is not None
-        text = placeholder_for(ctype.value, bbox.w, font, typo.font_weight)
+        text = det.recognized_text or placeholder_for(ctype.value, bbox.w, font, typo.font_weight)
         need = line_box_height(font, typo.line_height)
         if bbox.h < need:  # tiny handwriting: grow the box so the line is not clipped
             grow = need - bbox.h
             bbox = BBox(x=bbox.x, y=bbox.y - grow / 2, w=bbox.w, h=need)
-        return text, True, typo, bbox
+        return text, det.recognized_text is None, typo, bbox
     if ctype in (ComponentType.BUTTON, ComponentType.INPUT):
         if det.label_texts:
             label_h = max(t.bbox[3] for t in det.label_texts) * scale
@@ -118,8 +119,8 @@ def _text_fields(
         typo = theme.typography_for(ctype, font)
         assert typo is not None
         pad = 12.0 if ctype is ComponentType.INPUT else 8.0
-        text = placeholder_for(ctype.value, max(bbox.w - 2 * pad, 1.0), font, typo.font_weight)
-        return text, True, typo, bbox
+        text = det.recognized_text or placeholder_for(ctype.value, max(bbox.w - 2 * pad, 1.0), font, typo.font_weight)
+        return text, det.recognized_text is None, typo, bbox
     return None, False, None, bbox
 
 
@@ -158,7 +159,14 @@ def build_document(
 
     # design px per *source* px, offset in source px (design = (source - offset) * k)
     k = scale * result.normalized.scale
-    src_fx, src_fy = fx / result.normalized.scale, fy / result.normalized.scale
+    # The frame origin is in corrected/working coordinates. Map it through the
+    # inverse homography before recording the source-space offset, just as we
+    # do for each detection's provenance bbox.
+    frame_origin = (fx / result.normalized.scale, fy / result.normalized.scale)
+    if result.perspective.corrected and result.perspective.matrix is not None:
+        src_fx, src_fy = map_point_to_source(frame_origin, result.perspective.matrix)
+    else:
+        src_fx, src_fy = frame_origin
     meta = DocumentMetadata(
         source_image_sha256=result.loaded.sha256,
         source_size=(result.loaded.width, result.loaded.height),

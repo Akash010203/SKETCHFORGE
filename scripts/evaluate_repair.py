@@ -13,6 +13,7 @@ Synthetic sketches only: this measures the repair engine, not handwriting robust
 
 Usage:  python scripts/evaluate_repair.py [--conditions clean shadow ...] [--seeds 11 12]
                                           [--out experiments/results/repair_matrix.json]
+                                          [--model-provider nebius]
 """
 
 from __future__ import annotations
@@ -39,6 +40,27 @@ from sketchforge.vision.image_loader import from_array  # noqa: E402
 from sketchforge.vision.pipeline import analyze  # noqa: E402
 
 
+
+def _build_provider(name):
+    """Return a ModelProvider for *name*, or None if name is None."""
+    if name is None:
+        return None
+    if name == "nebius":
+        try:
+            from sketchforge.integrations.nebius import ConsentGate, NebiusClient, load_nebius_config
+            cfg = load_nebius_config(overrides={"enabled": True})
+            consent = ConsentGate()
+            consent.acknowledge()
+            return NebiusClient(cfg, consent=consent)
+        except Exception as exc:  # noqa: BLE001
+            import sys as _sys
+            print(f"Cannot initialise Nebius provider: {exc}", file=_sys.stderr)
+            print("Set NEBIUS_API_KEY and ensure the nebius integration is configured.", file=_sys.stderr)
+            raise SystemExit(1) from exc
+    import sys as _sys
+    print(f"Unknown model provider: {name!r}. Supported values: nebius", file=_sys.stderr)
+    raise SystemExit(1)
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--layouts", nargs="+", default=sorted(ALL_LAYOUTS))
@@ -46,10 +68,19 @@ def main() -> int:
     ap.add_argument("--seeds", nargs="+", type=int, default=[11, 12])
     ap.add_argument("--kinds", nargs="+", default=list(KINDS))
     ap.add_argument("--out", default="experiments/results/repair_matrix.json")
+    ap.add_argument(
+        "--model-provider",
+        metavar="NAME",
+        default=None,
+        help="Enable model-guided repair fallback. Supported values: nebius. "
+             "Requires the corresponding API key env-var (NEBIUS_API_KEY).",
+    )
     args = ap.parse_args()
     unknown = set(args.conditions) - set(CONDITIONS)
     if unknown:
         ap.error(f"unknown conditions: {sorted(unknown)}")
+
+    provider = _build_provider(args.model_provider)
 
     cfg = load_config()
     rows, skipped = [], []
@@ -73,21 +104,25 @@ def main() -> int:
                         skipped.append({"layout": layout, "condition": cond, "seed": seed,
                                         "kind": kind, "why": str(exc)})
                         continue
-                    injected = evaluate_document(doc, cfg.constraints)
-                    report = run_repair(doc, constraints=cfg.constraints, policy=cfg.regression,
-                                        limits=cfg.workflow, stack=stack, injection=rec.to_dict())
+                    injected_ev = evaluate_document(doc, cfg.constraints)
+                    report = run_repair(
+                        doc, constraints=cfg.constraints, policy=cfg.regression,
+                        limits=cfg.workflow, stack=stack, injection=rec.to_dict(),
+                        model_provider=provider,
+                    )
                     rows.append({
                         "layout": layout, "condition": cond, "seed": seed, "kind": kind,
                         "baseline_issues": len(baseline.issues),
-                        "detected": rec.expected_code in {i.code for i in injected.issues},
-                        "issues_injected": len(injected.issues), "issues_final": len(report.final.issues),
+                        "detected": rec.expected_code in {i.code for i in injected_ev.issues},
+                        "issues_injected": len(injected_ev.issues), "issues_final": len(report.final.issues),
                         "repaired": not report.final.issues,
                         "clean": not report.final.issues and not report.rejected,
-                        "regressed": len(report.final.issues) > len(injected.issues),
+                        "regressed": len(report.final.issues) > len(injected_ev.issues),
                         "accepted": len(report.accepted), "rejected": len(report.rejected),
                         "outcome": report.outcome.value, "stop": report.stop_reason,
                         "left": [i.key for i in report.final.issues],
                         "ms": round(report.duration_ms, 1),
+                        "model_provider": args.model_provider,
                     })
     elapsed = time.perf_counter() - t0
 
@@ -103,6 +138,7 @@ def main() -> int:
         "clean": rate(rows, "clean"), "regressed": rate(rows, "regressed"),
         "median_repair_ms": round(statistics.median(r["ms"] for r in rows), 1) if rows else 0.0,
         "wall_seconds": round(elapsed, 1),
+        "model_provider": args.model_provider,
         "by_kind": {k: {"n": len(v), "repaired": rate(v, "repaired"), "clean": rate(v, "clean")}
                     for k, v in sorted(by_kind.items())},
     }

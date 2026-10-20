@@ -208,6 +208,15 @@ def test_perspective_leaves_a_blank_image_unchanged():
     assert result.bgr is img
 
 
+def test_perspective_skips_axis_aligned_border_near_canvas_edges():
+    img = np.full((300, 400, 3), 245, np.uint8)
+    cv2.rectangle(img, (8, 8), (391, 291), (20, 20, 20), 4)
+    result = correct_perspective(img)
+    assert not result.corrected
+    assert result.bgr is img
+    assert any("axis-aligned page border" in note for note in result.notes)
+
+
 # --------------------------------------------------------------------------- regression floors
 @pytest.mark.slow
 def test_detection_benchmark_does_not_regress():

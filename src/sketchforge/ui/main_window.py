@@ -20,11 +20,15 @@ from sketchforge.exceptions import SketchForgeError
 from sketchforge.ui.bridge import ControllerBridge
 from sketchforge.ui.component_tree import ComponentTree
 from sketchforge.ui.correction_panel import CorrectionPanel
+from sketchforge.ui.dataset_panel import DatasetPanel
 from sketchforge.ui.design_canvas import DesignCanvas
+from sketchforge.ui.layer_panel import LayerPanel
 from sketchforge.ui.preview_panel import PreviewPanel
 from sketchforge.ui.properties_panel import PropertiesPanel
 from sketchforge.ui.sketch_import_view import SketchImportView
 from sketchforge.ui.task_progress import TaskProgress
+from sketchforge.ui.training_panel import TrainingPanel
+from sketchforge.ui.workspace import WorkspaceState
 
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp);;All files (*)"
 
@@ -36,22 +40,40 @@ class MainWindow(QMainWindow):
         self.bridge = ControllerBridge(controller, self)
         self.resize(1480, 900)
 
+        # -- workspace state (tab indices, fit-pending, …) --
+        self.workspace = WorkspaceState()
+
+        # -- panels --
         self.canvas = DesignCanvas(controller)
         self.tree = ComponentTree(controller)
         self.sketch_view = SketchImportView(controller)
+        self.layer_panel = LayerPanel(controller)
         self.properties = PropertiesPanel(controller)
         self.correction = CorrectionPanel(controller)
         self.preview = PreviewPanel(controller)
+        self.training = TrainingPanel(controller)
+        self.datasets = DatasetPanel(controller)
         self.progress = TaskProgress()
 
+        # -- left tab widget --
         left = QTabWidget()
         left.addTab(self.tree, "Components")
         left.addTab(self.sketch_view, "Sketch")
+        left.addTab(self.layer_panel, "Layers")
+        left.addTab(self.datasets, "Datasets")
+
+        # -- right tab widget --
         right = QTabWidget()
         right.addTab(self.properties, "Properties")
         right.addTab(self.correction, "Measure && repair")
         right.addTab(self.preview, "Code")
+        right.addTab(self.training, "Training")
+
         self.left_tabs, self.right_tabs = left, right
+
+        # Persist tab changes in workspace state
+        left.currentChanged.connect(lambda _: self.workspace.sync_tabs(left, right))
+        right.currentChanged.connect(lambda _: self.workspace.sync_tabs(left, right))
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         for w in (left, self.canvas, right):
@@ -130,15 +152,17 @@ class MainWindow(QMainWindow):
         b.progress.connect(self.progress.update_text)
         b.error.connect(self._on_error)
         b.project_saved.connect(lambda p: self.statusBar().showMessage(f"saved to {p}", 5000))
-        for source in (self.canvas, self.tree, self.correction):
+
+        for source in (self.canvas, self.tree, self.correction, self.layer_panel):
             source.selection_requested.connect(self.controller.select)
-        for source in (self.canvas, self.properties, self.correction):
+        for source in (self.canvas, self.properties, self.correction, self.layer_panel, self.training, self.datasets):
             source.status_message.connect(lambda m: self.statusBar().showMessage(m, 8000))
 
     # ------------------------------------------------------------------ refresh
     def _refresh_all(self) -> None:
         self.canvas.reload()
         self.tree.rebuild()
+        self.layer_panel.refresh()
         self.properties.refresh()
         self.correction.refresh()
         self.preview.refresh()
@@ -146,6 +170,7 @@ class MainWindow(QMainWindow):
         self._update_actions()
 
     def _on_project_opened(self) -> None:
+        self.workspace.request_fit()
         self.canvas._fit_pending = True
         self.progress.finish("")
         self._refresh_all()
@@ -162,6 +187,8 @@ class MainWindow(QMainWindow):
     def _on_selection(self) -> None:
         self.canvas.refresh_overlays()
         self.tree.sync_selection()
+        self.layer_panel.sync_selection(self.controller.project.selection.primary
+                                        if self.controller.has_project else None)
         self.properties.refresh()
 
     def _on_repair_finished(self, report) -> None:
@@ -267,6 +294,7 @@ class MainWindow(QMainWindow):
         if not self.confirm_discard():
             event.ignore()
             return
+        self.workspace.sync_tabs(self.left_tabs, self.right_tabs)
         self.bridge.detach()
         self.controller.close()
         event.accept()

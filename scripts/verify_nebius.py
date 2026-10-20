@@ -37,15 +37,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--accept-egress", action="store_true",
                         help="acknowledge the displayed Nebius egress notice for this invocation")
+    parser.add_argument("--enable", action="store_true",
+                        help="enable the provider for this verification run without editing config/providers.yaml")
     parser.add_argument("--model", help="override the configured model for the completion probe")
     args = parser.parse_args()
-    config = load_nebius_config()
+    overrides = {"enabled": True} if args.enable else {}
+    config = load_nebius_config(overrides=overrides)
     print(egress_notice(config))
     if not args.accept_egress:
         print("\nNo request sent. Review the notice, then rerun with --accept-egress to proceed.", file=sys.stderr)
         return 2
     if not config.enabled:
-        print("\nNo request sent: set nebius.enabled: true in config/providers.yaml.", file=sys.stderr)
+        print("\nNo request sent: set nebius.enabled: true in config/providers.yaml or pass --enable.", file=sys.stderr)
         return 2
 
     consent = ConsentGate()

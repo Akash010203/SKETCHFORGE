@@ -17,8 +17,11 @@ construction, not a hypothetical.
 * Perspective correction now attempts to detect and rectify one dominant page quadrilateral.
   This is heuristic and may fail on cluttered scenes, curled pages, weak borders or shadows;
   the photo benchmark remains unrun because no photographed samples/annotations are checked in.
-* **No OCR / handwriting recognition.** Sketch text is scribble; text content is *unknown* and is
-  replaced by clearly flagged placeholder strings (`text_is_inferred = true`), e.g. "Lorem ipsum".
+* **Handwriting OCR is optional.** Install `sketchforge[ocr]` and set `SKETCHFORGE_OCR_MODEL` to
+  `microsoft/trocr-base-handwritten` (or a local compatible TrOCR model) to recognize candidate
+  text lines. The first run may download model weights. Recognition is best-effort: missed or
+  unreadable text remains a clearly flagged placeholder (`text_is_inferred = true`); verify OCR
+  output before relying on it. OCR is off by default.
 * A sketch needs a visible page frame or consistent margins to find the page area; with no drawn
   frame the ink bounding box is used and noted.
 * Known confusions: card ↔ container, checkbox ↔ radio when poorly drawn, text ↔ heading (heading
@@ -55,7 +58,7 @@ construction, not a hypothetical.
 
 ## Currently in progress / remaining items
 
-* **Vision**: Collect and annotate licensed photographed sketches, then run `scripts/benchmark_photographs.py`. Text content uses inferred placeholder strings (lightweight OCR/handwriting classification is future work).
+* **Vision**: Collect and annotate licensed photographed sketches, then run `scripts/benchmark_photographs.py`. The benchmark runner is implemented, but no photograph scores are available until a non-empty local manifest and its image/annotation files are supplied.
 * **Models & Training**: Architecture and training loop for the compact component detector are implemented (`models/component_detector/`, `training/trainer.py`); actual training run and checkpoint generation (`checkpoints/component_detector.pt`) are pending. `models/layout_model/` is planned.
 * **Integrations**: Nebius client is implemented and verified against an in-process mock transport; live verification requires running `scripts/verify_nebius.py` with a valid `NEBIUS_API_KEY`. NVIDIA local runtime hooks (`integrations/nvidia/runtime.py`) are pending.
 * **Testing & Execution**: Sandboxed execution and verification runners are implemented, with dedicated unit tests in progress. Full browser automation (Playwright/Chrome) requires host browser configuration.

@@ -1,8 +1,7 @@
-"""Candidate text regions.
+"""Find candidate handwriting lines before optional OCR.
 
-Handwriting cannot be read here (no OCR in Phase 1), so a "text region" is purely a cluster of
-small pen strokes left over after rectangle outlines, dividers and image crosses are removed. The
-text *content* is therefore always unknown; downstream code marks any placeholder as inferred.
+A text region is a cluster of small pen strokes left over after rectangle outlines, dividers and
+image crosses are removed. Recognition is performed separately by :mod:`handwriting_ocr`.
 """
 
 from __future__ import annotations
@@ -23,6 +22,7 @@ class TextRegion:
     ink_pixels: int
     pieces: int  # connected strokes (letters/words) inside the region
     confidence: float
+    recognized_text: str | None = None
 
     @property
     def center(self) -> tuple[float, float]:

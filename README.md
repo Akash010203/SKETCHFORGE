@@ -70,6 +70,20 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DESIGN_IR_SPEC.md](
 All numbers come from sketches drawn by our own generator, whose ground truth is exact. They do
 **not** describe real photographs of human drawings, which have not been tested.
 
+### Handwriting OCR
+
+Handwriting recognition is optional and off by default. Install the OCR extra and select the
+TrOCR handwritten model before launching SketchForge:
+
+```powershell
+pip install -e ".[ocr]"
+$env:SKETCHFORGE_OCR_MODEL = "microsoft/trocr-base-handwritten"
+```
+
+The first run downloads model files unless `SKETCHFORGE_OCR_MODEL` points to a compatible local
+model directory. Recognized text is saved as non-inferred text; unreadable regions keep the inferred
+placeholder. Review OCR output because handwriting recognition can make mistakes.
+
 | Benchmark | Result |
 |---|---|
 | Component detection, tuning layouts (63 sketches, 7 photo conditions) | F1 0.973, type accuracy 0.985, mean IoU 0.840 |

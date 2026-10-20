@@ -25,11 +25,14 @@ def main() -> int:
                         default=("oracle", "local", "hybrid"))
     parser.add_argument("--accept-egress", action="store_true",
                         help="acknowledge the Nebius egress notice before running the model arm")
+    parser.add_argument("--enable", action="store_true",
+                        help="enable the provider for this run without editing config/providers.yaml")
     parser.add_argument("--out", default="experiments/results/edit_benchmark.json")
     args = parser.parse_args()
     provider = None
     if "model" in args.arms or "hybrid" in args.arms:
-        config = load_nebius_config()
+        overrides = {"enabled": True} if args.enable else {}
+        config = load_nebius_config(overrides=overrides)
         if config.enabled:
             print(egress_notice(config))
             if not args.accept_egress:
@@ -38,7 +41,7 @@ def main() -> int:
             consent.acknowledge()
             provider = NebiusClient(config, consent)
         elif "model" in args.arms:
-            parser.error("the model arm requires nebius.enabled: true in config/providers.yaml")
+            parser.error("the model arm requires nebius.enabled: true in config/providers.yaml or --enable")
     result = run_benchmark(load_tasks(args.tasks), arms=tuple(args.arms), provider=provider)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

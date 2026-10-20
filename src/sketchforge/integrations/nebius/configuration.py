@@ -35,14 +35,38 @@ class NebiusConfig(BaseModel):
     privacy: PrivacyConfig = Field(default_factory=PrivacyConfig)
 
     def api_key(self, environ: dict[str, str] | None = None) -> str:
-        """The key from the environment. Never read from any file in the repository."""
-        key = (environ if environ is not None else os.environ).get(self.api_key_env, "").strip()
+        """The key from the environment (or .env). Never read from tracked repository files."""
+        if environ is not None:
+            key = environ.get(self.api_key_env, "").strip()
+        else:
+            key = os.environ.get(self.api_key_env, "").strip()
+            if not key:
+                env_file = repo_root() / ".env"
+                if env_file.is_file():
+                    for line in env_file.read_text(encoding="utf-8").splitlines():
+                        line = line.strip()
+                        if line.startswith(f"{self.api_key_env}=") and not line.startswith("#"):
+                            key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            if key:
+                                os.environ[self.api_key_env] = key
+                                break
         if not key:
             raise ProviderAuthError(f"no API key: set the {self.api_key_env} environment variable")
         return key
 
 
 def load_nebius_config(path: str | Path | None = None, overrides: dict[str, Any] | None = None) -> NebiusConfig:
+    env_file = repo_root() / ".env"
+    if env_file.is_file():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+
     file = Path(path) if path else repo_root() / "config" / "providers.yaml"
     data: dict[str, Any] = {}
     if file.is_file():

@@ -27,12 +27,10 @@ Limitations (recorded in docs/KNOWN_LIMITATIONS.md)
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
-
 
 # ---------------------------------------------------------------------------
 # Result type
@@ -141,6 +139,24 @@ def correct_perspective(
         return PerspectiveResult(corrected=False, bgr=bgr, notes=notes)
 
     ordered = _order_corners(best_quad)
+    # A clean, nearly canvas-sized rectangular border is a page outline, not camera
+    # perspective. Rectifying it often crops/offsets synthetic or flatbed sketches and
+    # makes a simple scale+offset source transform inaccurate.
+    margin = np.minimum(ordered, np.array([w - 1, h - 1], dtype=np.float32) - ordered)
+    axis_aligned = (
+        abs(float(ordered[0, 1] - ordered[1, 1])) <= 3
+        and abs(float(ordered[2, 1] - ordered[3, 1])) <= 3
+        and abs(float(ordered[0, 0] - ordered[3, 0])) <= 3
+        and abs(float(ordered[1, 0] - ordered[2, 0])) <= 3
+    )
+    near_canvas = float(np.max(margin[:, 0] / max(w, 1))) <= 0.04 and float(
+        np.max(margin[:, 1] / max(h, 1))
+    ) <= 0.04
+    if axis_aligned and near_canvas:
+        return PerspectiveResult(
+            corrected=False, bgr=bgr,
+            notes=["axis-aligned page border near image edges; perspective correction skipped"],
+        )
     tl, tr, br, bl = ordered
 
     # Target rectangle size: maximum of the two width/height spans
@@ -180,25 +196,9 @@ def correct_perspective(
 def _order_corners(pts: np.ndarray) -> np.ndarray:
     """Return corners in (top-left, top-right, bottom-right, bottom-left) order.
 
-    Uses the centroid-angle method which is stable for convex quads.
+    Uses point sums and differences to identify corners of a convex quad.
     """
-    cx = float(pts[:, 0].mean())
-    cy = float(pts[:, 1].mean())
-    angles = np.arctan2(pts[:, 1] - cy, pts[:, 0] - cx)
-    # Angle from centroid: TL ≈ -135°, TR ≈ -45°, BR ≈ +45°, BL ≈ +135°
-    order = np.argsort(angles)
-    pts_sorted = pts[order]
-
-    # The sorted order by angle is: left-top, right-top, right-bottom, left-bottom
-    # Rotate so that top-left (most negative x+y) comes first
-    sums = pts_sorted[:, 0] + pts_sorted[:, 1]
-    start = int(np.argmin(sums))
-    tl_idx = (start) % 4
-    tr_idx = (start + 1) % 4
-    br_idx = (start + 2) % 4
-    bl_idx = (start + 3) % 4
-
-    # Re-examine: among all four points pick TL/BR by smallest/largest sum,
+    # Among all four points pick TL/BR by smallest/largest sum,
     # TR/BL by smallest/largest difference. This is more robust.
     pts2 = pts.copy()
     s = pts2.sum(axis=1)

@@ -6,15 +6,21 @@ orchestrator call. Each stage is also importable on its own.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 
 from sketchforge.bootstrap import VisionConfig
 from sketchforge.utilities.timing import Stopwatch
 from sketchforge.vision.component_detection import Detection, detect_components
+from sketchforge.vision.handwriting_ocr import recognize_regions
 from sketchforge.vision.image_loader import LoadedImage
 from sketchforge.vision.layout_inference import LayoutInference, infer_hierarchy
 from sketchforge.vision.normalization import NormalizedImage, normalize
-from sketchforge.vision.perspective import PerspectiveResult, correct_perspective, map_point_to_source
+from sketchforge.vision.perspective import (
+    PerspectiveResult,
+    correct_perspective,
+    map_point_to_source,
+)
 from sketchforge.vision.preprocessing import PreprocessResult, preprocess
 from sketchforge.vision.region_proposals import RegionProposals, build_proposals
 
@@ -72,12 +78,19 @@ def analyze(
         pre = preprocess(norm, force_variant=force_variant, close_kernel=close_kernel)
     with clock.measure("proposals"):
         proposals = build_proposals(pre.ink, pre.stroke_width, cfg.min_component_side_px)
+    if os.environ.get("SKETCHFORGE_OCR_MODEL", "").strip():
+        with clock.measure("handwriting_ocr"):
+            recognized = recognize_regions(norm.gray, proposals.texts)
+        for region, text in zip(proposals.texts, recognized, strict=True):
+            region.recognized_text = text or None
     scale = choose_design_scale(proposals.frame.bbox, cfg)
     with clock.measure("classify"):
         detections = detect_components(proposals, scale)
     with clock.measure("hierarchy"):
         inference = infer_hierarchy(detections)
     notes = [*perspective.notes, *pre.notes, *proposals.notes, *inference.notes]
+    if os.environ.get("SKETCHFORGE_OCR_MODEL", "").strip():
+        notes.append(f"handwriting OCR enabled with {os.environ['SKETCHFORGE_OCR_MODEL']}")
     return VisionResult(
         loaded, norm, pre, proposals, detections, inference, scale, perspective, clock.as_dict(), notes
     )

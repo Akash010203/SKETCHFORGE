@@ -37,6 +37,7 @@ class Detection:
     text: TextRegion | None = None
     label_texts: list[TextRegion] = field(default_factory=list)  # text absorbed by a control
     corner_radius: float = 0.0  # working pixels
+    recognized_text: str | None = None
 
     @property
     def area(self) -> float:
@@ -199,6 +200,8 @@ def detect_components(proposals: RegionProposals, design_scale: float) -> list[D
                 evidence=[*s.evidence, *evidence],
                 ambiguous=ambiguous, shape=s, label_texts=label_texts,
                 corner_radius=s.corner_radius,
+                recognized_text=" ".join(t.recognized_text for t in label_texts if t.recognized_text)
+                or None,
             )
         )
 
@@ -224,9 +227,10 @@ def detect_components(proposals: RegionProposals, design_scale: float) -> list[D
                 uid=-1, type=best, bbox=t.bbox,
                 confidence=combine_confidence(best_score, t.confidence),
                 type_scores=normalize_scores(scores),
-                evidence=[graphic or f"handwriting-like stroke cluster ({t.pieces} pieces); text content unknown",
+                evidence=[graphic or (f"handwriting OCR: {t.recognized_text}" if t.recognized_text else
+                                      f"handwriting-like stroke cluster ({t.pieces} pieces); text content unknown"),
                           f"height {hd:.0f} design px" + (f", {ratio:.2f}x the median text" if median_h else "")],
-                ambiguous=ambiguous, text=t,
+                ambiguous=ambiguous, text=t, recognized_text=t.recognized_text,
             )
         )
 
