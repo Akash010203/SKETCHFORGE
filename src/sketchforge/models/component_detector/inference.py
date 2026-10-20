@@ -19,11 +19,11 @@ class ComponentDetectorInference:
         try:
             import torch
             from sketchforge.models.component_detector.architecture import ComponentDetector
-            from sketchforge.models.device import resolve_device
+            from sketchforge.models.device import get_device
         except ImportError as e:
             raise ImportError("PyTorch is required for model inference.") from e
 
-        self._device = torch.device(resolve_device(device))
+        self._device = get_device(device if device != "auto" else None)
         ckpt = torch.load(str(checkpoint_path), map_location=self._device)
 
         num_classes = ckpt.get("config", {}).get("num_classes", 10)
