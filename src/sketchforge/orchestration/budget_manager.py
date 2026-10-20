@@ -10,7 +10,7 @@ class Budget:
     """Wall-clock and iteration limits. ``exhausted`` returns the reason, or None while within budget."""
 
     def __init__(self, seconds: float, max_iterations: int,
-                 clock: Callable[[], float] = time.monotonic) -> None:
+                 clock: Callable[[], float] = time.perf_counter) -> None:
         self.seconds, self.max_iterations, self._clock = seconds, max_iterations, clock
         self._start = clock()
 

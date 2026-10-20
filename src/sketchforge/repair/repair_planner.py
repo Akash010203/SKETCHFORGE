@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from typing import Any
+
 from sketchforge.design_ir.constraints import LayoutConstraints
 from sketchforge.design_ir.schema import DesignDocument
 from sketchforge.evaluation import issues as I  # noqa: E741
@@ -46,6 +48,7 @@ def next_plan(
     *,
     only_codes: set[str] | None = None,
     only_keys: set[str] | None = None,
+    model_provider: Any = None,
 ) -> tuple[Plan | None, list[str]]:
     """The highest-priority repairable issue and its next untried candidate patch.
 
@@ -75,6 +78,12 @@ def next_plan(
                 applicable = True
                 if patch.candidate_id not in done:
                     return Plan(issue, diag, patch), notes
+        if model_provider is not None and "model_proposal:single" not in done:
+            from sketchforge.assist.model_proposer import propose_repair
+            proposed = propose_repair(model_provider, doc, issue)
+            if proposed.patch is not None:
+                return Plan(issue, diag, proposed.patch), notes
+            notes.append(f"{issue.key}: {proposed.reason}")
         if not applicable:
             notes.append(f"{issue.key}: no applicable repair")
     return None, notes

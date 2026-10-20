@@ -23,6 +23,7 @@ from sketchforge.evaluation.evaluator import EvaluationResult, evaluate_document
 from sketchforge.evaluation.image_metrics import changed_bbox, changed_pixel_ratio, ssim
 from sketchforge.evaluation.report import Outcome, RepairReport, classify_outcome
 from sketchforge.exceptions import EditError, RepairError
+from sketchforge.integrations.provider_interface import ModelProvider
 from sketchforge.orchestration.budget_manager import Budget
 from sketchforge.orchestration.stopping_rules import StoppingRules
 from sketchforge.rendering.render_snapshot import render_image
@@ -117,6 +118,7 @@ def run_repair(
     only_keys: set[str] | None = None,
     on_event: EventFn | None = None,
     cancelled: Callable[[], bool] | None = None,
+    model_provider: ModelProvider | None = None,
 ) -> RepairReport:
     """Repair ``doc`` in place and return the report. The document only ever holds accepted changes."""
     constraints = constraints or LayoutConstraints()
@@ -148,7 +150,8 @@ def run_repair(
             stop_reason = reason
             break
         plan, plan_notes = next_plan(doc, current, constraints, tried, limits.max_attempts_per_failure,
-                                     only_codes=only_codes, only_keys=only_keys)
+                                     only_codes=only_codes, only_keys=only_keys,
+                                     model_provider=model_provider)
         notes.extend(n for n in plan_notes if n not in notes)
         if plan is None:
             stop_reason = "no issues to repair" if not current.issues else "no applicable strategy left"
