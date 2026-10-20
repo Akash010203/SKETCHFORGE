@@ -41,7 +41,7 @@ The following package directories are reserved for upcoming milestones:
 | Specification path | Repository choice | Reason |
 |---|---|---|
 | `application/commands.py` | Editor command classes remain in `editor/` | Avoids a forwarding-only second command layer |
-| `domain/{project,component,layout,interaction,validation}.py` | Stable domain-facing exports for the canonical Design IR contracts and validation | Keeps one wire-format model while giving application code domain-level import paths |
+| `domain/{project,component,layout,interaction,validation}.py` | Own the project, component, layout, interaction, and document validation contracts; shared strict model base and component enum live alongside them | `design_ir/schema.py` and `design_ir/validation.py` remain backwards-compatible import surfaces |
 | `layout/hierarchy.py` | Owns containment and reading-order inference; `vision/layout_inference.py` re-exports it | Keeps geometric interpretation with layout rules while preserving the existing vision import |
 | `layout/responsive_rules.py` | Reserved until responsive code generation begins | No current workflow consumes responsive rules |
 | `orchestration/workflow.py` | Concrete sketch and repair workflows are split into `sketch_workflow.py` and `repair_workflow.py` | Each workflow has separate state transitions |

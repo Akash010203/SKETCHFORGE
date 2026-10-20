@@ -1,0 +1,30 @@
+name: Real photographed sketch benchmark
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install package
+        run: python -m pip install .
+      - name: Benchmark annotated photograph
+        run: >-
+          python scripts/benchmark_photographs.py
+          datasets/evaluation/real_photo_manifest.json
+          --out experiments/results/real_photo_benchmark.json
+      - name: Check benchmark artifact
+        run: >-
+          python -c "import json; d=json.load(open('experiments/results/real_photo_benchmark.json')); assert d['summary']['images'] == 1 and d['summary']['synthetic'] is False"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: real-photo-benchmark
+          path: experiments/results/real_photo_benchmark.json

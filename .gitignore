@@ -25,6 +25,9 @@ datasets/quarantine/*
 !datasets/quarantine/.gitkeep
 datasets/evaluation/*
 !datasets/evaluation/.gitkeep
+!datasets/evaluation/rough_mobile_ux.jpg
+!datasets/evaluation/rough_mobile_ux.truth.json
+!datasets/evaluation/real_photo_manifest.json
 datasets/synthetic/*
 !datasets/synthetic/.gitkeep
 checkpoints/*

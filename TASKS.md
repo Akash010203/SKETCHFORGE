@@ -10,8 +10,8 @@ A feature is not VERIFIED because it compiles. Updated with the 318-test run on 
 |---|---|---|---|
 | 1 | Design IR schema, validation, serialization, versioning/migrations | VERIFIED | `tests/unit/test_design_ir.py`; round-trip hash equality; unknown fields rejected |
 | 2 | Safe image loading (type, size, magic bytes, pixel budget) | TESTED | `tests/unit/test_vision.py` (bad/oversized/tiny/corrupt inputs) |
-| 3 | Preprocessing (illumination flattening, threshold variants, stroke width) | TESTED | shadow/noise/blur conditions in detection benchmark; flatten test |
-| 4 | Shape / line / text-region detection and rule-based classification with ambiguity | VERIFIED (synthetic only) | held-out F1 0.982, type acc 0.946 (`experiments/results/detection_benchmark.json`) |
+| 3 | Preprocessing (illumination flattening, threshold variants, stroke width) | TESTED (real-photo regression baseline only) | CI evaluates an annotated CC0 smartphone photo; F1 0.0031, type accuracy 0.0000, mean matched IoU 0.6716 in `experiments/results/real_photo_benchmark.json`; current detector fails on grid paper and needs improvement |
+| 4 | Shape / line / text-region detection and rule-based classification with ambiguity | VERIFIED (synthetic); real-photo regression baseline recorded | synthetic held-out F1 0.982, type accuracy 0.946; photographed grid-paper F1 0.0031, type accuracy 0.0000 (`experiments/results/real_photo_benchmark.json`) |
 | 5 | Hierarchy, alignment, spacing and repeated-group inference → Design IR | TESTED | `layout/hierarchy.py` owns hierarchy; compatibility export in `vision/layout_inference.py`; `tests/unit/test_layout.py`, `test_sketch_to_ir.py` |
 | 6 | Perspective correction (`vision/perspective.py`) | NOT_STARTED | planned; 4-point quad warp; see KNOWN_LIMITATIONS |
 | 7 | Renderers: SVG, nested HTML, CSS, PNG snapshot (deterministic) | TESTED | `tests/unit/test_renderer.py` |

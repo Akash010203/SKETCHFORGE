@@ -1,8 +1,8 @@
 # Design IR specification (schema 1.0.0)
 
 The Design IR is the single contract between vision, layout, rendering, editing, evaluation and
-repair. Its canonical pydantic v2 wire schema is `src/sketchforge/design_ir/schema.py`; domain-facing
-exports are provided under `src/sketchforge/domain/`. It is serialised as
+repair. Its canonical pydantic v2 models are defined under `src/sketchforge/domain/`; the historical
+`src/sketchforge/design_ir/schema.py` import path re-exports those models. It is serialised as
 deterministic JSON (`serialization.to_json`: schema field order, 2-space indent, UTF-8).
 
 ## Conventions

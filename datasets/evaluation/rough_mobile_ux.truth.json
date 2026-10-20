@@ -1,0 +1,28 @@
+{
+  "source": "Wikimedia Commons, File:Rough mobile UX sketch.jpg, CC0 1.0",
+  "annotation": "Manual axis-aligned boxes in original 3072x4096 photograph pixels. Handwriting strokes and grid are not individually annotated.",
+  "components": [
+    {"type": "page", "bbox": [865, 590, 835, 3150]},
+    {"type": "container", "bbox": [895, 625, 780, 3020]},
+    {"type": "image", "bbox": [1050, 660, 465, 180]},
+    {"type": "text", "bbox": [1045, 865, 275, 140]},
+    {"type": "image", "bbox": [1400, 865, 150, 155]},
+    {"type": "button", "bbox": [930, 1070, 155, 105]},
+    {"type": "button", "bbox": [1125, 1070, 245, 105]},
+    {"type": "button", "bbox": [1410, 1070, 175, 105]},
+    {"type": "text", "bbox": [1020, 1240, 540, 560]},
+    {"type": "image", "bbox": [930, 1880, 215, 220]},
+    {"type": "image", "bbox": [1130, 1880, 215, 220]},
+    {"type": "image", "bbox": [1370, 1880, 220, 220]},
+    {"type": "image", "bbox": [930, 2110, 215, 220]},
+    {"type": "image", "bbox": [1130, 2110, 215, 220]},
+    {"type": "image", "bbox": [1370, 2110, 220, 220]},
+    {"type": "button", "bbox": [1100, 2310, 300, 85]},
+    {"type": "image", "bbox": [965, 2460, 300, 330]},
+    {"type": "text", "bbox": [1325, 2510, 270, 270]},
+    {"type": "image", "bbox": [940, 2940, 190, 185]},
+    {"type": "image", "bbox": [1170, 2940, 190, 185]},
+    {"type": "image", "bbox": [1400, 2940, 190, 185]},
+    {"type": "text", "bbox": [930, 3140, 660, 520]}
+  ]
+}
