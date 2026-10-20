@@ -15,22 +15,32 @@ TEXT_CLIPPED = "TEXT_CLIPPED"            # the line box is taller than the compo
 LOW_CONTRAST = "LOW_CONTRAST"            # text/background contrast below the WCAG AA ratio
 TOUCH_TARGET_SMALL = "TOUCH_TARGET_SMALL"  # a control is smaller than the minimum size
 FONT_TOO_SMALL = "FONT_TOO_SMALL"        # font size below the minimum
+# --- functional / interactive codes (functional_metrics.py) ---
+OCCLUDED_INTERACTIVE = "OCCLUDED_INTERACTIVE"  # interactive element is fully hidden by another
+FORM_NO_SUBMIT = "FORM_NO_SUBMIT"              # container has inputs but no submit button
+FOCUS_ORDER_MISMATCH = "FOCUS_ORDER_MISMATCH"  # tab order does not match reading order
+NO_INTERACTIVE_ELEMENTS = "NO_INTERACTIVE_ELEMENTS"  # design has no actionable controls
 
 ALL_CODES = (
     OVERFLOW_PARENT, OVERFLOW_PAGE, OVERLAP, MISALIGNED, UNEVEN_SPACING, TEXT_OVERFLOW,
     TEXT_CLIPPED, LOW_CONTRAST, TOUCH_TARGET_SMALL, FONT_TOO_SMALL,
+    OCCLUDED_INTERACTIVE, FORM_NO_SUBMIT, FOCUS_ORDER_MISMATCH, NO_INTERACTIVE_ELEMENTS,
 )
 
 SEVERITY = {
     OVERFLOW_PARENT: "error", OVERFLOW_PAGE: "error", OVERLAP: "warning", MISALIGNED: "warning",
     UNEVEN_SPACING: "warning", TEXT_OVERFLOW: "warning", TEXT_CLIPPED: "warning",
     LOW_CONTRAST: "warning", TOUCH_TARGET_SMALL: "warning", FONT_TOO_SMALL: "info",
+    OCCLUDED_INTERACTIVE: "error", FORM_NO_SUBMIT: "warning",
+    FOCUS_ORDER_MISMATCH: "info", NO_INTERACTIVE_ELEMENTS: "info",
 }
 
 UNIT = {
     OVERFLOW_PARENT: "px", OVERFLOW_PAGE: "px", OVERLAP: "ratio", MISALIGNED: "px",
     UNEVEN_SPACING: "px", TEXT_OVERFLOW: "px", TEXT_CLIPPED: "px", LOW_CONTRAST: "ratio_shortfall",
     TOUCH_TARGET_SMALL: "px", FONT_TOO_SMALL: "px",
+    OCCLUDED_INTERACTIVE: "ratio", FORM_NO_SUBMIT: "count",
+    FOCUS_ORDER_MISMATCH: "count", NO_INTERACTIVE_ELEMENTS: "count",
 }
 
 

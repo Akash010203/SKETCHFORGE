@@ -1,11 +1,11 @@
 # Dataset Audit
 
-Reviewed: 2026-10-19
+Reviewed: 2026-10-20
 
 This is a provenance and policy screen, not legal advice. The training allowlist is Apache-2.0, MIT, and MPL-2.0.
 A code repository license does not establish the license for its dataset. Unknown or inherited data terms stay blocked.
 
-Current filesystem free space: 444.06 GiB; conservative planning budget (50%): 222.03 GiB.
+Current filesystem free space: 442.75 GiB; conservative planning budget (50%): 221.38 GiB.
 
 | Candidate | Dataset license | Access | Size estimate | Training | Decision |
 |---|---|---|---:|---|---|
