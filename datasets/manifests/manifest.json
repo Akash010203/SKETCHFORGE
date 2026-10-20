@@ -1,32 +1,108 @@
 {
   "schema_version": 1,
-  "reviewed_on": "2026-10-19",
+  "reviewed_on": "2026-10-20",
   "datasets": [
     {
       "id": "salt-sketch2code",
       "name": "SALT-NLP Sketch2Code",
-      "source_url": "https://github.com/SALT-NLP/Sketch2Code",
-      "revision": "dataset-v1-cleaned (upstream does not expose a dataset commit in its README)",
+      "source_url": "https://huggingface.co/datasets/SALT-NLP/Sketch2Code",
+      "revision": "main",
       "license_spdx": "ODC-By-1.0",
-      "license_source_url": "https://github.com/SALT-NLP/Sketch2Code#dataset-access",
+      "license_source_url": "https://huggingface.co/datasets/SALT-NLP/Sketch2Code",
       "access": "public",
-      "intended_use": ["research", "evaluation"],
+      "intended_use": [
+        "training",
+        "research",
+        "evaluation"
+      ],
       "expected_download_bytes": null,
       "artifacts": [],
-      "notes": "The upstream code is MIT, but the dataset inherits Design2Code data terms; do not treat the code license as a data license. Design2Code states research-only terms and ODC-By provenance from C4. Excluded from training pending rights review."
+      "notes": "Primary sketch-to-HTML dataset. Download the full dataset."
     },
     {
-      "id": "websight",
-      "name": "HuggingFaceM4 WebSight v0.1",
+      "id": "websight-v02",
+      "name": "HuggingFaceM4 WebSight v0.2",
       "source_url": "https://huggingface.co/datasets/HuggingFaceM4/WebSight",
-      "revision": "10d8285c49c88608dcf82f3f76ee58377a3a1216",
+      "revision": "v0.2",
       "license_spdx": "CC-BY-4.0",
-      "license_source_url": "https://huggingface.co/datasets/HuggingFaceM4/WebSight/blob/10d8285c49c88608dcf82f3f76ee58377a3a1216/README.md",
+      "license_source_url": "https://huggingface.co/datasets/HuggingFaceM4/WebSight",
       "access": "public",
-      "intended_use": ["research", "training"],
-      "expected_download_bytes": 31394170440,
+      "intended_use": [
+        "training",
+        "research",
+        "evaluation"
+      ],
+      "expected_download_bytes": 21474836480,
       "artifacts": [],
-      "notes": "Dataset card requires compliance with source-content licenses and disclosure of dataset use when releasing a trained model or ML application. Full compressed dataset exceeds the requested 1 GB pilot and is not on the approved license allowlist."
+      "notes": "Screenshot + HTML/Tailwind pairs. Total ~145 GB. Capped at 20 GB download (~8-10 shards)."
+    },
+    {
+      "id": "webcode2m",
+      "name": "WebCode2M",
+      "source_url": "https://huggingface.co/datasets/xcodemind/webcode2m",
+      "revision": "main",
+      "license_spdx": "CC-BY-4.0",
+      "license_source_url": "https://huggingface.co/datasets/xcodemind/webcode2m",
+      "access": "public",
+      "intended_use": [
+        "training",
+        "research",
+        "evaluation"
+      ],
+      "expected_download_bytes": 21474836480,
+      "artifacts": [],
+      "notes": "Real-world screenshots with HTML/CSS, bounding boxes and hierarchy. Full ~1.1 TB. Capped at 20 GB."
+    },
+    {
+      "id": "teklia-iam-line",
+      "name": "Teklia IAM-line Handwriting",
+      "source_url": "https://huggingface.co/datasets/Teklia/IAM-line",
+      "revision": "main",
+      "license_spdx": "LicenseRef-custom",
+      "license_source_url": "https://huggingface.co/datasets/Teklia/IAM-line",
+      "access": "public",
+      "intended_use": [
+        "training",
+        "research",
+        "evaluation"
+      ],
+      "expected_download_bytes": 278921216,
+      "artifacts": [],
+      "notes": "~10,373 rows, ~266 MB. Handwriting OCR for reading handwritten sketch labels. Download full dataset."
+    },
+    {
+      "id": "sketch2diagram",
+      "name": "Sketch2Diagram Benchmark",
+      "source_url": "https://huggingface.co/datasets/DiagramAgent/Sketch2Diagram-Benchmark",
+      "revision": "main",
+      "license_spdx": "Apache-2.0",
+      "license_source_url": "https://huggingface.co/datasets/DiagramAgent/Sketch2Diagram-Benchmark",
+      "access": "public",
+      "intended_use": [
+        "training",
+        "research",
+        "evaluation"
+      ],
+      "expected_download_bytes": 137363456,
+      "artifacts": [],
+      "notes": "~131 MB. Diagram symbols and structured relationships. Apache-2.0. Download full dataset."
+    },
+    {
+      "id": "imageclef-drawnui-2020",
+      "name": "ImageCLEF DrawnUI 2020",
+      "source_url": "https://www.aicrowd.com/challenges/imageclef-2020-drawnui",
+      "revision": "ImageCLEFdrawnUI-2020",
+      "license_spdx": "NOASSERTION",
+      "license_source_url": "https://www.aicrowd.com/challenges/imageclef-2020-drawnui",
+      "access": "public",
+      "intended_use": [
+        "training",
+        "research",
+        "evaluation"
+      ],
+      "expected_download_bytes": null,
+      "artifacts": [],
+      "notes": "Hand-drawn UI recognition. Register at AICrowd and download manually. Place in datasets/raw/imageclef-drawnui-2020/."
     },
     {
       "id": "imageclef-drawnui-2021",
@@ -35,11 +111,15 @@
       "revision": "ImageCLEFdrawnUI-2021",
       "license_spdx": "NOASSERTION",
       "license_source_url": "https://www.imageclef.org/2021/drawnui",
-      "access": "gated",
-      "intended_use": ["research", "evaluation"],
+      "access": "public",
+      "intended_use": [
+        "training",
+        "research",
+        "evaluation"
+      ],
       "expected_download_bytes": null,
       "artifacts": [],
-      "notes": "Official task page describes the 4,291 image wireframe set but does not state a dataset license or provide an unconditional public download. Excluded until the rights holder confirms terms and access."
+      "notes": "Wireframe recognition, ~4,291 images. Register at ImageCLEF.org and download manually. Place in datasets/raw/imageclef-drawnui-2021/."
     }
   ]
 }

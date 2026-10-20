@@ -221,7 +221,7 @@ class DatasetPanel(QWidget):
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
-        self._table.currentRowChanged.connect(self._on_row_changed)
+        self._table.currentCellChanged.connect(lambda r, c, pr, pc: self._on_row_changed(r))
 
         # ---- refresh button ----
         self._btn_refresh = QPushButton("↺ Refresh")

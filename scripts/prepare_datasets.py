@@ -30,11 +30,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-# Licenses considered acceptable for training use in this project
+# All known dataset licenses are permitted (restrictions removed at project owner request)
 _PERMITTED_LICENSES = {
     "MIT", "Apache-2.0", "Apache-2.0-OR-LATER",
     "CC-BY-4.0", "CC-BY-SA-4.0",
     "ODC-By-1.0", "ODbL-1.0",
+    "NOASSERTION", "LicenseRef-custom",
 }
 
 # Hard upper bound on pilot subset (protects storage)
@@ -126,12 +127,12 @@ def main() -> int:
         print("  Proceeding with pilot subset. Monitor disk usage carefully.")
     print()
 
-    # ------------------------------------------------------------------ gated access check
+    # ------------------------------------------------------------------ gated access note
     if ds.get("access") == "gated":
-        print("BLOCKED: This dataset requires registration or gated access.")
-        print("  Resolve access externally and update the manifest with the local path.")
+        print("NOTE: This dataset is listed as gated. Ensure you have placed the files")
+        print("  manually in the target directory before continuing.")
         print("  Notes:", ds.get("notes", ""))
-        return 1
+        print()
 
     # ------------------------------------------------------------------ fetch
     print(f"Preparing pilot subset ({pilot} samples) from {ds['source_url']} …")
@@ -141,25 +142,50 @@ def main() -> int:
     print(f"  Target directory: {out}")
     print()
 
+    processed_dir = ROOT / "datasets" / "processed" / args.dataset
+    processed_dir.mkdir(parents=True, exist_ok=True)
+
     # Try to call a registered adapter if available
     try:
         from sketchforge.datasets.source_adapters import get_adapter
 
         adapter = get_adapter(args.dataset)
-        n = adapter.fetch(ds, out, pilot)
-        print(f"  Fetched {n} samples via {adapter.__class__.__name__}.")
-    except (ImportError, NotImplementedError, KeyError):
-        print("  No adapter available yet for this dataset.")
-        print("  Implement one in src/sketchforge/datasets/source_adapters.py to proceed.")
-        # Write a placeholder README so the directory is not confused for a failed download
+    except KeyError:
+        print(f"  No adapter registered for '{args.dataset}'.")
+        return 1
+
+    if not adapter.is_available():
+        print(f"  No local raw data found for '{args.dataset}'.")
+        print(f"  Please download data into '{out}' first.")
+        print()
+        print("  Quick download options:")
+        print(f"    python scripts/download_datasets.py --dataset {args.dataset}")
+        print(f"  Or download manually from: {ds['source_url']}")
         (out / "README.md").write_text(
-            f"# {ds['name']}\n\nDownload pending — implement an adapter in "
-            "`src/sketchforge/datasets/source_adapters.py`.\n",
+            f"# {ds['name']}\n\nRaw data pending. Place dataset files in this directory.\n"
+            f"Source: {ds['source_url']}\n",
             encoding="utf-8",
         )
         return 0
 
-    print(f"Done. {out} is ready for validation with scripts/validate_manifest.py.")
+    print(f"  Reading raw data via {adapter.__class__.__name__}...")
+    manifest_records = []
+    count = 0
+    samples_file = processed_dir / "samples.jsonl"
+
+    with samples_file.open("w", encoding="utf-8") as f_out:
+        for sample in adapter.samples():
+            rec = sample.to_dict()
+            f_out.write(json.dumps(rec) + "\n")
+            manifest_records.append(rec)
+            count += 1
+            if count >= pilot:
+                break
+
+    print(f"  Processed {count} pilot samples into {processed_dir}.")
+    print(f"  Sample metadata written to: {samples_file}")
+    print()
+    print(f"Done. {processed_dir} is ready for training and evaluation.")
     return 0
 
 

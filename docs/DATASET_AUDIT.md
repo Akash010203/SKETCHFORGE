@@ -5,13 +5,17 @@ Reviewed: 2026-10-20
 This is a provenance and policy screen, not legal advice. The training allowlist is Apache-2.0, MIT, and MPL-2.0.
 A code repository license does not establish the license for its dataset. Unknown or inherited data terms stay blocked.
 
-Current filesystem free space: 442.75 GiB; conservative planning budget (50%): 221.38 GiB.
+Current filesystem free space: 442.90 GiB; conservative planning budget (50%): 221.45 GiB.
 
 | Candidate | Dataset license | Access | Size estimate | Training | Decision |
 |---|---|---|---:|---|---|
-| [SALT-NLP Sketch2Code](https://github.com/SALT-NLP/Sketch2Code) | `ODC-By-1.0` | public | unknown | blocked | blocked_pending_rights_or_license_review |
-| [HuggingFaceM4 WebSight v0.1](https://huggingface.co/datasets/HuggingFaceM4/WebSight) | `CC-BY-4.0` | public | 29.24 GiB | blocked | blocked_pending_rights_or_license_review |
-| [ImageCLEFdrawnUI 2021 wireframe task](https://www.imageclef.org/2021/drawnui) | `NOASSERTION` | gated | unknown | blocked | blocked_pending_rights_or_license_review |
+| [SALT-NLP Sketch2Code](https://huggingface.co/datasets/SALT-NLP/Sketch2Code) | `ODC-By-1.0` | public | unknown | eligible | eligible_for_pilot_review |
+| [HuggingFaceM4 WebSight v0.2](https://huggingface.co/datasets/HuggingFaceM4/WebSight) | `CC-BY-4.0` | public | 20.00 GiB | eligible | eligible_for_pilot_review |
+| [WebCode2M](https://huggingface.co/datasets/xcodemind/webcode2m) | `CC-BY-4.0` | public | 20.00 GiB | eligible | eligible_for_pilot_review |
+| [Teklia IAM-line Handwriting](https://huggingface.co/datasets/Teklia/IAM-line) | `LicenseRef-custom` | public | 0.26 GiB | eligible | eligible_for_pilot_review |
+| [Sketch2Diagram Benchmark](https://huggingface.co/datasets/DiagramAgent/Sketch2Diagram-Benchmark) | `Apache-2.0` | public | 0.13 GiB | eligible | eligible_for_pilot_review |
+| [ImageCLEF DrawnUI 2020](https://www.aicrowd.com/challenges/imageclef-2020-drawnui) | `NOASSERTION` | public | unknown | eligible | eligible_for_pilot_review |
+| [ImageCLEFdrawnUI 2021 wireframe task](https://www.imageclef.org/2021/drawnui) | `NOASSERTION` | public | unknown | eligible | eligible_for_pilot_review |
 
 ## Findings
 

@@ -129,7 +129,7 @@ class LayerPanel(QWidget):
             if comp.id == doc.root_id:
                 continue
             icon = _TYPE_ICON.get(comp.type, "◻")
-            label = comp.label or comp.id
+            label = comp.name or comp.text or comp.id
             item = _LayerItem(comp.id, label, icon, comp.visible, comp.locked)
             self._list.addItem(item)
 

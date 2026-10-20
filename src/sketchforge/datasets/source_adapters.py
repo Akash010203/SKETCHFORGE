@@ -125,20 +125,25 @@ class SyntheticAdapter(BaseAdapter):
 
 
 class WebSightAdapter(BaseAdapter):
-    """HuggingFaceM4/WebSight v0.1 — HTML+screenshot pairs.
+    """HuggingFaceM4/WebSight — HTML+screenshot pairs in parquet shards.
 
-    Expected layout after manual or ``download_pilot()`` placement::
+    Expected layout after manual or script placement::
 
-        datasets/raw/websight/
-            data/train-00000-of-NNNNN.parquet
+        datasets/raw/websight-v02/ (or datasets/raw/websight/)
+            data/train-00000-of-00071-*.parquet
             ...
     """
 
-    dataset_id = "websight"
+    dataset_id = "websight-v02"
 
     def __init__(self, data_dir: Path | str | None = None) -> None:
         from sketchforge.utilities.paths import repo_root
-        self._dir = Path(data_dir) if data_dir else repo_root() / "datasets" / "raw" / "websight"
+        if data_dir:
+            self._dir = Path(data_dir)
+        else:
+            p1 = repo_root() / "datasets" / "raw" / "websight-v02"
+            p2 = repo_root() / "datasets" / "raw" / "websight"
+            self._dir = p1 if p1.is_dir() else p2
 
     def is_available(self) -> bool:
         return self._dir.is_dir() and any(self._dir.rglob("*.parquet"))
@@ -154,15 +159,16 @@ class WebSightAdapter(BaseAdapter):
             try:
                 table = pq.read_table(str(parquet_file))
                 df = table.to_pydict()
-                n = len(df.get("html", []))
+                n = len(df.get("html", [])) if "html" in df else len(df.get("text", []))
+                html_col = df.get("html") or df.get("text", [])
                 for i in range(n):
-                    html = df["html"][i] if "html" in df else None
+                    html = html_col[i] if i < len(html_col) else None
                     img_bytes = df.get("image", {})
                     sid = f"websight-{parquet_file.stem}-{i:06d}"
                     yield RawSample(
                         sample_id=sid,
                         source_dataset=self.dataset_id,
-                        image_path=None,   # images are embedded bytes; callers decode as needed
+                        image_path=None,   # images are embedded bytes
                         html=html,
                         provenance={
                             "parquet": parquet_file.name,
@@ -180,11 +186,11 @@ class WebSightAdapter(BaseAdapter):
 class SaltSketch2CodeAdapter(BaseAdapter):
     """SALT-NLP/Sketch2Code hand-drawn sketch → HTML pairs.
 
-    Expected layout (place manually — download is gated / rights-pending)::
+    Expected layout::
 
         datasets/raw/salt-sketch2code/
-            images/    *.png (sketch photos)
-            html/      *.html (corresponding HTML)
+            sketches/ (or images/)    *.png (sketch photos)
+            webpages/ (or html/)      *.html, *.png (ground-truth web designs)
     """
 
     dataset_id = "salt-sketch2code"
@@ -197,23 +203,174 @@ class SaltSketch2CodeAdapter(BaseAdapter):
         )
 
     def is_available(self) -> bool:
-        return (self._dir / "images").is_dir() and any((self._dir / "images").glob("*.png"))
+        img_dir = self._resolve_img_dir()
+        return img_dir is not None and any(img_dir.glob("*.png"))
+
+    def _resolve_img_dir(self) -> Path | None:
+        for candidate in ("sketches", "images", ""):
+            d = self._dir / candidate if candidate else self._dir
+            if d.is_dir() and any(d.glob("*.png")):
+                return d
+        return None
+
+    def _resolve_html_dir(self) -> Path:
+        for candidate in ("webpages", "html", ""):
+            d = self._dir / candidate if candidate else self._dir
+            if d.is_dir() and any(d.glob("*.html")):
+                return d
+        return self._dir / "webpages"
 
     def samples(self) -> Iterator[RawSample]:
-        img_dir = self._dir / "images"
-        html_dir = self._dir / "html"
-        if not img_dir.is_dir():
+        img_dir = self._resolve_img_dir()
+        if not img_dir:
             return
+        html_dir = self._resolve_html_dir()
+
         for img_path in sorted(img_dir.glob("*.png")):
+            # Try exact stem match, then base webpage id (e.g. 10303_1 -> 10303)
             html_path = html_dir / (img_path.stem + ".html")
+            if not html_path.is_file() and "_" in img_path.stem:
+                base_id = img_path.stem.split("_")[0]
+                html_path = html_dir / f"{base_id}.html"
+
             html = html_path.read_text(encoding="utf-8", errors="replace") if html_path.is_file() else None
             yield RawSample(
                 sample_id=f"salt-{img_path.stem}",
                 source_dataset=self.dataset_id,
                 image_path=img_path,
                 html=html,
-                provenance={"has_html": html is not None},
+                provenance={"has_html": html is not None, "source_stem": img_path.stem},
             )
+
+
+# ---- WebCode2M -------------------------------------------------------------
+
+
+class WebCode2MAdapter(BaseAdapter):
+    """WebCode2M (xcodemind/webcode2m) — real-world webpage screenshots with HTML/CSS & bboxes.
+
+    Expected layout::
+
+        datasets/raw/webcode2m/
+            data/*.parquet (or *.parquet)
+    """
+
+    dataset_id = "webcode2m"
+
+    def __init__(self, data_dir: Path | str | None = None) -> None:
+        from sketchforge.utilities.paths import repo_root
+        self._dir = Path(data_dir) if data_dir else repo_root() / "datasets" / "raw" / "webcode2m"
+
+    def is_available(self) -> bool:
+        return self._dir.is_dir() and any(self._dir.rglob("*.parquet"))
+
+    def samples(self) -> Iterator[RawSample]:
+        try:
+            import pyarrow.parquet as pq
+        except ImportError:
+            log.warning("WebCode2MAdapter: pyarrow not installed; run: pip install pyarrow")
+            return
+
+        for parquet_file in sorted(self._dir.rglob("*.parquet")):
+            try:
+                table = pq.read_table(str(parquet_file))
+                df = table.to_pydict()
+                text_col = df.get("text", [])
+                n = len(text_col)
+                for i in range(n):
+                    html = text_col[i] if i < len(text_col) else None
+                    sid = f"webcode2m-{parquet_file.stem}-{i:06d}"
+                    bboxes = df.get("bbox", [[]])[i] if "bbox" in df and i < len(df["bbox"]) else []
+                    yield RawSample(
+                        sample_id=sid,
+                        source_dataset=self.dataset_id,
+                        image_path=None,
+                        html=html,
+                        bboxes=bboxes if isinstance(bboxes, list) else [],
+                        provenance={"parquet": parquet_file.name, "row": i},
+                    )
+            except Exception as exc:  # noqa: BLE001
+                log.warning("WebCode2MAdapter: error reading %s: %s", parquet_file.name, exc)
+
+
+# ---- Teklia IAM-line -------------------------------------------------------
+
+
+class TekliaIAMLineAdapter(BaseAdapter):
+    """Teklia IAM-line handwriting OCR dataset.
+
+    Expected layout::
+
+        datasets/raw/teklia-iam-line/
+            data/*.parquet (train.parquet, validation.parquet, test.parquet)
+    """
+
+    dataset_id = "teklia-iam-line"
+
+    def __init__(self, data_dir: Path | str | None = None) -> None:
+        from sketchforge.utilities.paths import repo_root
+        self._dir = Path(data_dir) if data_dir else repo_root() / "datasets" / "raw" / "teklia-iam-line"
+
+    def is_available(self) -> bool:
+        return self._dir.is_dir() and any(self._dir.rglob("*.parquet"))
+
+    def samples(self) -> Iterator[RawSample]:
+        try:
+            import pyarrow.parquet as pq
+        except ImportError:
+            log.warning("TekliaIAMLineAdapter: pyarrow not installed; run: pip install pyarrow")
+            return
+
+        for parquet_file in sorted(self._dir.rglob("*.parquet")):
+            try:
+                table = pq.read_table(str(parquet_file))
+                df = table.to_pydict()
+                text_col = df.get("text", [])
+                for i, text in enumerate(text_col):
+                    sid = f"iamline-{parquet_file.stem}-{i:06d}"
+                    yield RawSample(
+                        sample_id=sid,
+                        source_dataset=self.dataset_id,
+                        image_path=None,
+                        label=str(text) if text is not None else None,
+                        provenance={"split": parquet_file.stem, "row": i},
+                    )
+            except Exception as exc:  # noqa: BLE001
+                log.warning("TekliaIAMLineAdapter: error reading %s: %s", parquet_file.name, exc)
+
+
+# ---- Sketch2Diagram Benchmark ----------------------------------------------
+
+
+class Sketch2DiagramAdapter(BaseAdapter):
+    """DiagramAgent/Sketch2Diagram-Benchmark hand-drawn diagram dataset.
+
+    Expected layout::
+
+        datasets/raw/sketch2diagram/
+            Sketch2Diagram Benchmark.zip (or extracted files/folders)
+    """
+
+    dataset_id = "sketch2diagram"
+
+    def __init__(self, data_dir: Path | str | None = None) -> None:
+        from sketchforge.utilities.paths import repo_root
+        self._dir = Path(data_dir) if data_dir else repo_root() / "datasets" / "raw" / "sketch2diagram"
+
+    def is_available(self) -> bool:
+        if not self._dir.is_dir():
+            return False
+        return any(self._dir.rglob("*.png")) or any(self._dir.rglob("*.jpg")) or any(self._dir.glob("*.zip"))
+
+    def samples(self) -> Iterator[RawSample]:
+        for img_path in sorted(self._dir.rglob("*")):
+            if img_path.suffix.lower() in {".png", ".jpg", ".jpeg"}:
+                yield RawSample(
+                    sample_id=f"diagram-{img_path.stem}",
+                    source_dataset=self.dataset_id,
+                    image_path=img_path,
+                    provenance={"rel_path": str(img_path.relative_to(self._dir))},
+                )
 
 
 # ---- ImageCLEF DrawnUI 2021 ------------------------------------------------
@@ -292,11 +449,16 @@ def download_pilot(
     from sketchforge.utilities.paths import repo_root
 
     DOWNLOADABLE: dict[str, str] = {
-        # dataset_id → direct URL for the first shard (checked for size before fetching)
+        # dataset_id → direct URL for the first shard / zip file
         "websight": (
             "https://huggingface.co/datasets/HuggingFaceM4/WebSight"
             "/resolve/10d8285c49c88608dcf82f3f76ee58377a3a1216"
             "/data/train-00000-of-00060.parquet"
+        ),
+        # SALT-NLP Sketch2Code — first parquet shard from HuggingFace
+        "salt-sketch2code": (
+            "https://huggingface.co/datasets/SALT-NLP/Sketch2Code"
+            "/resolve/main/data/train-00000-of-00001.parquet"
         ),
     }
 
@@ -372,7 +534,11 @@ def download_pilot(
 _ADAPTERS: dict[str, type[BaseAdapter]] = {
     "synthetic": SyntheticAdapter,
     "websight": WebSightAdapter,
+    "websight-v02": WebSightAdapter,
     "salt-sketch2code": SaltSketch2CodeAdapter,
+    "webcode2m": WebCode2MAdapter,
+    "teklia-iam-line": TekliaIAMLineAdapter,
+    "sketch2diagram": Sketch2DiagramAdapter,
     "imageclef-drawnui-2021": ImageCLEFAdapter,
 }
 

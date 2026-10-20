@@ -135,7 +135,12 @@ class DatasetRegistry:
         raw_dir = self._root / "raw"
         for record in self._manifest.datasets:
             local = raw_dir / record.id
-            count = self._count_images(local) if local.is_dir() else 0
+            if not local.is_dir():
+                # Check alias without version suffix (e.g., websight-v02 -> websight)
+                alt = raw_dir / record.id.split("-v0")[0]
+                if alt.is_dir():
+                    local = alt
+            count = self._count_samples(local) if local.is_dir() else 0
             self._entries.append(CatalogueEntry(
                 record=record,
                 local_artifacts_present=count > 0,
@@ -143,14 +148,34 @@ class DatasetRegistry:
             ))
 
         syn_dir = self._root / "synthetic"
-        count = self._count_images(syn_dir)
+        count = self._count_samples(syn_dir)
         self._synthetic = SyntheticEntry(data_dir=syn_dir, sample_count=count)
 
     @staticmethod
-    def _count_images(path: Path) -> int:
+    def _count_samples(path: Path) -> int:
         if not path.is_dir():
             return 0
-        return sum(1 for f in path.iterdir() if f.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"})
+        # 1. Count images recursively (e.g. sketches/, webpages/, images/)
+        img_count = sum(1 for f in path.rglob("*") if f.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"})
+        if img_count > 0:
+            return img_count
+        # 2. Count parquet samples if parquet files are present
+        parquets = list(path.rglob("*.parquet"))
+        if parquets:
+            try:
+                import pyarrow.parquet as pq
+                return sum(pq.read_metadata(str(p)).num_rows for p in parquets)
+            except Exception:
+                return len(parquets)
+        # 3. Count zip files or other archives
+        zips = list(path.rglob("*.zip"))
+        if zips:
+            return len(zips)
+        return 0
+
+    @staticmethod
+    def _count_images(path: Path) -> int:
+        return DatasetRegistry._count_samples(path)
 
     # ------------------------------------------------------------------ factory
     @classmethod

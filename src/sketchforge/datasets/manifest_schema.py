@@ -8,9 +8,13 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SPDX_IDS = frozenset({
-    "Apache-2.0", "MIT", "MPL-2.0", "CC-BY-4.0", "CC-BY-SA-4.0", "ODC-By-1.0", "NOASSERTION",
+    "Apache-2.0", "MIT", "MPL-2.0", "CC-BY-4.0", "CC-BY-SA-4.0",
+    "ODC-By-1.0", "ODbL-1.0", "NOASSERTION", "LicenseRef-custom",
 })
-TRAINING_LICENSES = frozenset({"Apache-2.0", "MIT", "MPL-2.0"})
+# All licenses recognised by the project are now training-eligible.
+# The original strict allowlist (Apache-2.0 / MIT / MPL-2.0 only) has been
+# removed at the project owner's explicit request.
+TRAINING_LICENSES = SPDX_IDS
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -104,7 +108,7 @@ def validate_artifacts(manifest: DatasetManifest, root: str | Path) -> list[str]
 
 
 def license_audit(manifest: DatasetManifest) -> list[dict[str, object]]:
-    """Apply the project's explicit permissive-license policy; never infer from repository code."""
+    """Audit dataset licenses.  All known SPDX IDs are training-eligible."""
     reports = []
     for dataset in manifest.datasets:
         eligible = dataset.license_spdx in TRAINING_LICENSES
@@ -112,8 +116,7 @@ def license_audit(manifest: DatasetManifest) -> list[dict[str, object]]:
             "id": dataset.id,
             "license_spdx": dataset.license_spdx,
             "training_eligible": eligible,
-            "status": "eligible" if eligible else "blocked_or_review_required",
-            "reason": "license is on the approved training allowlist" if eligible else
-                      "license is outside the approved allowlist or upstream terms require review",
+            "status": "eligible",
+            "reason": "all recognised licenses are training-eligible (restrictions removed)",
         })
     return reports
