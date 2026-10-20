@@ -41,8 +41,8 @@ The following package directories are reserved for upcoming milestones:
 | Specification path | Repository choice | Reason |
 |---|---|---|
 | `application/commands.py` | Editor command classes remain in `editor/` | Avoids a forwarding-only second command layer |
-| `domain/{project,component,layout,interaction,validation}.py` | Project/component contracts live in `application/` and `design_ir/` | Prevents duplicate representations of the same design objects |
-| `layout/hierarchy.py` | Hierarchy inference remains in `vision/layout_inference.py` and `layout/grouping.py` | It is derived from image detections and layout grouping |
+| `domain/{project,component,layout,interaction,validation}.py` | Stable domain-facing exports for the canonical Design IR contracts and validation | Keeps one wire-format model while giving application code domain-level import paths |
+| `layout/hierarchy.py` | Owns containment and reading-order inference; `vision/layout_inference.py` re-exports it | Keeps geometric interpretation with layout rules while preserving the existing vision import |
 | `layout/responsive_rules.py` | Reserved until responsive code generation begins | No current workflow consumes responsive rules |
 | `orchestration/workflow.py` | Concrete sketch and repair workflows are split into `sketch_workflow.py` and `repair_workflow.py` | Each workflow has separate state transitions |
 | `assist/` | Added as a separate package | Natural-language editing is implemented and isolated from core design modules |

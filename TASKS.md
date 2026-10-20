@@ -12,7 +12,7 @@ A feature is not VERIFIED because it compiles. Updated with the 318-test run on 
 | 2 | Safe image loading (type, size, magic bytes, pixel budget) | TESTED | `tests/unit/test_vision.py` (bad/oversized/tiny/corrupt inputs) |
 | 3 | Preprocessing (illumination flattening, threshold variants, stroke width) | TESTED | shadow/noise/blur conditions in detection benchmark; flatten test |
 | 4 | Shape / line / text-region detection and rule-based classification with ambiguity | VERIFIED (synthetic only) | held-out F1 0.982, type acc 0.946 (`experiments/results/detection_benchmark.json`) |
-| 5 | Hierarchy, alignment, spacing and repeated-group inference → Design IR | TESTED | `tests/unit/test_layout.py`, `test_sketch_to_ir.py` |
+| 5 | Hierarchy, alignment, spacing and repeated-group inference → Design IR | TESTED | `layout/hierarchy.py` owns hierarchy; compatibility export in `vision/layout_inference.py`; `tests/unit/test_layout.py`, `test_sketch_to_ir.py` |
 | 6 | Perspective correction (`vision/perspective.py`) | NOT_STARTED | planned; 4-point quad warp; see KNOWN_LIMITATIONS |
 | 7 | Renderers: SVG, nested HTML, CSS, PNG snapshot (deterministic) | TESTED | `tests/unit/test_renderer.py` |
 | 8 | Editor: undoable commands, locks, selection, property editing | TESTED | `tests/unit/test_editor.py`; exact undo to the original hash |
