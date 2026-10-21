@@ -47,6 +47,7 @@ class RawSample:
     sample_id: str
     source_dataset: str
     image_path: Path | None                   # None when only a URL is available
+    image_bytes: bytes | None = None           # embedded image payload when not file-backed
     html: str | None = None                   # ground-truth HTML (if available)
     label: str | None = None                  # coarse UI component type (if labelled)
     bboxes: list[dict] = field(default_factory=list)  # [{label, x, y, w, h}]
@@ -57,6 +58,7 @@ class RawSample:
             "sample_id": self.sample_id,
             "source_dataset": self.source_dataset,
             "image_path": str(self.image_path) if self.image_path else None,
+            "has_image_bytes": self.image_bytes is not None,
             "has_html": self.html is not None,
             "label": self.label,
             "bbox_count": len(self.bboxes),
@@ -98,14 +100,26 @@ class SyntheticAdapter(BaseAdapter):
         manifest_path = self._dir / "manifest.json"
         if manifest_path.is_file():
             try:
-                records = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                records = manifest.get("samples", []) if isinstance(manifest, dict) else manifest
                 for rec in records:
-                    img = self._dir / rec.get("filename", "")
+                    img = self._dir / rec.get("image", rec.get("filename", ""))
+                    annotation_path = self._dir / rec.get("labels", "")
+                    bboxes = rec.get("annotations", [])
+                    if not bboxes and annotation_path.is_file():
+                        try:
+                            truth = json.loads(annotation_path.read_text(encoding="utf-8"))
+                            bboxes = [{"label": item.get("type", "unknown"),
+                                       "x": item["bbox"][0], "y": item["bbox"][1],
+                                       "w": item["bbox"][2], "h": item["bbox"][3]}
+                                      for item in truth.get("components", [])]
+                        except (json.JSONDecodeError, KeyError, TypeError):
+                            bboxes = []
                     yield RawSample(
                         sample_id=rec.get("sample_id", img.stem),
                         source_dataset=self.dataset_id,
                         image_path=img if img.is_file() else None,
-                        bboxes=rec.get("annotations", []),
+                        bboxes=bboxes,
                         provenance={"layout": rec.get("layout"), "condition": rec.get("condition")},
                     )
                 return
@@ -157,25 +171,25 @@ class WebSightAdapter(BaseAdapter):
 
         for parquet_file in sorted(self._dir.rglob("*.parquet")):
             try:
-                table = pq.read_table(str(parquet_file))
-                df = table.to_pydict()
-                n = len(df.get("html", [])) if "html" in df else len(df.get("text", []))
-                html_col = df.get("html") or df.get("text", [])
-                for i in range(n):
-                    html = html_col[i] if i < len(html_col) else None
-                    img_bytes = df.get("image", {})
-                    sid = f"websight-{parquet_file.stem}-{i:06d}"
-                    yield RawSample(
-                        sample_id=sid,
-                        source_dataset=self.dataset_id,
-                        image_path=None,   # images are embedded bytes
-                        html=html,
-                        provenance={
-                            "parquet": parquet_file.name,
-                            "row": i,
-                            "has_image_bytes": bool(img_bytes),
-                        },
-                    )
+                row_offset = 0
+                for batch in pq.ParquetFile(str(parquet_file)).iter_batches(batch_size=64):
+                    data = batch.to_pydict()
+                    html_col = data.get("text", data.get("html", []))
+                    for i, html in enumerate(html_col):
+                        image = data.get("image", [None] * len(html_col))[i]
+                        image_bytes = image.get("bytes") if isinstance(image, dict) else None
+                        if not image_bytes and isinstance(image, dict) and image.get("path"):
+                            image_path = parquet_file.parent / image["path"]
+                            image_bytes = image_path.read_bytes() if image_path.is_file() else None
+                        yield RawSample(
+                            sample_id=f"websight-{parquet_file.stem}-{row_offset+i:06d}",
+                            source_dataset=self.dataset_id,
+                            image_path=None,
+                            image_bytes=image_bytes,
+                            html=html,
+                            provenance={"parquet": parquet_file.name, "row": row_offset+i},
+                        )
+                    row_offset += len(html_col)
             except Exception as exc:  # noqa: BLE001
                 log.warning("WebSightAdapter: error reading %s: %s", parquet_file.name, exc)
 
@@ -209,7 +223,7 @@ class SaltSketch2CodeAdapter(BaseAdapter):
     def _resolve_img_dir(self) -> Path | None:
         for candidate in ("sketches", "images", ""):
             d = self._dir / candidate if candidate else self._dir
-            if d.is_dir() and any(d.glob("*.png")):
+            if d.is_dir() and any(d.rglob("*.png")):
                 return d
         return None
 
@@ -226,7 +240,7 @@ class SaltSketch2CodeAdapter(BaseAdapter):
             return
         html_dir = self._resolve_html_dir()
 
-        for img_path in sorted(img_dir.glob("*.png")):
+        for img_path in sorted(img_dir.rglob("*.png")):
             # Try exact stem match, then base webpage id (e.g. 10303_1 -> 10303)
             html_path = html_dir / (img_path.stem + ".html")
             if not html_path.is_file() and "_" in img_path.stem:

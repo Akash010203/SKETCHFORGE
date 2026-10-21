@@ -88,6 +88,21 @@ placeholder. Review OCR output because handwriting recognition can make mistakes
 |---|---|
 | Component detection, tuning layouts (63 sketches, 7 photo conditions) | F1 0.973, type accuracy 0.985, mean IoU 0.840 |
 | Component detection, **held-out** layouts (42 sketches) | F1 0.982, type accuracy 0.946, mean IoU 0.835 |
+
+### Offline handwriting OCR
+
+Handwriting recognition is opt-in. Install the training dependencies and train a local CRNN-CTC
+checkpoint on the downloaded Teklia/IAM-line dataset:
+
+```powershell
+pip install -e .[ocr-train]
+python scripts/train_handwriting_ocr.py --epochs 12
+$env:SKETCHFORGE_OCR_MODEL = "checkpoints/handwriting_ocr.pt"
+```
+
+The checkpoint runs on CPU and does not access the network. The alternative Hugging Face TrOCR
+path remains available by setting `SKETCHFORGE_OCR_MODEL` to a local model directory or model ID.
+Training data is not bundled; see `scripts/download_datasets.py --dataset teklia-iam-line`.
 | Repair matrix: 337 injected faults (7 kinds × 5 layouts × 5 conditions × 2 seeds) | fault detected 98.8 %, fully repaired 97.0 %, no issues left 95.0 %, **regressed 0 %**, median repair 308 ms |
 
 Reproduce: `python scripts/evaluate_layout.py`, `python scripts/evaluate_repair.py` (results in

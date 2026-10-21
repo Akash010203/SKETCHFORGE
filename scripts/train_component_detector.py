@@ -144,13 +144,13 @@ def main() -> int:
     print("=" * 60)
     print(f"Training {'smoke test' if args.smoke_test else 'run'} completed in {elapsed:.1f}s")
 
-    if report.test_results:
-        tr = report.test_results
+    if report.final_test_metrics:
+        tr = report.final_test_metrics.to_dict()
         print(f"  Test accuracy: {tr.get('accuracy', 0):.4f}")
         print(f"  Test loss:     {tr.get('loss', 0):.4f}")
 
     print(f"  Best checkpoint epoch: {report.best_epoch}")
-    print(f"  Best val metric:       {report.best_val_metric:.4f}")
+    print(f"  Best val metric:       {report.best_val_loss:.4f}")
     print()
 
     # Save report
@@ -159,10 +159,10 @@ def main() -> int:
     report_dict = {
         "model_name": cfg.model_name,
         "smoke_test": args.smoke_test,
-        "epochs_run": len(report.epoch_metrics),
+        "epochs_run": sum(metric.phase == "train" for metric in report.epochs),
         "best_epoch": report.best_epoch,
-        "best_val_metric": report.best_val_metric,
-        "test_results": report.test_results,
+        "best_val_metric": report.best_val_loss,
+        "test_results": report.final_test_metrics.to_dict() if report.final_test_metrics else None,
         "elapsed_seconds": round(elapsed, 1),
         "config": {
             "data_dir": cfg.data_dir,
@@ -176,7 +176,7 @@ def main() -> int:
     report_path.write_text(json.dumps(report_dict, indent=2) + "\n", encoding="utf-8")
     print(f"Report saved to {report_path.relative_to(ROOT)}")
 
-    if args.smoke_test and not report.epoch_metrics:
+    if args.smoke_test and not report.epochs:
         print("SMOKE TEST FAILED — no epoch metrics recorded.")
         return 1
 

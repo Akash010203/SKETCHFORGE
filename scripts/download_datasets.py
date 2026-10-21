@@ -357,7 +357,7 @@ def main() -> int:
     elif ds == "codesearchnet":
         download_codesearchnet(raw_dir / "codesearchnet")
     elif ds == "the-stack-dedup":
-        download_the_stack_dedup(raw_dir / "the-stack-dedup")
+        download_the_stack_dedup(raw_dir / "the-stack-dedup", max_bytes=max_bytes)
 
     log.info("Done. Check with: python scripts/validate_manifest.py or launch the GUI Dataset Panel.")
     return 0

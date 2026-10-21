@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
@@ -14,12 +17,15 @@ if TYPE_CHECKING:
 class CheckpointManager:
     """Saves model + optimizer state with metadata and keeps only the best N checkpoints."""
 
-    def __init__(self, directory: Path, keep_best_n: int = 3, mode: str = "min"):
+    def __init__(self, directory: Path, keep_best_n: int = 3, mode: str = "min",
+                 resume_history: bool = True):
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         self.keep_best_n = keep_best_n
         self.mode = mode          # "min" (loss) or "max" (mAP)
-        self._history: list[dict] = self._load_history()
+        # A fresh training run must not compare its validation scores to stale weights
+        # trained with another split or configuration.
+        self._history: list[dict] = self._load_history() if resume_history else []
 
     # ------------------------------------------------------------------
     def save(
@@ -61,6 +67,17 @@ class CheckpointManager:
         meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
         self._history.append(meta)
+        best = self.best()
+        if (metrics.get("phase") == "val" and best is not None
+                and best.get("path") == str(ckpt_path)):
+            fd, temp_name = tempfile.mkstemp(prefix="best.", suffix=".tmp", dir=self.directory)
+            os.close(fd)
+            try:
+                shutil.copyfile(ckpt_path, temp_name)
+                os.replace(temp_name, self.directory / "best.pt")
+            finally:
+                if os.path.exists(temp_name):
+                    os.unlink(temp_name)
         self._prune()
         self._save_history()
         return ckpt_path

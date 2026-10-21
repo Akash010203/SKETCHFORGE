@@ -1,0 +1,15 @@
+{
+  "endpoint": "https://api.tokenfactory.nebius.com/v1/",
+  "error": "could not reach the service (Connection error.)",
+  "ok": false,
+  "privacy_policy": {
+    "allow_images": false,
+    "include_user_text": false,
+    "probe_contains_design_data": false
+  },
+  "provider": "nebius",
+  "zdr": {
+    "reason": "The inference API does not expose the organization retention setting.",
+    "status": "unknown"
+  }
+}

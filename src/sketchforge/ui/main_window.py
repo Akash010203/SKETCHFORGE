@@ -34,6 +34,7 @@ from sketchforge.ui.layer_panel import LayerPanel
 from sketchforge.ui.preview_panel import PreviewPanel
 from sketchforge.ui.properties_panel import PropertiesPanel
 from sketchforge.ui.sketch_import_view import SketchImportView
+from sketchforge.ui.settings_dialog import SettingsDialog
 from sketchforge.ui.task_progress import TaskProgress
 from sketchforge.ui.training_panel import TrainingPanel
 from sketchforge.ui.workspace import WorkspaceState
@@ -139,6 +140,7 @@ class MainWindow(QMainWindow):
         self.act_evaluate = self._action("Evaluate design", lambda: self._run(self.controller.evaluate), "Ctrl+E")
         self.act_repair = self._action("Auto-repair", self.correction._repair, "Ctrl+R")
         self.act_about = self._action("About", self.about)
+        self.act_settings = self._action("Preferences…", self.show_settings, "Ctrl+,")
 
         file_menu = self.menuBar().addMenu("&File")
         file_menu.addAction(self.act_import)
@@ -154,6 +156,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self.act_quit)
         edit = self.menuBar().addMenu("&Edit")
         edit.addActions([self.act_undo, self.act_redo])
+        edit.addSeparator()
+        edit.addAction(self.act_settings)
         view = self.menuBar().addMenu("&View")
         view.addActions([self.act_fit, self.act_zoom_in, self.act_zoom_out])
         view.addSeparator()
@@ -327,6 +331,10 @@ class MainWindow(QMainWindow):
             self, "About SketchForge",
             f"SketchForge {__version__}\n\nA local-first workbench from sketch to measured, editable design.\n"
             "Everything runs on this computer; the application makes no network requests.")
+
+    def show_settings(self) -> None:
+        """Open application preferences for the active controller."""
+        SettingsDialog(self.controller, self).exec()
 
     def confirm_discard(self) -> bool:
         """True when it is safe to replace the open project (override in tests)."""

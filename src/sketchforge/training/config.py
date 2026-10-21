@@ -9,7 +9,7 @@ from pathlib import Path
 class TrainingConfig:
     # ---- model ---------------------------------------------------------------
     model_name: str = "component_detector_v1"
-    num_classes: int = 10          # number of component types (excl. background)
+    num_classes: int = 15          # includes background; matches detector architecture
 
     # ---- data ----------------------------------------------------------------
     data_dir: str = "datasets/synthetic"
@@ -37,7 +37,7 @@ class TrainingConfig:
 
     # ---- output --------------------------------------------------------------
     checkpoint_dir: str = "checkpoints"
-    save_every_n_epochs: int = 5
+    save_every_n_epochs: int = 1
     keep_best_n: int = 3
 
     # ---- determinism ---------------------------------------------------------

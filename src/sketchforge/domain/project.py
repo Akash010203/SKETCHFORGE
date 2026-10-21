@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import Field, PrivateAttr
+from pydantic import Field, PrivateAttr, model_validator
 
 from sketchforge.constants import PIPELINE_VERSION, SCHEMA_VERSION
 from sketchforge.domain.base import StrictModel
@@ -110,3 +110,53 @@ class DesignDocument(StrictModel):
         self.components = restored.components
         self.metadata = restored.metadata
         self.invalidate_index()
+
+
+class PageRoute(StrictModel):
+    """A URL route pointing to one page document in a multi-page project."""
+
+    page_id: str = Field(pattern=ID_PATTERN)
+    path: str = Field(pattern=r"^/(?:[A-Za-z0-9_~.-]+(?:/[A-Za-z0-9_~.-]+)*)?$")
+    title: str | None = Field(default=None, max_length=200)
+    requires_auth: bool = False
+
+
+class DesignProject(StrictModel):
+    """A routable application composed of independent single-page Design IR documents.
+
+    Page documents remain independently editable and retain their existing hashes and
+    serialization contract. ``routes`` maps their stable ``document_id`` values to URL paths.
+    """
+
+    schema_version: str = SCHEMA_VERSION
+    project_id: str = Field(pattern=ID_PATTERN)
+    name: str = Field("Untitled project", max_length=200)
+    pages: list[DesignDocument] = Field(min_length=1)
+    routes: list[PageRoute] = Field(min_length=1)
+    start_page_id: str = Field(pattern=ID_PATTERN)
+
+    @model_validator(mode="after")
+    def validate_routing(self) -> "DesignProject":
+        page_ids = [page.document_id for page in self.pages]
+        if len(page_ids) != len(set(page_ids)):
+            raise ValueError("page document_id values must be unique within a project")
+        route_ids = [route.page_id for route in self.routes]
+        if len(route_ids) != len(set(route_ids)):
+            raise ValueError("each page may have only one route")
+        if len({route.path.casefold() for route in self.routes}) != len(self.routes):
+            raise ValueError("route paths must be unique (case-insensitive)")
+        unknown = set(route_ids) - set(page_ids)
+        if unknown:
+            raise ValueError(f"routes reference unknown page ids: {sorted(unknown)}")
+        missing = set(page_ids) - set(route_ids)
+        if missing:
+            raise ValueError(f"pages are missing routes: {sorted(missing)}")
+        if self.start_page_id not in set(page_ids):
+            raise ValueError("start_page_id must reference a project page")
+        return self
+
+    def page_by_id(self, page_id: str) -> DesignDocument | None:
+        return next((page for page in self.pages if page.document_id == page_id), None)
+
+    def route_for(self, page_id: str) -> PageRoute | None:
+        return next((route for route in self.routes if route.page_id == page_id), None)

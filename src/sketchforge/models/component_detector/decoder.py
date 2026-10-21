@@ -15,11 +15,9 @@ class Detection:
     bbox_px: tuple[float, float, float, float] | None = None  # x, y, w, h in pixels
 
 
-# Names matching ComponentType enum (same order as training labels)
-CLASS_NAMES = [
-    "container", "header", "nav", "button", "input",
-    "text", "heading", "image", "checkbox", "divider",
-]
+from sketchforge.models.component_detector.architecture import COMPONENT_CLASSES
+
+CLASS_NAMES = COMPONENT_CLASSES
 
 
 def decode(
@@ -43,7 +41,7 @@ def decode(
     for i in range(class_ids.shape[0]):
         cid  = class_ids[i].item()
         conf = confs[i].item()
-        if conf < conf_threshold:
+        if cid == 0 or conf < conf_threshold:
             continue
         name = CLASS_NAMES[cid] if cid < len(CLASS_NAMES) else f"cls_{cid}"
 
@@ -81,7 +79,7 @@ def nms(detections: list[Detection], iou_threshold: float = 0.5) -> list[Detecti
     for det in sorted_dets:
         suppress = False
         for k in kept:
-            if _box_iou(det.bbox, k.bbox) > iou_threshold:
+            if det.class_id == k.class_id and _box_iou(det.bbox, k.bbox) > iou_threshold:
                 suppress = True
                 break
         if not suppress:

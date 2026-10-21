@@ -11,12 +11,12 @@ from sketchforge.domain.component import (
 from sketchforge.domain.interaction import Interaction
 from sketchforge.domain.layout import CONTAINER_TYPES, LayoutSpec
 from sketchforge.domain.project import (
-    DesignDocument, DocumentMetadata, Page, SourceTransform, Viewport,
+    DesignDocument, DesignProject, DocumentMetadata, Page, PageRoute, SourceTransform, Viewport,
 )
 
 __all__ = [
     "CONTAINER_TYPES", "BBox", "CodeMapping", "Component", "ComponentType",
-    "DesignDocument", "DetectionInfo", "DocumentMetadata", "HexColor", "ID_PATTERN",
-    "Interaction", "LayoutSpec", "Page", "SourceTransform", "StrictModel", "Style",
+    "DesignDocument", "DesignProject", "DetectionInfo", "DocumentMetadata", "HexColor", "ID_PATTERN",
+    "Interaction", "LayoutSpec", "Page", "PageRoute", "SourceTransform", "StrictModel", "Style",
     "Typography", "Viewport", "is_valid_id",
 ]

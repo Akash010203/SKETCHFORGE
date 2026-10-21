@@ -26,6 +26,29 @@ class DetectorSample:
     source: str = "synthetic"
 
 
+_TYPE_ALIASES = {"page": "container", "nav": "sidebar", "navigation": "sidebar"}
+
+
+def truth_to_targets(
+    truth: dict[str, Any], image_w: int, image_h: int,
+) -> tuple[list[tuple[float, float, float, float]], list[int]]:
+    """Read generator annotations into normalized center/size boxes and class ids."""
+    from sketchforge.models.component_detector.architecture import CLASS_TO_IDX
+
+    boxes, labels = [], []
+    for component in truth.get("components", []):
+        kind = _TYPE_ALIASES.get(str(component.get("type", "unknown")).lower(),
+                                 str(component.get("type", "unknown")).lower())
+        label = CLASS_TO_IDX.get(kind, CLASS_TO_IDX["unknown"])
+        x, y, w, h = map(float, component["bbox"])
+        if w <= 0 or h <= 0:
+            continue
+        boxes.append(((x + w / 2) / image_w, (y + h / 2) / image_h,
+                      w / image_w, h / image_h))
+        labels.append(label)
+    return boxes, labels
+
+
 def _ink_mask(bgr: np.ndarray) -> np.ndarray:
     """Convert a BGR sketch image to a normalised grayscale ink mask in [0, 1]."""
     import cv2

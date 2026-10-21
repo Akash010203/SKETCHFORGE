@@ -10,7 +10,7 @@ The repository follows the directory layout in the master engineering specificat
 | `docs/` | Architecture, implementation, Design IR, dataset, model, security, performance, and operational documentation | Architecture, Design IR, plan, dataset audit, security, integration, limitations, and experiment log exist; milestone-specific docs state current status |
 | `assets/` | Icons, themes, and sample sketches | Sample sketches are implemented; icons and themes are reserved |
 | `datasets/` | Dataset manifest and local raw, processed, synthetic, quarantine, and evaluation data | Manifest under `manifests/`; only synthetic sample sketches are currently used |
-| `checkpoints/` | Locally trained model artifacts | No trained model checkpoint yet |
+| `checkpoints/` | Locally trained model artifacts | Component detector checkpoint exists but needs refresh after checkpoint-history fix; layout model is untrained |
 | `experiments/` | Reproducible configurations and measured results | Result directory exists; new experiments are added with evidence |
 | `scripts/` | Environment inspection, dataset audit, demo, benchmarks, and packaging commands | Environment/storage inspection, synthetic samples, dataset audit, visual evaluation, and packaging scripts exist |
 | `src/sketchforge/` | Desktop application and local engineering workflows | Implemented areas listed below; later-phase packages are reserved |
@@ -24,7 +24,7 @@ The repository follows the directory layout in the master engineering specificat
 - `storage/`, `utilities/`, and `datasets/synthetic_generator.py` provide local project storage, common utilities, and original synthetic sketches.
 - `integrations/` contains the provider contract and isolated Nebius/NVIDIA integrations. Network calls remain disabled unless configured and consented to.
 - `assist/` contains natural-language edit planning and validation.
-- `generation/` implements full application generation: `generation/frontend/` (React+TS, HTML/CSS component, page, and style generators) and `generation/backend/` (SQLite DDL schema, dataclass models, DB connectors, CRUD logic, and automated tests).
+- `generation/` implements full application generation: `generation/frontend/` (React+TS, HTML/CSS component, page, and style generators), focused backend generators in `generation/backend/`, and packaged text templates in `generation/templates/` for reusable project boilerplate.
 - `execution/` and `verification/` implement sandboxed execution with strict command allowlists, resource limits, and lint/typecheck/build/test/browser verification runners.
 - `models/component_detector/` and `training/` implement the lightweight CNN detector architecture (MobileNet-style FPN-lite) and training loop (dataloader, early stopping, metrics, checkpointing).
 
@@ -33,7 +33,6 @@ The repository follows the directory layout in the master engineering specificat
 The following package directories are reserved for upcoming milestones:
 - `models/layout_model/`: Compact layout model predicting bounding boxes and flex groupings.
 - `retrieval/`: RAG indexing for design guidelines and code snippets.
-- `generation/templates/`: Reusable boilerplate files (currently generated dynamically via code strings).
 - Secondary UI dialogs: `layer_panel.py`, `settings_dialog.py`, `training_panel.py`, `dataset_panel.py`.
 
 ## Structural choices and extensions

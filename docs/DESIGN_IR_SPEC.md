@@ -1,7 +1,8 @@
 # Design IR specification (schema 1.0.0)
 
 The Design IR is the single contract between vision, layout, rendering, editing, evaluation and
-repair. Its canonical pydantic v2 models are defined under `src/sketchforge/domain/`; the historical
+repair. A `DesignDocument` remains one page; a `DesignProject` composes independently valid page
+documents and provides application routes. Its canonical pydantic v2 models are defined under `src/sketchforge/domain/`; the historical
 `src/sketchforge/design_ir/schema.py` import path re-exports those models. It is serialised as
 deterministic JSON (`serialization.to_json`: schema field order, 2-space indent, UTF-8).
 
@@ -27,6 +28,16 @@ deterministic JSON (`serialization.to_json`: schema field order, 2-space indent,
 | `root_id` | id of the single `page` component (the root) |
 | `components` | flat list; hierarchy via `parent_id`; sibling paint order by `z_index` then list order |
 | `metadata` | `source_image_sha256`, `source_size`, `source_transform`, `pipeline_version`, `notes` |
+
+## Multi-page projects
+
+`DesignProject` is the multi-page routing envelope. It contains a stable `project_id`, a list of
+single-page `DesignDocument` values, one `PageRoute` per page, and a `start_page_id`. A route maps
+the page document's `document_id` to an absolute URL path (for example `/` or `/settings`), with an
+optional display title and authentication requirement. Project validation rejects duplicate page
+IDs, duplicate routes (case-insensitive), references to missing pages, pages without routes, and
+an unknown start page. Page documents remain unchanged and can still be serialized and hashed using
+the existing single-document APIs.
 
 ## Component
 

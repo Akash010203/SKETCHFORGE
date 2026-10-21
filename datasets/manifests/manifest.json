@@ -120,6 +120,40 @@
       "expected_download_bytes": null,
       "artifacts": [],
       "notes": "Wireframe recognition, ~4,291 images. Register at ImageCLEF.org and download manually. Place in datasets/raw/imageclef-drawnui-2021/."
+    },
+    {
+      "id": "commitpackft",
+      "name": "BigCode CommitPackFT",
+      "source_url": "https://huggingface.co/datasets/bigcode/commitpackft",
+      "revision": "main",
+      "license_spdx": "Apache-2.0",
+      "license_source_url": "https://huggingface.co/datasets/bigcode/commitpackft",
+      "access": "public",
+      "intended_use": [
+        "training",
+        "research",
+        "evaluation"
+      ],
+      "expected_download_bytes": 328138752,
+      "artifacts": [],
+      "notes": "Code repair and edit patterns for Python, HTML, JS, TS."
+    },
+    {
+      "id": "the-stack-dedup",
+      "name": "BigCode The Stack Dedup (20 GB sample)",
+      "source_url": "https://huggingface.co/datasets/bigcode/the-stack-dedup",
+      "revision": "main",
+      "license_spdx": "LicenseRef-custom",
+      "license_source_url": "https://huggingface.co/datasets/bigcode/the-stack-dedup",
+      "access": "gated",
+      "intended_use": [
+        "training",
+        "research",
+        "evaluation"
+      ],
+      "expected_download_bytes": 21474836480,
+      "artifacts": [],
+      "notes": "Large deduplicated code corpus. Gated access. Capped at 20 GB sample across web languages."
     }
   ]
 }

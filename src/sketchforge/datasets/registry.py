@@ -167,7 +167,14 @@ class DatasetRegistry:
                 return sum(pq.read_metadata(str(p)).num_rows for p in parquets)
             except Exception:
                 return len(parquets)
-        # 3. Count zip files or other archives
+        # 3. Count jsonl records if present
+        jsonls = list(path.rglob("*.jsonl"))
+        if jsonls:
+            try:
+                return sum(sum(1 for _ in open(j, "rb")) for j in jsonls)
+            except Exception:
+                return len(jsonls)
+        # 4. Count zip files or other archives
         zips = list(path.rglob("*.zip"))
         if zips:
             return len(zips)

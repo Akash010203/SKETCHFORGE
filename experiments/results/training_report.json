@@ -1,0 +1,28 @@
+{
+  "model_name": "component_detector_v1",
+  "smoke_test": false,
+  "epochs_run": 20,
+  "best_epoch": 9,
+  "best_val_metric": 0.3772597036191395,
+  "test_results": {
+    "epoch": 10,
+    "phase": "test",
+    "loss": 0.613119,
+    "cls_loss": 0.0,
+    "box_loss": 0.0,
+    "accuracy": 0.9203,
+    "mean_iou": 0.0,
+    "mAP": 0.0,
+    "samples": 104,
+    "duration_s": 9.11
+  },
+  "elapsed_seconds": 274.6,
+  "config": {
+    "data_dir": "C:\\Users\\akash\\Downloads\\sketchforge\\datasets\\synthetic",
+    "epochs": 10,
+    "batch_size": 8,
+    "learning_rate": 0.001,
+    "device": "cuda",
+    "seed": 42
+  }
+}

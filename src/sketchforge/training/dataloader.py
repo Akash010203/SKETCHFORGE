@@ -1,94 +1,110 @@
-"""DataLoader factory for the component detector training pipeline.
-
-Wraps the existing ComponentDetectorDataset (models/component_detector/dataset.py)
-with train/val/test splits, augmentations, and reproducible shuffling.
-"""
+"""Load generated sketch/annotation pairs for detector training."""
 from __future__ import annotations
 
+import json
+import random
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+import numpy as np
 
 from sketchforge.training.config import TrainingConfig
 from sketchforge.training.seed import seed_everything
 
-if TYPE_CHECKING:
-    pass  # torch imports deferred
+
+class ComponentDetectorDataset:
+    """Disk-backed PNG/JSON dataset with independently configured augmentation."""
+
+    def __init__(self, data_dir: str | Path, image_size: int, train: bool = False):
+        self.root = Path(data_dir)
+        self.image_size = image_size
+        self.train = train
+        self.pairs = [(p, p.with_suffix(".json")) for p in sorted(self.root.glob("*.png"))
+                      if p.with_suffix(".json").is_file()]
+        if not self.pairs:
+            return
+
+    def __len__(self):
+        return len(self.pairs)
+
+    def __getitem__(self, index):
+        import cv2
+        import torch
+        from sketchforge.models.component_detector.dataset import truth_to_targets
+
+        image_path, label_path = self.pairs[index]
+        bgr = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+        if bgr is None:
+            raise ValueError(f"Could not read image: {image_path}")
+        truth = json.loads(label_path.read_text(encoding="utf-8"))
+        h, w = bgr.shape[:2]
+        size = self.image_size
+        bgr = cv2.resize(bgr, (size, size), interpolation=cv2.INTER_AREA)
+        gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
+        image = 1.0 - gray
+        boxes, labels = truth_to_targets(truth, w, h)
+        if self.train:
+            if random.random() < 0.3:
+                image = image[:, ::-1].copy()
+                boxes = [(1.0 - cx, cy, bw, bh) for cx, cy, bw, bh in boxes]
+            gain = random.uniform(0.8, 1.2)
+            image = np.clip(image * gain, 0.0, 1.0)
+        return torch.from_numpy(image.copy()).unsqueeze(0), {
+            "boxes": torch.tensor(boxes, dtype=torch.float32).reshape(-1, 4),
+            "labels": torch.tensor(labels, dtype=torch.long),
+        }
+
+
+def _collate(batch):
+    import torch
+    images, targets = zip(*batch)
+    return torch.stack(images), list(targets)
 
 
 def make_loaders(cfg: TrainingConfig):
-    """Return (train_loader, val_loader, test_loader) DataLoaders.
-
-    Applies:
-    - RandomHorizontalFlip, ColorJitter, random rotation  (train only)
-    - Normalisation with ImageNet mean/std
-    - Fixed seeds for reproducible splits
-    """
+    """Return train, validation and test loaders without shared transform state."""
     try:
         import torch
-        from torch.utils.data import DataLoader, random_split
-        import torchvision.transforms as T
+        from torch.utils.data import DataLoader, Subset
     except ImportError as e:
-        raise ImportError(
-            "PyTorch and torchvision are required for training. "
-            "Install with: pip install torch torchvision"
-        ) from e
-
-    from sketchforge.models.component_detector.dataset import ComponentDetectorDataset
+        raise ImportError("PyTorch is required for training. Install torch.") from e
 
     seed_everything(cfg.seed)
-
-    # --- transforms -----------------------------------------------------------
-    img_size = cfg.image_size
-    mean = [0.485, 0.456, 0.406]
-    std  = [0.229, 0.224, 0.225]
-
-    train_tf = T.Compose([
-        T.Resize((img_size, img_size)),
-        T.RandomHorizontalFlip(p=0.3),
-        T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2),
-        T.RandomRotation(degrees=5),
-        T.ToTensor(),
-        T.Normalize(mean, std),
-    ])
-
-    eval_tf = T.Compose([
-        T.Resize((img_size, img_size)),
-        T.ToTensor(),
-        T.Normalize(mean, std),
-    ])
-
-    # --- dataset --------------------------------------------------------------
-    data_dir = Path(cfg.data_dir)
-    full_ds = ComponentDetectorDataset(data_dir, transform=None)
-
-    n = len(full_ds)
+    base = ComponentDetectorDataset(cfg.data_dir, cfg.image_size)
+    n = len(base)
     if n == 0:
-        raise RuntimeError(
-            f"No samples found in {data_dir}. Run scripts/generate_synthetic_data.py first."
-        )
-
-    n_train = int(n * cfg.train_split)
-    n_val   = int(n * cfg.val_split)
-    n_test  = n - n_train - n_val
-
-    generator = torch.Generator().manual_seed(cfg.seed)
-    train_ds, val_ds, test_ds = random_split(
-        full_ds, [n_train, n_val, n_test], generator=generator
-    )
-
-    # Inject transforms after split (avoid data leakage)
-    train_ds.dataset.transform = train_tf  # type: ignore[attr-defined]
-    val_ds.dataset.transform   = eval_tf   # type: ignore[attr-defined]
-    test_ds.dataset.transform  = eval_tf   # type: ignore[attr-defined]
-
-    def _loader(ds, shuffle: bool) -> DataLoader:
-        return DataLoader(
-            ds,
-            batch_size=cfg.batch_size,
-            shuffle=shuffle,
-            num_workers=cfg.num_workers,
-            pin_memory=cfg.pin_memory and cfg.resolve_device() == "cuda",
-            drop_last=shuffle,
-        )
-
-    return _loader(train_ds, True), _loader(val_ds, False), _loader(test_ds, False)
+        raise RuntimeError(f"No PNG/JSON pairs found in {cfg.data_dir}. Generate data first.")
+    groups: dict[str, list[int]] = {}
+    for index, (_, label_path) in enumerate(base.pairs):
+        try:
+            layout = json.loads(label_path.read_text(encoding="utf-8")).get("layout", "unknown")
+        except (OSError, json.JSONDecodeError):
+            layout = "unknown"
+        groups.setdefault(str(layout), []).append(index)
+    if len(groups) >= 3:
+        names = sorted(groups)
+        random.Random(cfg.seed).shuffle(names)
+        n_val_groups = max(1, round(len(names) * cfg.val_split))
+        n_test_groups = max(1, round(len(names) * (1 - cfg.train_split - cfg.val_split)))
+        if n_val_groups + n_test_groups >= len(names):
+            n_val_groups = n_test_groups = 1
+        val_names = set(names[:n_val_groups])
+        test_names = set(names[n_val_groups:n_val_groups + n_test_groups])
+        train_names = set(names) - val_names - test_names
+        splits = tuple([i for name in chosen for i in groups[name]]
+                       for chosen in (train_names, val_names, test_names))
+        print(f"[dataloader] split by layout: train={sorted(train_names)} "
+              f"val={sorted(val_names)} test={sorted(test_names)}")
+    else:
+        indices = torch.randperm(n, generator=torch.Generator().manual_seed(cfg.seed)).tolist()
+        n_train = max(1, int(n * cfg.train_split)) if n >= 3 else n
+        n_val = max(1, int(n * cfg.val_split)) if n - n_train >= 2 else max(0, n - n_train - 1)
+        splits = (indices[:n_train], indices[n_train:n_train+n_val], indices[n_train+n_val:])
+    loaders = []
+    for split, training in zip(splits, (True, False, False)):
+        ds = ComponentDetectorDataset(cfg.data_dir, cfg.image_size, train=training)
+        loader = DataLoader(Subset(ds, split), batch_size=cfg.batch_size,
+                            shuffle=training, num_workers=cfg.num_workers,
+                            pin_memory=cfg.pin_memory and cfg.resolve_device() == "cuda",
+                            collate_fn=_collate, drop_last=False)
+        loaders.append(loader)
+    return tuple(loaders)

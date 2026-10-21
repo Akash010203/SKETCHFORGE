@@ -47,6 +47,47 @@ def score_variant(mask: np.ndarray) -> float:
     return -coverage_penalty - 2.0 * speckle_fraction(mask)
 
 
+def suppress_ruled_lines(mask: np.ndarray) -> tuple[np.ndarray, str | None]:
+    """Remove long, regularly spaced paper rules from a binary ink mask.
+
+    Suppression is deliberately gated on a repeated pattern. A single long box edge must not
+    be mistaken for notebook ruling. The detected line pixels are removed without eroding
+    neighboring strokes, which helps preserve handwriting that crosses a rule.
+    """
+    h, w = mask.shape
+    detected = np.zeros_like(mask)
+    directions: list[str] = []
+    for orientation, length in (("horizontal", w), ("vertical", h)):
+        kernel_len = max(25, length // 24)
+        kernel_shape = (kernel_len, 1) if orientation == "horizontal" else (1, kernel_len)
+        opened = cv2.morphologyEx(
+            mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, kernel_shape)
+        )
+        profile = (opened > 0).sum(axis=1 if orientation == "horizontal" else 0)
+        threshold = max(12, int(round(0.22 * length)))
+        indices = np.flatnonzero(profile >= threshold)
+        if indices.size < 5:
+            continue
+        gaps = np.diff(indices)
+        # Group adjacent rows/columns into individual rules before checking spacing.
+        groups = np.split(indices, np.flatnonzero(gaps > 2) + 1)
+        centers = np.array([float(group.mean()) for group in groups if group.size])
+        if centers.size < 5:
+            continue
+        spacings = np.diff(centers)
+        median_spacing = float(np.median(spacings))
+        if (median_spacing < 4 or median_spacing > 0.12 * length
+                or float(np.median(np.abs(spacings - median_spacing))) / median_spacing > 0.35):
+            continue
+        detected = cv2.bitwise_or(detected, opened)
+        directions.append(orientation)
+
+    if not directions:
+        return mask, None
+    filtered = cv2.bitwise_and(mask, cv2.bitwise_not(detected))
+    return filtered, f"suppressed repeated {' and '.join(directions)} ruled-paper lines"
+
+
 def preprocess(
     norm: NormalizedImage,
     force_variant: str | None = None,
@@ -60,6 +101,9 @@ def preprocess(
     raw = candidates[chosen]
 
     notes: list[str] = []
+    raw, grid_note = suppress_ruled_lines(raw)
+    if grid_note:
+        notes.append(grid_note)
     despeckled = remove_small_components(raw, min_area=10)
     stroke_width = estimate_stroke_width(despeckled)
     # Bridge only the 1-3 px gaps left at hand-drawn corners. A larger kernel would fill the

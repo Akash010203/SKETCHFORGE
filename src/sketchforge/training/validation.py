@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from sketchforge.training.metrics import EpochMetrics, compute_accuracy
+from sketchforge.training.metrics import EpochMetrics
 
 if TYPE_CHECKING:
     import torch
@@ -18,6 +18,7 @@ def validate_epoch(
     device: "torch.device",
     epoch: int,
     phase: str = "val",
+    num_classes: int = 15,
 ) -> EpochMetrics:
     """Run one pass over ``loader`` without gradients and return metrics."""
     import torch
@@ -31,18 +32,10 @@ def validate_epoch(
     with torch.no_grad():
         for images, targets in loader:
             images = images.to(device, non_blocking=True)
-            labels = targets["class_ids"].to(device) if isinstance(targets, dict) else targets.to(device)
-
-            outputs = model(images)
-            # Support dict outputs (class_logits, box_preds)
-            if isinstance(outputs, dict):
-                logits = outputs["class_logits"]
-            else:
-                logits = outputs
-
-            loss = criterion(logits, labels)
+            from sketchforge.training.trainer import _loss_and_metrics
+            loss, accuracy = _loss_and_metrics(model, images, targets, num_classes)
             total_loss += loss.item()
-            total_acc  += compute_accuracy(logits, labels)
+            total_acc  += accuracy
             n_batches  += 1
 
     n = max(n_batches, 1)

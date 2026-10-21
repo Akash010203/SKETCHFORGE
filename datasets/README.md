@@ -2,6 +2,10 @@
 
 The manifest and audit workflow are in `manifests/`. External data is not downloaded automatically. Review the license and access notes before placing data in `raw/`; generated and processed data stays out of version control. The current local sample sketches live in `assets/sample_sketches/`.
 
+## Processing local sources
+
+Run `python scripts/process_datasets.py --dataset websight-v02 --max-samples 1000` to convert a bounded WebSight subset to PNG, HTML, and JSON records under `processed/websight-v02/`. These records currently have no component bounding boxes, so they are not component-detector training samples. DrawnUI files are not currently present; after placing the source under `raw/imageclef-drawnui-2021/images/` (and optional VOC XML files under `annotations/`), run `python scripts/process_datasets.py --dataset imageclef-drawnui-2021`.
+
 ## Photographed sketch evaluation
 
 One CC0 smartphone photograph of a paper UI sketch and manual annotation are checked in under `evaluation/`; its provenance, scope, and benchmark command are documented in `evaluation/README.md`. This one-image fixture enables regression measurement in CI, but is too small to support broad real-world accuracy claims. Additional photographs and manually annotated truth JSON can be added with their licensing/access notes. Truth boxes use original image pixel coordinates. Include the page as a `page` component when evaluating frame localization.
