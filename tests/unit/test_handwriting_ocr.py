@@ -19,7 +19,7 @@ def test_recognize_regions_uses_opt_in_model_and_returns_line_text(monkeypatch):
             return object()
 
     monkeypatch.setenv("SKETCHFORGE_OCR_MODEL", "local-test-model")
-    monkeypatch.setattr(handwriting_ocr, "_load_model", lambda name: (Processor(), Model()))
+    monkeypatch.setattr(handwriting_ocr, "_load_model", lambda name: (("trocr", Processor()), Model()))
     region = TextRegion(0, (2, 3, 20, 8), ink_pixels=20, pieces=4, confidence=0.8)
     recognized = handwriting_ocr.recognize_regions(np.full((20, 30), 255, np.uint8), [region])
     assert recognized == ["Hello world"]

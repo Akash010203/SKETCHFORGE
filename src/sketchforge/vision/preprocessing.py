@@ -47,38 +47,89 @@ def score_variant(mask: np.ndarray) -> float:
     return -coverage_penalty - 2.0 * speckle_fraction(mask)
 
 
+# Minimum fraction of an axis that a line must span to be considered a ruled paper line.
+# A genuine UI border (card edge, input box) rarely stretches beyond ~60% of a 1080 px image;
+# most notebook / legal-pad lines run edge-to-edge (>90%). 0.65 is a safe discriminating value.
+_RULED_LINE_SPAN_FRACTION = 0.65
+
+# A notebook page typically has 20-40 ruled lines; legal pads have ≥12.
+# Fewer than this and the "repetition" could simply be a grid of UI components.
+_RULED_LINE_MIN_CENTERS = 12
+
+# The centers of ruled lines must collectively span more than this fraction of the perpendicular
+# dimension. If they only cover 30% of the page height, the rows are a UI table, not ruling.
+_RULED_LINE_COVERAGE_FRACTION = 0.50
+
+
 def suppress_ruled_lines(mask: np.ndarray) -> tuple[np.ndarray, str | None]:
     """Remove long, regularly spaced paper rules from a binary ink mask.
 
-    Suppression is deliberately gated on a repeated pattern. A single long box edge must not
-    be mistaken for notebook ruling. The detected line pixels are removed without eroding
-    neighboring strokes, which helps preserve handwriting that crosses a rule.
+    Suppression is gated on **three independent criteria** that must all pass:
+
+    1. **Span**: each candidate line must traverse > 65 % of the image width/height.
+       A single UI border box rarely reaches this threshold.
+    2. **Count**: ≥ 12 distinct rule centers must be found.
+       A login form with a few input separators will never reach 12.
+    3. **Coverage**: the set of rule centers must span > 50 % of the perpendicular
+       dimension, ensuring the pattern fills the page rather than a sub-region.
+
+    The detected line pixels are removed without eroding neighboring strokes, which
+    helps preserve handwriting that crosses a rule.
     """
     h, w = mask.shape
     detected = np.zeros_like(mask)
     directions: list[str] = []
-    for orientation, length in (("horizontal", w), ("vertical", h)):
-        kernel_len = max(25, length // 24)
-        kernel_shape = (kernel_len, 1) if orientation == "horizontal" else (1, kernel_len)
-        opened = cv2.morphologyEx(
-            mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, kernel_shape)
+    for orientation, axis_len, perp_len in (
+        ("horizontal", w, h),
+        ("vertical", h, w),
+    ):
+        # ---------- build the morphological line detector ----------
+        # The structuring element must be longer than 65 % of the axis so that only
+        # strokes reaching nearly across the full dimension survive the OPEN.
+        kernel_len = max(25, int(round(_RULED_LINE_SPAN_FRACTION * axis_len)))
+        kernel_shape = (
+            (kernel_len, 1) if orientation == "horizontal" else (1, kernel_len)
         )
+        opened = cv2.morphologyEx(
+            mask,
+            cv2.MORPH_OPEN,
+            cv2.getStructuringElement(cv2.MORPH_RECT, kernel_shape),
+        )
+
+        # ---------- project onto the perpendicular axis ----------
+        # For horizontal lines, sum along axis=1 (columns) → profile over rows.
         profile = (opened > 0).sum(axis=1 if orientation == "horizontal" else 0)
-        threshold = max(12, int(round(0.22 * length)))
-        indices = np.flatnonzero(profile >= threshold)
-        if indices.size < 5:
+
+        # A row/column qualifies as belonging to a rule only if its projected ink
+        # count is itself substantial (> 65 % of the relevant dimension).
+        span_threshold = int(round(_RULED_LINE_SPAN_FRACTION * axis_len))
+        indices = np.flatnonzero(profile >= span_threshold)
+        if indices.size == 0:
             continue
+
+        # ---------- cluster adjacent pixels into single rule centers ----------
         gaps = np.diff(indices)
-        # Group adjacent rows/columns into individual rules before checking spacing.
         groups = np.split(indices, np.flatnonzero(gaps > 2) + 1)
-        centers = np.array([float(group.mean()) for group in groups if group.size])
-        if centers.size < 5:
+        centers = np.array([float(g.mean()) for g in groups if g.size])
+
+        # Criterion 2: need at least _RULED_LINE_MIN_CENTERS distinct lines.
+        if centers.size < _RULED_LINE_MIN_CENTERS:
             continue
+
+        # Criterion 3: the centers must span more than 50 % of the perpendicular dim.
+        span_covered = float(centers[-1] - centers[0])
+        if span_covered < _RULED_LINE_COVERAGE_FRACTION * perp_len:
+            continue
+
+        # ---------- verify regular spacing (it must look like a ruling) ----------
         spacings = np.diff(centers)
         median_spacing = float(np.median(spacings))
-        if (median_spacing < 4 or median_spacing > 0.12 * length
-                or float(np.median(np.abs(spacings - median_spacing))) / median_spacing > 0.35):
+        if median_spacing < 4 or median_spacing > 0.12 * perp_len:
             continue
+        mad = float(np.median(np.abs(spacings - median_spacing)))
+        if mad / median_spacing > 0.25:  # tighter jitter tolerance than before
+            continue
+
         detected = cv2.bitwise_or(detected, opened)
         directions.append(orientation)
 
@@ -86,6 +137,126 @@ def suppress_ruled_lines(mask: np.ndarray) -> tuple[np.ndarray, str | None]:
         return mask, None
     filtered = cv2.bitwise_and(mask, cv2.bitwise_not(detected))
     return filtered, f"suppressed repeated {' and '.join(directions)} ruled-paper lines"
+
+
+# ---------------------------------------------------------------------------
+# Graph-paper / grid notch filter
+# ---------------------------------------------------------------------------
+
+# Minimum energy fraction that a spectral peak must have relative to the global
+# mean to be treated as a structured grid frequency rather than image content.
+_NOTCH_PEAK_THRESHOLD = 6.0
+
+# Half-width (in pixels) of each notch band around a detected grid frequency.
+_NOTCH_HALF_WIDTH = 2
+
+
+def suppress_grid_paper(
+    mask: np.ndarray,
+    min_period: int = 6,
+    max_period: int = 80,
+) -> tuple[np.ndarray, str | None]:
+    """Attenuate periodic graph-paper mesh in a binary ink mask via FFT notch filtering.
+
+    Algorithm
+    ---------
+    1. Compute the 2-D FFT magnitude spectrum of the mask.
+    2. Build 1-D row- and column-summed profiles to detect dominant periodicities
+       in the horizontal and vertical directions independently.
+    3. For each strong periodic frequency (harmonic of the grid pitch), zero-out
+       a narrow notch band (±``_NOTCH_HALF_WIDTH`` rows/columns) in the FFT.
+    4. Reconstruct via inverse FFT and re-binarize with Otsu thresholding.
+
+    The notch is kept narrow (default ±2 pixels in frequency space) so that
+    irregular handwriting strokes — which have broad spectral energy — are
+    preserved while the sharp, narrowband grid signal is removed.
+
+    Parameters
+    ----------
+    mask:
+        Binary uint8 image (255 = ink, 0 = paper).
+    min_period / max_period:
+        Range of grid pitches (pixels) to consider.  Periods outside this range
+        are ignored to avoid attacking image content.
+
+    Returns
+    -------
+    Filtered mask and an optional human-readable note, or (mask, None) if no
+    periodic grid was detected.
+    """
+    h, w = mask.shape
+    float_img = mask.astype(np.float32) / 255.0
+
+    # Pad to the next power-of-two for speed.
+    fh = cv2.getOptimalDFTSize(h)
+    fw = cv2.getOptimalDFTSize(w)
+    padded = np.zeros((fh, fw), dtype=np.float32)
+    padded[:h, :w] = float_img
+
+    # 2-D FFT → magnitude spectrum (log-compressed for peak detection).
+    dft = np.fft.rfft2(padded)  # shape (fh, fw//2+1)
+    magnitude = np.abs(dft)
+
+    # DC component spans [0,0]; shift frequencies so DC is at index 0 in rows
+    # but keep the half-spectrum in columns (rfft2 layout).
+    row_profile = magnitude.sum(axis=1)  # energy per row-frequency
+    col_profile = magnitude.sum(axis=0)  # energy per col-frequency
+
+    def _detect_grid_frequencies(
+        profile: np.ndarray,
+        dim: int,
+    ) -> list[int]:
+        """Return frequency indices (in rfft space) of suspected grid harmonics."""
+        # Convert period bounds to frequency-index bounds.
+        # freq_index = dim / period  (rfft layout: index 0 = DC, 1 = 1 cycle/image …)
+        f_min = max(1, int(dim / max_period))
+        f_max = min(len(profile) - 1, int(dim / min_period) + 1)
+        if f_min >= f_max:
+            return []
+        band = profile[f_min:f_max]
+        if band.size == 0:
+            return []
+        mean_energy = float(band.mean())
+        if mean_energy == 0:
+            return []
+        # A grid peak must be _NOTCH_PEAK_THRESHOLD × the mean band energy.
+        threshold = _NOTCH_PEAK_THRESHOLD * mean_energy
+        peaks = np.flatnonzero(band >= threshold) + f_min  # global freq indices
+        return peaks.tolist()
+
+    row_freqs = _detect_grid_frequencies(row_profile, fh)
+    col_freqs = _detect_grid_frequencies(col_profile, fw)
+
+    if not row_freqs and not col_freqs:
+        return mask, None
+
+    # Apply notches: zero out the detected frequency bands.
+    notched = dft.copy()
+    hw = _NOTCH_HALF_WIDTH
+    for fi in row_freqs:
+        lo, hi = max(0, fi - hw), min(notched.shape[0], fi + hw + 1)
+        notched[lo:hi, :] = 0.0
+    for fi in col_freqs:
+        lo, hi = max(0, fi - hw), min(notched.shape[1], fi + hw + 1)
+        notched[:, lo:hi] = 0.0
+
+    # Reconstruct and crop back to original size.
+    reconstructed = np.fft.irfft2(notched)[:h, :w]
+    reconstructed = np.clip(reconstructed, 0.0, 1.0)
+    img_u8 = (reconstructed * 255).astype(np.uint8)
+
+    # Re-binarize with Otsu; fall back to the original mask if Otsu fails.
+    _, filtered = cv2.threshold(img_u8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    if filtered is None or not filtered.any():
+        return mask, None
+
+    directions: list[str] = []
+    if row_freqs:
+        directions.append("horizontal")
+    if col_freqs:
+        directions.append("vertical")
+    note = f"notch-filtered periodic grid ({', '.join(directions)} frequencies)"
+    return filtered, note
 
 
 def preprocess(
@@ -101,9 +272,14 @@ def preprocess(
     raw = candidates[chosen]
 
     notes: list[str] = []
-    raw, grid_note = suppress_ruled_lines(raw)
-    if grid_note:
-        notes.append(grid_note)
+    raw, ruled_note = suppress_ruled_lines(raw)
+    if ruled_note:
+        notes.append(ruled_note)
+    # Second pass: attenuate periodic graph-paper / grid mesh via FFT notch filter.
+    # This handles the 2-D case (e.g. squared paper) that the morphological filter misses.
+    raw, notch_note = suppress_grid_paper(raw)
+    if notch_note:
+        notes.append(notch_note)
     despeckled = remove_small_components(raw, min_area=10)
     stroke_width = estimate_stroke_width(despeckled)
     # Bridge only the 1-3 px gaps left at hand-drawn corners. A larger kernel would fill the
