@@ -1,9 +1,9 @@
 # NVIDIA / Nebius integration
 
-**Status: rules verified (2026-10-18) · client IMPLEMENTATION in progress · live calls NOT yet verified.**
-Nothing in this file claims a remote call has worked. See "Verification status" at the bottom.
+**Status (2026-10-21): Nebius live model-list and Nemotron completion probes pass; mock-transport tests pass; local SketchForge detector inference loads on the NVIDIA GPU. The three-arm remote edit benchmark remains unrun.**
+See "Verification status" below for evidence and limits.
 
-## 1. Official requirements (verified from the official pages, 2026-10-18)
+## 1. Official requirements (verified from the official pages, 2026-10-21)
 
 Sources: Devpost hackathon page <https://nebiusglobalaihackathon.devpost.com/> and its rules page
 <https://nebiusglobalaihackathon.devpost.com/rules>; Token Factory docs
@@ -76,13 +76,15 @@ uses a provider never sees Nebius's response format.
 
 ## 4. Benchmark (spec §10): three arms
 
-1. **Local deterministic baseline** — rule-based parser for natural-language edits.
-2. **Local + model assistance** — Nemotron on Token Factory translates the instruction into an edit plan.
-3. **Integrated** — arm 2 + local validation, evaluator check and bounded repair.
+1. **Local** — rule-based parser for natural-language edits.
+2. **Model** — Nemotron on Token Factory translates the instruction into an edit plan, then local plan validation and evaluation run; automatic repair is off.
+3. **Hybrid** — use the model plan when valid, fall back to the local parser when unavailable, then run local validation, evaluator checks and bounded repair.
+
+The default command runs these three arms: `python scripts/run_visual_benchmark.py --enable --accept-egress`. The `oracle` arm remains available as a reference control, but is not one of the three measured product arms. Model and hybrid runs require `NEBIUS_API_KEY`, network access and explicit egress acknowledgement. The script checks credentials before building fixtures or starting benchmark tasks.
 
 Task set: `tests/evaluation/edit_tasks.json` (instruction → machine-checkable expectation).
 Metrics: edit success, invalid-plan rate, new layout issues introduced, repair success, latency,
-tokens. Run: `python scripts/run_visual_benchmark.py --provider nebius` (needs a key and network).
+tokens. Run: `python scripts/run_visual_benchmark.py --enable --accept-egress` (needs a key and network).
 A neutral or negative result is reported as such.
 
 ## 5. Verification status
@@ -90,7 +92,19 @@ A neutral or negative result is reported as such.
 | Claim | Status | Evidence |
 |---|---|---|
 | Official rules read and recorded | VERIFIED | this file, §1 |
-| Client speaks the documented protocol | pending | unit tests with an in-process fake transport |
-| A real call to Token Factory succeeds | **NOT VERIFIED** — sandbox proxy blocks `api.tokenfactory.nebius.com` (HTTP 403 on CONNECT) and no key is configured | run `scripts/verify_nebius.py` on a networked machine with `NEBIUS_API_KEY` |
-| Model IDs exist and their capabilities | **NOT VERIFIED** | same script lists `/v1/models?verbose=true` |
-| Benchmark improvement from the model | **NOT MEASURED** | needs the live run; fake-provider runs only test the harness |
+| Client speaks the documented protocol | IMPLEMENTED; mock transport verified | `tests/integration/test_nebius_integration.py` (does not verify live service access) |
+| Live Token Factory access and Nemotron completion | VERIFIED on 2026-10-21 | `experiments/results/live_nebius_benchmark.json`: `/v1/models` returned 28 models and the fixed completion succeeded on `nvidia/Nemotron-3_5-Lightning` (96 output tokens, 697.7 ms) |
+| Live model IDs and capabilities | VERIFIED on 2026-10-21 | response listed five NVIDIA models; `nvidia/Nemotron-3_5-Lightning` is `text->text` and does not accept images. `nvidia/Nemotron-3.5-Super-VL` reports `text+image->text` |
+| Three-arm edit benchmark | **NOT RUN** | automatic approval review rejected the benchmark because it exports task instructions and compact design summaries. It requires the user's explicit approval for that payload |
+| Local NVIDIA runtime | VERIFIED for load and one inference call | RTX 4050 Laptop GPU (6140 MiB); the local SketchForge component-detector checkpoint loaded at epoch 5 and returned an inference result. This is not local Nemotron inference, and the saved detector report has mAP 0.0 |
+| Local Nemotron weights | **NOT INSTALLED** | the default laptop runtime uses the SketchForge detector; no Nemotron GGUF/AWQ loader or checkpoint is configured |
+| ZDR setting | **UNKNOWN** | the Token Factory API does not expose the organisation-level retention setting; confirm it in the Nebius organisation console |
+| Local edit baseline | MEASURED | `output/reports/local_edit_benchmark.json`: 34/58 tasks passed (58.62%) |
+
+### Running the live probe
+
+Set `NEBIUS_API_KEY` in the environment (or the ignored local `.env` file), then run `python scripts/verify_nebius.py --enable --accept-egress`. The probe sends only a fixed one-line completion prompt and requests the model list. It writes its result to `experiments/results/live_nebius_benchmark.json` by default; override with `--out`. The report includes model-list status, selected model, latency and token counts, but not the API key or prompt/response contents. ZDR remains `unknown`: the endpoint does not report the organisation-level retention setting.
+
+The NVIDIA local runtime is a separate, on-device path. It loads SketchForge's trained component detector from generated local checkpoints; that checkpoint has a reported mAP of 0.0, so successful loading and inference do not establish useful detector accuracy. It is not a Nemotron runtime. The hosted Token Factory client is the verified Nemotron path. Do not describe local detector inference as local Nemotron inference.
+
+The full remote edit benchmark is a distinct data export from the fixed probe: it sends benchmark instructions and compact synthetic design summaries for each model/hybrid task. Automatic approval review rejected that run; it remains pending explicit user approval. The offline local arm is recorded separately and does not validate model-assisted or hybrid scores.

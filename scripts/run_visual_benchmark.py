@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-"""Run the deterministic natural-language edit benchmark.
+"""Run the three-arm natural-language edit benchmark.
 
-Usage: python scripts/run_visual_benchmark.py [--arms oracle local hybrid]
+Usage: python scripts/run_visual_benchmark.py [--arms local model hybrid]
        [--tasks tests/evaluation/edit_tasks.json] [--out experiments/results/edit_benchmark.json]
 """
 
@@ -16,13 +16,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from sketchforge.assist.edit_benchmark import load_tasks, run_benchmark  # noqa: E402
 from sketchforge.integrations.nebius import ConsentGate, NebiusClient, egress_notice, load_nebius_config  # noqa: E402
+from sketchforge.integrations.provider_interface import ProviderAuthError  # noqa: E402
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--tasks", default="tests/evaluation/edit_tasks.json")
     parser.add_argument("--arms", nargs="+", choices=("oracle", "local", "model", "hybrid"),
-                        default=("oracle", "local", "hybrid"))
+                        default=("local", "model", "hybrid"),
+                        help="local baseline, model-only, and integrated hybrid; oracle is an optional reference control")
     parser.add_argument("--accept-egress", action="store_true",
                         help="acknowledge the Nebius egress notice before running the model arm")
     parser.add_argument("--enable", action="store_true",
@@ -37,6 +39,10 @@ def main() -> int:
             print(egress_notice(config))
             if not args.accept_egress:
                 parser.error("model/hybrid arms need --accept-egress after reviewing the notice")
+            try:
+                config.api_key()
+            except ProviderAuthError as exc:
+                parser.error(str(exc))
             consent = ConsentGate()
             consent.acknowledge()
             provider = NebiusClient(config, consent)

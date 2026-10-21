@@ -9,7 +9,7 @@ Responsibilities
 * Lazy-load a trained checkpoint from ``checkpoints/`` without importing
   torch at module-import time (so the application starts even when torch
   is absent).
-* Run the ``ComponentDetector`` and (eventually) ``LayoutModel`` in
+* Run the locally trained component detector and (eventually) ``LayoutModel`` in
   ``torch.no_grad()`` mode on the best available device.
 * Expose a uniform :class:`LocalInferenceSession` object that callers can
   use without knowing about tensors or model internals.
@@ -113,14 +113,15 @@ class InferenceResult:
 # ---------------------------------------------------------------------------
 
 class LocalInferenceSession:
-    """Lazy-loaded, GPU-accelerated in-process inference session.
+    """Lazy-loaded, GPU-accelerated in-process SketchForge detector session.
 
     Parameters
     ----------
     checkpoint_path:
-        Path to a ``checkpoints/component_detector.pt`` file produced by the
-        training pipeline.  If ``None``, the module tries the default path
-        ``<repo_root>/checkpoints/component_detector.pt``.
+        Path to a component-detector checkpoint produced by the training
+        pipeline. If ``None``, the module tries
+        ``<repo_root>/checkpoints/component_detector_v1/best.pt``, then the
+        legacy ``component_detector.pt`` path.
     device:
         ``"auto"`` (default) uses CUDA if available, else CPU.
         ``"cuda"`` / ``"cpu"`` forces a specific device.
@@ -160,7 +161,7 @@ class LocalInferenceSession:
                 "PyTorch is not installed.  Run: pip install torch torchvision"
             ) from exc
         try:
-            from sketchforge.models.component_detector.architecture import ComponentDetector
+            from sketchforge.models.component_detector.architecture import build_model
         except ImportError as exc:
             raise LocalRuntimeUnavailable(
                 f"ComponentDetector model module could not be imported: {exc}"
@@ -177,7 +178,7 @@ class LocalInferenceSession:
         ckpt = torch.load(str(self._checkpoint_path), map_location=device)
 
         num_classes = ckpt.get("config", {}).get("num_classes", 15)
-        model = ComponentDetector(num_classes=num_classes)
+        model = build_model(num_classes=num_classes)
         model.load_state_dict(ckpt["model_state_dict"])
         model.to(device)
         model.eval()
@@ -250,8 +251,18 @@ class LocalInferenceSession:
             with torch.no_grad():
                 outputs = self._model(tensor)
 
-            class_logits = outputs.get("class_logits") if isinstance(outputs, dict) else outputs
-            box_preds    = outputs.get("box_preds")    if isinstance(outputs, dict) else None
+            if isinstance(outputs, list):
+                from sketchforge.training.detection_targets import generate_anchors
+                class_logits = torch.cat([level[0][0] for level in outputs], dim=0)
+                deltas = torch.cat([level[1][0] for level in outputs], dim=0)
+                anchors = generate_anchors(outputs)
+                box_preds = torch.cat((
+                    anchors[:, :2] + deltas[:, :2] * anchors[:, 2:],
+                    anchors[:, 2:] * deltas[:, 2:].clamp(-5, 5).exp(),
+                ), dim=1)
+            else:
+                class_logits = outputs.get("class_logits") if isinstance(outputs, dict) else outputs
+                box_preds = outputs.get("box_preds") if isinstance(outputs, dict) else None
 
             raw = decode(class_logits, box_preds, self.conf_threshold, image_wh)
             raw = nms(raw, iou_threshold=self.nms_threshold)
@@ -313,7 +324,12 @@ def _resolve_checkpoint(path: Path | str | None) -> Path:
     if path is not None:
         return Path(path)
     from sketchforge.utilities.paths import repo_root
-    return repo_root() / "checkpoints" / "component_detector.pt"
+    root = repo_root() / "checkpoints"
+    candidates = (
+        root / "component_detector_v1" / "best.pt",
+        root / "component_detector.pt",
+    )
+    return next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
 
 
 def _resolve_device(pref: str) -> "torch.device":  # type: ignore[name-defined]
