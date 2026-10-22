@@ -114,6 +114,11 @@ def main() -> int:
     print("=" * 60)
     print(f"  Data:       {data_path} ({n_images} images)")
     print(f"  Device:     {device_str}")
+    if device_str == "cuda":
+        import torch
+        print(f"  GPU:        {torch.cuda.get_device_name(0)}")
+        print(f"  CUDA AMP:   {'on' if cfg.mixed_precision else 'off'}")
+        print(f"  Layout:     {'channels_last' if cfg.channels_last else 'contiguous'}")
     print(f"  Epochs:     {cfg.epochs if not args.smoke_test else '1 (smoke test)'}")
     print(f"  Batch size: {cfg.batch_size}")
     print(f"  Lr:         {cfg.learning_rate}")
@@ -146,11 +151,13 @@ def main() -> int:
 
     if report.final_test_metrics:
         tr = report.final_test_metrics.to_dict()
-        print(f"  Test accuracy: {tr.get('accuracy', 0):.4f}")
+        print(f"  Test anchor acc: {tr.get('accuracy', 0):.4f}")
         print(f"  Test loss:     {tr.get('loss', 0):.4f}")
+        print(f"  Test IoU:      {tr.get('mean_iou', 0):.4f}")
+        print(f"  Test mAP@0.5:  {tr.get('mAP', 0):.4f}")
 
     print(f"  Best checkpoint epoch: {report.best_epoch}")
-    print(f"  Best val metric:       {report.best_val_loss:.4f}")
+    print(f"  Best val mAP@0.5:      {report.best_val_map:.4f}")
     print()
 
     # Save report
@@ -161,7 +168,8 @@ def main() -> int:
         "smoke_test": args.smoke_test,
         "epochs_run": sum(metric.phase == "train" for metric in report.epochs),
         "best_epoch": report.best_epoch,
-        "best_val_metric": report.best_val_loss,
+        "best_val_metric": report.best_val_map,
+        "best_val_loss": report.best_val_loss,
         "test_results": report.final_test_metrics.to_dict() if report.final_test_metrics else None,
         "elapsed_seconds": round(elapsed, 1),
         "config": {
@@ -171,6 +179,8 @@ def main() -> int:
             "learning_rate": cfg.learning_rate,
             "device": device_str,
             "seed": cfg.seed,
+            "mixed_precision": cfg.mixed_precision,
+            "channels_last": cfg.channels_last,
         },
     }
     report_path.write_text(json.dumps(report_dict, indent=2) + "\n", encoding="utf-8")

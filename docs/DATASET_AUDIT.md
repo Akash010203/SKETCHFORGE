@@ -1,11 +1,11 @@
 # Dataset Audit
 
-Reviewed: 2026-10-20
+Reviewed: 2026-10-22
 
 This is a provenance and policy screen, not legal advice. The training allowlist is Apache-2.0, MIT, and MPL-2.0.
 A code repository license does not establish the license for its dataset. Unknown or inherited data terms stay blocked.
 
-Current filesystem free space: 442.90 GiB; conservative planning budget (50%): 221.45 GiB.
+Current filesystem free space: 368.48 GiB; conservative planning budget (50%): 184.24 GiB.
 
 | Candidate | Dataset license | Access | Size estimate | Training | Decision |
 |---|---|---|---:|---|---|
@@ -16,6 +16,8 @@ Current filesystem free space: 442.90 GiB; conservative planning budget (50%): 2
 | [Sketch2Diagram Benchmark](https://huggingface.co/datasets/DiagramAgent/Sketch2Diagram-Benchmark) | `Apache-2.0` | public | 0.13 GiB | eligible | eligible_for_pilot_review |
 | [ImageCLEF DrawnUI 2020](https://www.aicrowd.com/challenges/imageclef-2020-drawnui) | `NOASSERTION` | public | unknown | eligible | eligible_for_pilot_review |
 | [ImageCLEFdrawnUI 2021 wireframe task](https://www.imageclef.org/2021/drawnui) | `NOASSERTION` | public | unknown | eligible | eligible_for_pilot_review |
+| [BigCode CommitPackFT](https://huggingface.co/datasets/bigcode/commitpackft) | `Apache-2.0` | public | 0.31 GiB | eligible | eligible_for_pilot_review |
+| [BigCode The Stack Dedup (20 GB sample)](https://huggingface.co/datasets/bigcode/the-stack-dedup) | `LicenseRef-custom` | gated | 20.00 GiB | eligible | blocked_pending_rights_or_license_review |
 
 ## Findings
 

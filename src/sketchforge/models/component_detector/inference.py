@@ -54,12 +54,11 @@ class ComponentDetectorInference:
         with torch.no_grad():
             outputs = self._model(image_tensor)
         if isinstance(outputs, list):
-            from sketchforge.training.detection_targets import generate_anchors
+            from sketchforge.training.detection_targets import decode_box_deltas, generate_anchors
             class_logits = torch.cat([level[0][0] for level in outputs], dim=0)
             deltas = torch.cat([level[1][0] for level in outputs], dim=0)
             anchors = generate_anchors(outputs)
-            box_preds = torch.cat((anchors[:, :2] + deltas[:, :2] * anchors[:, 2:],
-                                   anchors[:, 2:] * deltas[:, 2:].clamp(-5, 5).exp()), dim=1)
+            box_preds = decode_box_deltas(anchors, deltas)
         else:
             class_logits = outputs.get("class_logits") if isinstance(outputs, dict) else outputs
             box_preds = outputs.get("box_preds") if isinstance(outputs, dict) else None

@@ -6,14 +6,23 @@ produces :class:`RawSample` objects that the rest of the pipeline works with.
 
 Current adapters
 ----------------
-* ``SyntheticAdapter``  — reads the local ``datasets/synthetic/`` set produced
+* ``SyntheticAdapter``      — reads the local ``datasets/synthetic/`` set produced
   by ``synthetic_generator.py``.  Always available.
-* ``WebSightAdapter``   — reads the HuggingFace WebSight parquet shards
+* ``WebSightAdapter``       — reads the HuggingFace WebSight parquet shards
   (CC-BY-4.0) after they have been placed in ``datasets/raw/websight/``.
-* ``SaltSketch2CodeAdapter`` — reads the SALT-NLP Sketch2Code image/HTML pairs
+* ``SaltSketch2CodeAdapter``— reads the SALT-NLP Sketch2Code image/HTML pairs
   after they have been placed in ``datasets/raw/salt-sketch2code/``.
-* ``ImageCLEFAdapter``  — reads the ImageCLEF DrawnUI 2021 wireframe set after
+* ``ImageCLEFAdapter``      — reads the ImageCLEF DrawnUI 2021 wireframe set after
   manually placing gated data in ``datasets/raw/imageclef-drawnui-2021/``.
+* ``RICOAdapter``           — reads the RICO Android UI dataset downloaded from
+  HuggingFace (``creative-graphic-design/Rico``) into ``datasets/raw/rico/``.
+  Run ``scripts/download_datasets.py --dataset rico`` to fetch it.
+* ``MrtoyMobileUIAdapter``  — reads the ``mrtoy/mobile-ui-design`` HuggingFace
+  dataset with ready-made bbox annotations into ``datasets/raw/mrtoy-mobile-ui/``.
+  Run ``scripts/download_datasets.py --dataset mrtoy-mobile-ui`` to fetch it.
+* ``RoboflowCOCOAdapter``   — reads any COCO-format export from Roboflow Universe.
+  Place the unzipped export at ``datasets/raw/roboflow-wireframe/`` and run
+  ``scripts/process_datasets.py --dataset roboflow-wireframe``.
 
 Downloading
 -----------
@@ -431,6 +440,301 @@ class ImageCLEFAdapter(BaseAdapter):
             )
 
 
+# ---- RICO Android UI Dataset -----------------------------------------------
+
+
+class RICOAdapter(BaseAdapter):
+    """RICO Android UI dataset — 66k screenshots with component bounding boxes.
+
+    Reads data pre-downloaded from HuggingFace (``creative-graphic-design/Rico``)
+    or from the original interaction-mining.org release.
+
+    Expected layout after running ``scripts/download_datasets.py --dataset rico``::
+
+        datasets/raw/rico/
+            data.json          (view hierarchy JSON, one per screen)
+            combined/          (screenshot PNGs keyed by screen id)
+                0.jpg, 1.jpg, ...
+    """
+
+    dataset_id = "rico"
+
+    # Map Rico semantic class names to SketchForge component type strings.
+    _TYPE_MAP: dict[str, str] = {
+        "Button": "button",
+        "Text Button": "button",
+        "Image": "image",
+        "Text": "text",
+        "Input": "input",
+        "Icon": "icon",
+        "List Item": "list_item",
+        "Toolbar": "toolbar",
+        "Web View": "container",
+        "Background Image": "image",
+        "Drawer": "container",
+        "Advertisement": "image",
+        "Pager Indicator": "indicator",
+        "Modal": "modal",
+        "Slider": "slider",
+        "Radio Button": "radio",
+        "Checkbox": "checkbox",
+        "Multi-Tab": "tabs",
+        "Card": "card",
+        "Number Stepper": "stepper",
+        "Toggle": "toggle",
+        "Date Picker": "picker",
+        "Map View": "map",
+        "On/Off Switch": "toggle",
+        "Video": "image",
+        "Bottom Navigation": "navbar",
+    }
+
+    def __init__(self, data_dir: Path | str | None = None) -> None:
+        from sketchforge.utilities.paths import repo_root
+        self._dir = Path(data_dir) if data_dir else repo_root() / "datasets" / "raw" / "rico"
+
+    def is_available(self) -> bool:
+        # Accept either JSONL semantics file or combined/ image directory
+        has_images = (self._dir / "combined").is_dir() and any(
+            (self._dir / "combined").glob("*.jpg")
+        )
+        has_semantic = any(self._dir.glob("*.json")) or any(self._dir.glob("*.jsonl"))
+        return self._dir.is_dir() and (has_images or has_semantic)
+
+    def samples(self) -> Iterator[RawSample]:
+        img_dir = self._dir / "combined"
+        # Find annotation source: prefer semantic_annotations.json
+        ann_file = self._dir / "semantic_annotations.json"
+        if not ann_file.exists():
+            candidates = list(self._dir.glob("*.json")) + list(self._dir.glob("*.jsonl"))
+            ann_file = candidates[0] if candidates else None
+
+        annotations: dict = {}
+        if ann_file and ann_file.exists():
+            try:
+                raw = ann_file.read_text(encoding="utf-8")
+                # Support both JSON array and JSONL
+                if raw.strip().startswith("["):
+                    records = json.loads(raw)
+                    for rec in records:
+                        sid = str(rec.get("screen_id", rec.get("id", "")))
+                        annotations[sid] = rec
+                else:
+                    for line in raw.splitlines():
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rec = json.loads(line)
+                            sid = str(rec.get("screen_id", rec.get("id", "")))
+                            annotations[sid] = rec
+                        except json.JSONDecodeError:
+                            pass
+            except Exception as exc:  # noqa: BLE001
+                log.warning("RICOAdapter: could not load annotations: %s", exc)
+
+        if not img_dir.is_dir():
+            return
+        for img_path in sorted(img_dir.glob("*.jpg")):
+            sid = img_path.stem
+            bboxes = []
+            ann = annotations.get(sid, {})
+            for comp in ann.get("components", []):
+                label = self._TYPE_MAP.get(comp.get("componentLabel", ""), "unknown")
+                bounds = comp.get("bounds", [])
+                if len(bounds) == 4:
+                    x1, y1, x2, y2 = bounds
+                    bboxes.append({
+                        "label": label,
+                        "x": float(x1), "y": float(y1),
+                        "w": float(x2 - x1), "h": float(y2 - y1),
+                    })
+            yield RawSample(
+                sample_id=f"rico-{sid}",
+                source_dataset=self.dataset_id,
+                image_path=img_path,
+                bboxes=bboxes,
+                provenance={"screen_id": sid, "has_annotations": bool(bboxes)},
+            )
+
+
+# ---- mrtoy/mobile-ui-design (HuggingFace) ----------------------------------
+
+
+class MrtoyMobileUIAdapter(BaseAdapter):
+    """mrtoy/mobile-ui-design — HuggingFace dataset with ready bbox annotations.
+
+    Run ``scripts/download_datasets.py --dataset mrtoy-mobile-ui`` to fetch.
+    Alternatively, set data_dir to a pre-downloaded parquet/arrow cache directory.
+
+    Expected layout::
+
+        datasets/raw/mrtoy-mobile-ui/
+            data-*.arrow  (or *.parquet from HuggingFace cache)
+    """
+
+    dataset_id = "mrtoy-mobile-ui"
+
+    def __init__(self, data_dir: Path | str | None = None) -> None:
+        from sketchforge.utilities.paths import repo_root
+        self._dir = (
+            Path(data_dir) if data_dir
+            else repo_root() / "datasets" / "raw" / "mrtoy-mobile-ui"
+        )
+
+    def is_available(self) -> bool:
+        if not self._dir.is_dir():
+            return False
+        return (
+            any(self._dir.rglob("*.arrow"))
+            or any(self._dir.rglob("*.parquet"))
+            or any(self._dir.rglob("*.png"))
+            or any(self._dir.rglob("*.jpg"))
+        )
+
+    def samples(self) -> Iterator[RawSample]:
+        # Try loading via HuggingFace datasets library from local cache
+        try:
+            from datasets import load_dataset, load_from_disk  # type: ignore[import]
+            # If saved with save_to_disk()
+            disk_path = self._dir / "dataset"
+            if disk_path.exists():
+                ds = load_from_disk(str(disk_path))
+            else:
+                ds = load_dataset("mrtoy/mobile-ui-design", cache_dir=str(self._dir),
+                                  split="train")
+            for i, row in enumerate(ds):
+                img = row.get("image")
+                bboxes_raw = row.get("bbox", row.get("bboxes", []))
+                categories = row.get("category", row.get("categories", []))
+                bboxes = []
+                # bbox format varies — normalize to {label, x, y, w, h}
+                for j, bbox in enumerate(bboxes_raw if isinstance(bboxes_raw, list) else []):
+                    cat = categories[j] if isinstance(categories, list) and j < len(categories) else "unknown"
+                    if isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
+                        x, y, w, h = float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])
+                        bboxes.append({"label": str(cat), "x": x, "y": y, "w": w, "h": h})
+                    elif isinstance(bbox, dict):
+                        bboxes.append({
+                            "label": str(cat),
+                            "x": float(bbox.get("x", bbox.get("xmin", 0))),
+                            "y": float(bbox.get("y", bbox.get("ymin", 0))),
+                            "w": float(bbox.get("w", bbox.get("width", 0))),
+                            "h": float(bbox.get("h", bbox.get("height", 0))),
+                        })
+                # Convert PIL image to bytes if needed
+                image_bytes = None
+                if img is not None and hasattr(img, "tobytes"):
+                    import io
+                    buf = io.BytesIO()
+                    img.save(buf, format="PNG")
+                    image_bytes = buf.getvalue()
+                yield RawSample(
+                    sample_id=f"mrtoy-{i:07d}",
+                    source_dataset=self.dataset_id,
+                    image_path=None,
+                    image_bytes=image_bytes,
+                    bboxes=bboxes,
+                    provenance={"row": i, "source": "mrtoy/mobile-ui-design"},
+                )
+        except ImportError:
+            log.warning("MrtoyMobileUIAdapter: huggingface datasets not installed. "
+                        "Run: pip install datasets")
+        except Exception as exc:  # noqa: BLE001
+            log.warning("MrtoyMobileUIAdapter: error loading dataset: %s", exc)
+
+
+# ---- Roboflow COCO Export --------------------------------------------------
+
+
+class RoboflowCOCOAdapter(BaseAdapter):
+    """Reads any COCO-format dataset exported from Roboflow Universe.
+
+    Download any wireframe/UI dataset from https://universe.roboflow.com,
+    choose "COCO" export format, and unzip to ``datasets/raw/roboflow-wireframe/``.
+
+    Expected layout::
+
+        datasets/raw/roboflow-wireframe/
+            train/
+                _annotations.coco.json
+                image1.jpg, image2.jpg, ...
+            valid/
+                _annotations.coco.json
+                ...
+            test/          (optional)
+                _annotations.coco.json
+                ...
+    """
+
+    dataset_id = "roboflow-wireframe"
+
+    def __init__(self, data_dir: Path | str | None = None) -> None:
+        from sketchforge.utilities.paths import repo_root
+        self._dir = (
+            Path(data_dir) if data_dir
+            else repo_root() / "datasets" / "raw" / "roboflow-wireframe"
+        )
+
+    def is_available(self) -> bool:
+        if not self._dir.is_dir():
+            return False
+        return any(self._dir.rglob("_annotations.coco.json")) or any(
+            self._dir.rglob("annotations.json")
+        )
+
+    def samples(self) -> Iterator[RawSample]:
+        # Walk all splits (train / valid / test)
+        for ann_path in sorted(self._dir.rglob("*annotations*.json")):
+            split_dir = ann_path.parent
+            try:
+                coco = json.loads(ann_path.read_text(encoding="utf-8"))
+            except Exception as exc:  # noqa: BLE001
+                log.warning("RoboflowCOCOAdapter: cannot read %s: %s", ann_path, exc)
+                continue
+
+            # Build category id → name map
+            categories = {c["id"]: c["name"] for c in coco.get("categories", [])}
+            # Build image id → info map
+            images = {img["id"]: img for img in coco.get("images", [])}
+            # Group annotations by image id
+            ann_by_image: dict[int, list] = {}
+            for ann in coco.get("annotations", []):
+                ann_by_image.setdefault(ann["image_id"], []).append(ann)
+
+            for img_id, img_info in images.items():
+                img_path = split_dir / img_info["file_name"]
+                if not img_path.is_file():
+                    # Try without subdirectory prefix
+                    img_path = split_dir / Path(img_info["file_name"]).name
+                if not img_path.is_file():
+                    continue
+
+                bboxes = []
+                for ann in ann_by_image.get(img_id, []):
+                    cat_name = categories.get(ann.get("category_id", -1), "unknown")
+                    bbox = ann.get("bbox", [])
+                    if len(bbox) == 4:
+                        # COCO format: [x, y, width, height]
+                        bboxes.append({
+                            "label": cat_name,
+                            "x": float(bbox[0]), "y": float(bbox[1]),
+                            "w": float(bbox[2]), "h": float(bbox[3]),
+                        })
+
+                yield RawSample(
+                    sample_id=f"roboflow-{img_path.stem}",
+                    source_dataset=self.dataset_id,
+                    image_path=img_path,
+                    bboxes=bboxes,
+                    provenance={
+                        "split": split_dir.name,
+                        "coco_image_id": img_id,
+                        "has_annotations": bool(bboxes),
+                    },
+                )
+
+
 # ---------------------------------------------------------------------------
 # Pilot downloader (public, licence-clear datasets only)
 # ---------------------------------------------------------------------------
@@ -554,6 +858,10 @@ _ADAPTERS: dict[str, type[BaseAdapter]] = {
     "teklia-iam-line": TekliaIAMLineAdapter,
     "sketch2diagram": Sketch2DiagramAdapter,
     "imageclef-drawnui-2021": ImageCLEFAdapter,
+    # Free / open datasets with real bbox annotations:
+    "rico": RICOAdapter,
+    "mrtoy-mobile-ui": MrtoyMobileUIAdapter,
+    "roboflow-wireframe": RoboflowCOCOAdapter,
 }
 
 

@@ -105,6 +105,8 @@ def make_loaders(cfg: TrainingConfig):
         loader = DataLoader(Subset(ds, split), batch_size=cfg.batch_size,
                             shuffle=training, num_workers=cfg.num_workers,
                             pin_memory=cfg.pin_memory and cfg.resolve_device() == "cuda",
-                            collate_fn=_collate, drop_last=False)
+                            collate_fn=_collate, drop_last=False,
+                            persistent_workers=cfg.num_workers > 0,
+                            prefetch_factor=cfg.prefetch_factor if cfg.num_workers > 0 else None)
         loaders.append(loader)
     return tuple(loaders)

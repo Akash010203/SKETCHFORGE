@@ -44,6 +44,9 @@ class TrainingConfig:
     seed: int = 42
     num_workers: int = 4
     pin_memory: bool = True
+    mixed_precision: bool = True
+    channels_last: bool = True
+    prefetch_factor: int = 3
 
     # ---- device --------------------------------------------------------------
     device: str = "auto"  # "auto" | "cuda" | "cpu" | "mps"

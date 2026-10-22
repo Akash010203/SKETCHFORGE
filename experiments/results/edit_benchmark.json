@@ -12,7 +12,7 @@
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 14.35,
+      "duration_ms": 7.45,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -22,28 +22,17 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.3,
+      "duration_ms": 6.88,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "repair_patches": 0,
-      "task_id": "c01"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 5.39,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "c01"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.31,
+      "duration_ms": 6.13,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -53,28 +42,17 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.31,
+      "duration_ms": 5.7,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "repair_patches": 0,
-      "task_id": "c02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 5.45,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "c02"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 6.94,
+      "duration_ms": 8.63,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -84,7 +62,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.85,
+      "duration_ms": 9.13,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -92,148 +70,103 @@
       "task_id": "c03"
     },
     {
+      "actual": "applied_with_issues",
+      "arm": "oracle",
+      "duration_ms": 7.79,
+      "errors": [
+        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "c04"
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 7.68,
+      "errors": [
+        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "c04"
+    },
+    {
       "actual": "applied_clean",
-      "arm": "hybrid",
+      "arm": "oracle",
+      "duration_ms": 8.64,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c05"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 6.37,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c05"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 7.74,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c06"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 8.73,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c06"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 7.61,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c07"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 7.89,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c07"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
       "duration_ms": 6.73,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
-      "task_id": "c03"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "oracle",
-      "duration_ms": 6.0,
-      "errors": [
-        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "repair_patches": 0,
-      "task_id": "c04"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "local",
-      "duration_ms": 6.35,
-      "errors": [
-        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "repair_patches": 0,
-      "task_id": "c04"
-    },
-    {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 108.03,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "c04"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 5.56,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "c05"
+      "task_id": "c08"
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.46,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "c05"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.4,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "c05"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 7.04,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "c06"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 6.87,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "c06"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.72,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "c06"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 5.89,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "c07"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 6.44,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "c07"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.65,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "c07"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 5.77,
+      "duration_ms": 5.9,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -242,29 +175,8 @@
     },
     {
       "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 7.09,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "c08"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 7.17,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "c08"
-    },
-    {
-      "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 7.5,
+      "duration_ms": 5.64,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -274,59 +186,37 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.61,
+      "duration_ms": 6.67,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "repair_patches": 0,
-      "task_id": "t01"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.1,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "t01"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 6.25,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "t02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 6.18,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "t02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
       "duration_ms": 6.05,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "planner": "local_fallback",
+      "repair_patches": 0,
+      "task_id": "t02"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.48,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
       "repair_patches": 0,
       "task_id": "t02"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 7.51,
+      "duration_ms": 8.31,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -336,28 +226,17 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.91,
+      "duration_ms": 8.51,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "repair_patches": 0,
-      "task_id": "t03"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 9.51,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "t03"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 6.16,
+      "duration_ms": 6.48,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -367,7 +246,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.42,
+      "duration_ms": 6.71,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -376,14 +255,47 @@
     },
     {
       "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.47,
+      "arm": "oracle",
+      "duration_ms": 6.2,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
-      "task_id": "t04"
+      "task_id": "t05"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.85,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "t05"
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "oracle",
+      "duration_ms": 9.71,
+      "errors": [
+        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "t06"
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 8.46,
+      "errors": [
+        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "t06"
     },
     {
       "actual": "applied_clean",
@@ -393,68 +305,12 @@
       "expected": "edit",
       "passed": true,
       "repair_patches": 0,
-      "task_id": "t05"
+      "task_id": "m01"
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.27,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "t05"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 5.26,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "t05"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "oracle",
-      "duration_ms": 7.94,
-      "errors": [
-        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "repair_patches": 0,
-      "task_id": "t06"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "local",
-      "duration_ms": 7.02,
-      "errors": [
-        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "repair_patches": 0,
-      "task_id": "t06"
-    },
-    {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 283.01,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "t06"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 5.56,
+      "duration_ms": 6.26,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -462,30 +318,9 @@
       "task_id": "m01"
     },
     {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 5.3,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "m01"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.05,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "m01"
-    },
-    {
       "actual": "applied_with_issues",
       "arm": "oracle",
-      "duration_ms": 7.14,
+      "duration_ms": 9.64,
       "errors": [
         "new or worsened evaluator issues: ['MISALIGNED:sidebar-1:center_y']"
       ],
@@ -497,7 +332,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 7.05,
+      "duration_ms": 8.45,
       "errors": [
         "new or worsened evaluator issues: ['MISALIGNED:sidebar-1:center_y']"
       ],
@@ -505,219 +340,6 @@
       "passed": false,
       "repair_patches": 0,
       "task_id": "m02"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "hybrid",
-      "duration_ms": 301.56,
-      "errors": [
-        "new or worsened evaluator issues: ['MISALIGNED:sidebar-1:center_y']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "m02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 6.12,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "m03"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 6.18,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "m03"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 5.28,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "m03"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 7.88,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "m04"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 7.9,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "m04"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 7.16,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "m04"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "oracle",
-      "duration_ms": 8.32,
-      "errors": [
-        "new or worsened evaluator issues: ['MISALIGNED:button-1:right']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "repair_patches": 0,
-      "task_id": "m05"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "local",
-      "duration_ms": 8.24,
-      "errors": [
-        "new or worsened evaluator issues: ['MISALIGNED:button-1:right']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "repair_patches": 0,
-      "task_id": "m05"
-    },
-    {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 280.84,
-      "errors": [
-        "button-1.x: expected 300, got 310.377"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "m05"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "oracle",
-      "duration_ms": 5.85,
-      "errors": [
-        "new or worsened evaluator issues: ['MISALIGNED:checkbox-1:left']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "repair_patches": 0,
-      "task_id": "m06"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "local",
-      "duration_ms": 5.31,
-      "errors": [
-        "new or worsened evaluator issues: ['MISALIGNED:checkbox-1:left']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "repair_patches": 0,
-      "task_id": "m06"
-    },
-    {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 266.72,
-      "errors": [
-        "checkbox-1.dx: expected -6, got None"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "m06"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 5.27,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "r01"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "local",
-      "duration_ms": 5.69,
-      "errors": [
-        "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "repair_patches": 0,
-      "task_id": "r01"
-    },
-    {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 260.52,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "r01"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 5.73,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "r02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 5.92,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "r02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.34,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "r02"
     },
     {
       "actual": "applied_clean",
@@ -727,107 +349,202 @@
       "expected": "edit",
       "passed": true,
       "repair_patches": 0,
-      "task_id": "r03"
+      "task_id": "m03"
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.98,
+      "duration_ms": 5.9,
       "errors": [],
       "expected": "edit",
       "passed": true,
       "repair_patches": 0,
-      "task_id": "r03"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 7.02,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "r03"
+      "task_id": "m03"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.34,
+      "duration_ms": 8.37,
       "errors": [],
       "expected": "edit",
       "passed": true,
       "repair_patches": 0,
-      "task_id": "r04"
+      "task_id": "m04"
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.74,
+      "duration_ms": 7.28,
       "errors": [],
       "expected": "edit",
       "passed": true,
       "repair_patches": 0,
-      "task_id": "r04"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 5.14,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "r04"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 5.11,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "r05"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 5.36,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "r05"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 5.12,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "r05"
+      "task_id": "m04"
     },
     {
       "actual": "applied_with_issues",
       "arm": "oracle",
-      "duration_ms": 6.42,
+      "duration_ms": 8.83,
       "errors": [
-        "new or worsened evaluator issues: ['MISALIGNED:header-1:right']"
+        "new or worsened evaluator issues: ['MISALIGNED:button-1:right']"
       ],
       "expected": "edit",
       "passed": false,
+      "repair_patches": 0,
+      "task_id": "m05"
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 8.2,
+      "errors": [
+        "new or worsened evaluator issues: ['MISALIGNED:button-1:right']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "m05"
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "oracle",
+      "duration_ms": 6.78,
+      "errors": [
+        "new or worsened evaluator issues: ['MISALIGNED:checkbox-1:left']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "m06"
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 5.73,
+      "errors": [
+        "new or worsened evaluator issues: ['MISALIGNED:checkbox-1:left']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "m06"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 5.55,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r01"
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 5.63,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "r01"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 7.23,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r02"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 7.13,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r02"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 7.8,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r03"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 8.68,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r03"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 4.99,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r04"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.81,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r04"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 5.37,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r05"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 6.24,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r05"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 6.74,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
       "repair_patches": 0,
       "task_id": "r06"
     },
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 5.7,
+      "duration_ms": 7.37,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PAGE:button-1:right']"
       ],
@@ -837,20 +554,9 @@
       "task_id": "r06"
     },
     {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 103.96,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "r06"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 7.46,
+      "duration_ms": 7.72,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -860,28 +566,17 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.41,
+      "duration_ms": 8.94,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "repair_patches": 0,
-      "task_id": "r07"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.5,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "r07"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.04,
+      "duration_ms": 5.83,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -891,7 +586,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 5.03,
+      "duration_ms": 7.05,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:']"
       ],
@@ -901,20 +596,9 @@
       "task_id": "f01"
     },
     {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 266.44,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "f01"
-    },
-    {
       "actual": "applied_with_issues",
       "arm": "oracle",
-      "duration_ms": 7.31,
+      "duration_ms": 8.04,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_OVERFLOW:heading-2:']"
       ],
@@ -926,7 +610,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 7.12,
+      "duration_ms": 8.32,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-2:', 'TEXT_OVERFLOW:heading-2:']"
       ],
@@ -936,20 +620,9 @@
       "task_id": "f02"
     },
     {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 434.89,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 2,
-      "task_id": "f02"
-    },
-    {
       "actual": "applied_with_issues",
       "arm": "oracle",
-      "duration_ms": 5.81,
+      "duration_ms": 7.31,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_OVERFLOW:heading-1:']"
       ],
@@ -961,7 +634,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 5.81,
+      "duration_ms": 7.26,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:', 'TEXT_OVERFLOW:heading-1:']"
       ],
@@ -971,22 +644,9 @@
       "task_id": "f03"
     },
     {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 158.54,
-      "errors": [
-        "heading-1.font_size: expected 26, got 21.2"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "repair_patches": 2,
-      "task_id": "f03"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.27,
+      "duration_ms": 5.89,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -996,7 +656,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.84,
+      "duration_ms": 5.77,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1005,114 +665,69 @@
     },
     {
       "actual": "applied_clean",
-      "arm": "hybrid",
+      "arm": "oracle",
+      "duration_ms": 8.18,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "k02"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 8.43,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "k02"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 8.1,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "k03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "task_id": "k03"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "oracle",
+      "duration_ms": 7.8,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "x01"
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
       "duration_ms": 5.23,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "k01"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 6.88,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "k02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 6.56,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "k02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.65,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "k02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 6.82,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "k03"
-    },
-    {
-      "actual": "refuse",
-      "arm": "local",
-      "duration_ms": 0.0,
-      "errors": [
-        "planner refused an edit task"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "task_id": "k03"
-    },
-    {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [
-        "planner refused an edit task"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "task_id": "k03"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "oracle",
-      "duration_ms": 5.83,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "x01"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "local",
-      "duration_ms": 5.57,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "repair_patches": 0,
-      "task_id": "x01"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 5.08,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "x01"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 7.79,
+      "duration_ms": 9.24,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1122,28 +737,17 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 7.48,
+      "duration_ms": 8.49,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "repair_patches": 0,
-      "task_id": "x02"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.88,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "x02"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.5,
+      "duration_ms": 6.97,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1153,28 +757,17 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.36,
+      "duration_ms": 5.66,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "repair_patches": 0,
-      "task_id": "x03"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 5.26,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "x03"
     },
     {
       "actual": "applied_with_issues",
       "arm": "oracle",
-      "duration_ms": 6.42,
+      "duration_ms": 8.33,
       "errors": [
         "new or worsened evaluator issues: ['LOW_CONTRAST:input-1:', 'LOW_CONTRAST:input-3:']"
       ],
@@ -1195,21 +788,9 @@
       "task_id": "x04"
     },
     {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [
-        "planner refused an edit task"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "task_id": "x04"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 6.94,
+      "duration_ms": 9.66,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1219,28 +800,17 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.85,
+      "duration_ms": 8.31,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "repair_patches": 0,
-      "task_id": "x05"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 7.68,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "x05"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.8,
+      "duration_ms": 6.28,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1250,7 +820,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 5.58,
+      "duration_ms": 6.09,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
       ],
@@ -1260,20 +830,9 @@
       "task_id": "x06"
     },
     {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 268.12,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "x06"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.22,
+      "duration_ms": 5.78,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1292,21 +851,9 @@
       "task_id": "p01"
     },
     {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [
-        "planner refused an edit task"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "task_id": "p01"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.99,
+      "duration_ms": 6.92,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1325,21 +872,9 @@
       "task_id": "p02"
     },
     {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [
-        "planner refused an edit task"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "task_id": "p02"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 6.83,
+      "duration_ms": 8.13,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1349,28 +884,17 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.58,
+      "duration_ms": 8.45,
       "errors": [],
       "expected": "edit",
       "passed": true,
-      "repair_patches": 0,
-      "task_id": "p03"
-    },
-    {
-      "actual": "applied_clean",
-      "arm": "hybrid",
-      "duration_ms": 6.28,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "p03"
     },
     {
       "actual": "applied_with_issues",
       "arm": "oracle",
-      "duration_ms": 5.88,
+      "duration_ms": 8.17,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_OVERFLOW:heading-1:']"
       ],
@@ -1382,7 +906,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 6.05,
+      "duration_ms": 7.91,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:', 'TEXT_OVERFLOW:heading-1:']"
       ],
@@ -1392,20 +916,9 @@
       "task_id": "p04"
     },
     {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 157.48,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 2,
-      "task_id": "p04"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.46,
+      "duration_ms": 6.13,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1424,21 +937,9 @@
       "task_id": "p05"
     },
     {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [
-        "planner refused an edit task"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "task_id": "p05"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 6.65,
+      "duration_ms": 9.09,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1457,21 +958,9 @@
       "task_id": "p06"
     },
     {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [
-        "planner refused an edit task"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "task_id": "p06"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.18,
+      "duration_ms": 6.38,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1481,7 +970,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 6.24,
+      "duration_ms": 6.53,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
       ],
@@ -1491,20 +980,9 @@
       "task_id": "l01"
     },
     {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 262.04,
-      "errors": [],
-      "expected": "edit",
-      "passed": true,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "l01"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.76,
+      "duration_ms": 6.1,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1514,32 +992,19 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 5.63,
+      "duration_ms": 6.75,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:bottom']"
       ],
       "expected": "edit",
       "passed": false,
-      "repair_patches": 0,
-      "task_id": "l02"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "hybrid",
-      "duration_ms": 116.1,
-      "errors": [
-        "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:bottom']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "l02"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.76,
+      "duration_ms": 6.34,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1549,7 +1014,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 5.68,
+      "duration_ms": 5.74,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:', 'TEXT_OVERFLOW:heading-1:']"
       ],
@@ -1559,22 +1024,9 @@
       "task_id": "l03"
     },
     {
-      "actual": "applied_repaired",
-      "arm": "hybrid",
-      "duration_ms": 261.99,
-      "errors": [
-        "heading-1.font_size: expected '>', got 10.0"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "repair_patches": 1,
-      "task_id": "l03"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 6.93,
+      "duration_ms": 10.05,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1584,7 +1036,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 6.66,
+      "duration_ms": 9.79,
       "errors": [
         "new or worsened evaluator issues: ['OVERLAP:button-1,sidebar-1:', 'OVERLAP:card-1,sidebar-1:', 'OVERLAP:image-2,sidebar-1:']"
       ],
@@ -1594,22 +1046,9 @@
       "task_id": "l04"
     },
     {
-      "actual": "applied_with_issues",
-      "arm": "hybrid",
-      "duration_ms": 270.0,
-      "errors": [
-        "new or worsened evaluator issues: ['OVERLAP:button-1,sidebar-1:', 'OVERLAP:card-1,sidebar-1:', 'OVERLAP:image-2,sidebar-1:']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
-      "repair_patches": 0,
-      "task_id": "l04"
-    },
-    {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 7.37,
+      "duration_ms": 8.84,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1619,32 +1058,19 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 9.7,
+      "duration_ms": 9.03,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PAGE:heading-1:top']"
       ],
       "expected": "edit",
       "passed": false,
-      "repair_patches": 0,
-      "task_id": "l05"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "hybrid",
-      "duration_ms": 54.25,
-      "errors": [
-        "new or worsened evaluator issues: ['OVERFLOW_PAGE:heading-1:top']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "l05"
     },
     {
       "actual": "applied_clean",
       "arm": "oracle",
-      "duration_ms": 5.11,
+      "duration_ms": 5.96,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1654,25 +1080,12 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 5.19,
+      "duration_ms": 7.08,
       "errors": [
-        "new or worsened evaluator issues: ['OVERFLOW_PAGE:card-1:bottom', 'OVERLAP:card-1,text-6:']"
+        "new or worsened evaluator issues: ['OVERFLOW_PAGE:card-1:bottom', 'OVERLAP:card-1,text-4:']"
       ],
       "expected": "edit",
       "passed": false,
-      "repair_patches": 0,
-      "task_id": "l06"
-    },
-    {
-      "actual": "applied_with_issues",
-      "arm": "hybrid",
-      "duration_ms": 696.81,
-      "errors": [
-        "new or worsened evaluator issues: ['OVERFLOW_PAGE:card-1:bottom', 'OVERLAP:card-1,text-6:']"
-      ],
-      "expected": "edit",
-      "passed": false,
-      "planner": "local_fallback",
       "repair_patches": 0,
       "task_id": "l06"
     },
@@ -1692,16 +1105,6 @@
       "errors": [],
       "expected": "refuse",
       "passed": true,
-      "task_id": "n01"
-    },
-    {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [],
-      "expected": "refuse",
-      "passed": true,
-      "planner": "local_fallback",
       "task_id": "n01"
     },
     {
@@ -1720,16 +1123,6 @@
       "errors": [],
       "expected": "refuse",
       "passed": true,
-      "task_id": "n02"
-    },
-    {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [],
-      "expected": "refuse",
-      "passed": true,
-      "planner": "local_fallback",
       "task_id": "n02"
     },
     {
@@ -1748,16 +1141,6 @@
       "errors": [],
       "expected": "refuse",
       "passed": true,
-      "task_id": "n03"
-    },
-    {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [],
-      "expected": "refuse",
-      "passed": true,
-      "planner": "local_fallback",
       "task_id": "n03"
     },
     {
@@ -1776,16 +1159,6 @@
       "errors": [],
       "expected": "refuse",
       "passed": true,
-      "task_id": "n04"
-    },
-    {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [],
-      "expected": "refuse",
-      "passed": true,
-      "planner": "local_fallback",
       "task_id": "n04"
     },
     {
@@ -1804,16 +1177,6 @@
       "errors": [],
       "expected": "refuse",
       "passed": true,
-      "task_id": "n05"
-    },
-    {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [],
-      "expected": "refuse",
-      "passed": true,
-      "planner": "local_fallback",
       "task_id": "n05"
     },
     {
@@ -1832,16 +1195,6 @@
       "errors": [],
       "expected": "refuse",
       "passed": true,
-      "task_id": "n06"
-    },
-    {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [],
-      "expected": "refuse",
-      "passed": true,
-      "planner": "local_fallback",
       "task_id": "n06"
     },
     {
@@ -1860,31 +1213,10 @@
       "errors": [],
       "expected": "refuse",
       "passed": true,
-      "task_id": "n07"
-    },
-    {
-      "actual": "refuse",
-      "arm": "hybrid",
-      "duration_ms": 0.0,
-      "errors": [],
-      "expected": "refuse",
-      "passed": true,
-      "planner": "local_fallback",
       "task_id": "n07"
     }
   ],
   "summary": {
-    "hybrid": {
-      "outcomes": {
-        "applied_clean": 27,
-        "applied_repaired": 13,
-        "applied_with_issues": 5,
-        "refuse": 13
-      },
-      "pass_rate": 0.7414,
-      "passed": 43,
-      "tasks": 58
-    },
     "local": {
       "outcomes": {
         "applied_clean": 27,
@@ -1897,12 +1229,12 @@
     },
     "oracle": {
       "outcomes": {
-        "applied_clean": 41,
-        "applied_with_issues": 10,
+        "applied_clean": 42,
+        "applied_with_issues": 9,
         "refuse": 7
       },
-      "pass_rate": 0.8276,
-      "passed": 48,
+      "pass_rate": 0.8448,
+      "passed": 49,
       "tasks": 58
     }
   },

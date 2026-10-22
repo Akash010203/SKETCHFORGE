@@ -28,8 +28,11 @@ datasets/evaluation/*
 !datasets/evaluation/rough_mobile_ux.jpg
 !datasets/evaluation/rough_mobile_ux.truth.json
 !datasets/evaluation/real_photo_manifest.json
-datasets/synthetic/*
-!datasets/synthetic/.gitkeep
+datasets/synthetic*/*
+!datasets/synthetic*/.gitkeep
+experiments/logs/*
+*.log
+experiments/overnight_progress.txt
 checkpoints/*
 !checkpoints/.gitkeep
 !checkpoints/README.md

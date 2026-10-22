@@ -114,6 +114,31 @@ def test_property_edits_text_colour_position_size(loaded, app):
     assert document_hash(ctl.document) == start
 
 
+def test_natural_language_prompt_enter_applies_edit_and_refreshes_views(loaded, app):
+    ctl = loaded.controller
+    button = next(c for c in ctl.document.components if c.type.value == "button")
+    requested_color, expected_fill = (("purple", "#7c3aed")
+                                      if button.style.fill != "#7c3aed" else ("orange", "#ea580c"))
+    old_svg = ctl.render().svg
+    old_renderer = loaded.canvas._renderer
+    revision = ctl.project.stack.revision
+
+    loaded.edit_prompt.setFocus()
+    QTest.keyClicks(loaded.edit_prompt, f"make {button.id} {requested_color}")
+    QTest.keyClick(loaded.edit_prompt, Qt.Key.Key_Return)
+    app.processEvents()
+
+    assert ctl.document.require(button.id).style.fill == expected_fill
+    assert ctl.project.stack.revision == revision + 1
+    assert ctl.render().svg != old_svg
+    assert loaded.canvas._renderer is not old_renderer and loaded.canvas._renderer.isValid()
+    assert loaded.edit_prompt.text() == ""
+    assert loaded.act_undo.isEnabled()
+
+    loaded.undo()
+    assert ctl.document.require(button.id).style.fill != expected_fill
+
+
 def test_rejected_edit_reports_and_snaps_back(loaded, app):
     ctl = loaded.controller
     comp = next(c for c in ctl.document.components if c.type.value == "button")

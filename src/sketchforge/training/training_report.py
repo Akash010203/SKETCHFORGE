@@ -15,6 +15,7 @@ class TrainingReport:
     config: dict
     epochs: list[EpochMetrics] = field(default_factory=list)
     best_val_loss: float = float("inf")
+    best_val_map: float = -1.0
     best_epoch: int = 0
     final_test_metrics: EpochMetrics | None = None
     started_at: str = field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
@@ -26,6 +27,8 @@ class TrainingReport:
         self.epochs.append(m)
         if m.phase == "val" and m.loss < self.best_val_loss:
             self.best_val_loss = m.loss
+        if m.phase == "val" and m.mAP > self.best_val_map:
+            self.best_val_map = m.mAP
             self.best_epoch = m.epoch
 
     def finish(self, test: EpochMetrics | None = None, stopped_early: bool = False) -> None:
@@ -41,6 +44,8 @@ class TrainingReport:
             "stopped_early": self.stopped_early,
             "best_epoch": self.best_epoch,
             "best_val_loss": round(self.best_val_loss, 6),
+            "best_val_mAP": round(self.best_val_map, 6),
+            "selection_metric": "mAP@0.5",
             "test": self.final_test_metrics.to_dict() if self.final_test_metrics else None,
             "epochs": [e.to_dict() for e in self.epochs],
             "config": self.config,
@@ -66,6 +71,7 @@ class TrainingReport:
             f"| Finished | {self.finished_at} |",
             f"| Best epoch | {self.best_epoch} |",
             f"| Best val loss | {self.best_val_loss:.6f} |",
+            f"| Best val mAP@0.5 | {self.best_val_map:.4f} |",
             f"| Stopped early | {self.stopped_early} |",
             f"",
         ]

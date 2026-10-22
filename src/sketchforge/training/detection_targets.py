@@ -23,6 +23,15 @@ def generate_anchors(outputs):
     return torch.cat(anchors_by_level)
 
 
+def decode_box_deltas(anchors, deltas):
+    """Decode normalized center/size anchor offsets into valid image boxes."""
+    import torch
+
+    centers = (anchors[:, :2] + deltas[..., :2] * anchors[:, 2:]).clamp(0.0, 1.0)
+    sizes = (anchors[:, 2:] * deltas[..., 2:].clamp(-5, 5).exp()).clamp(1e-4, 1.0)
+    return torch.cat((centers, sizes), dim=-1)
+
+
 def match_batch(outputs, targets, num_classes: int):
     import torch
 
