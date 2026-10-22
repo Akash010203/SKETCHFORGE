@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from sketchforge.application.app_controller import AppController
 from sketchforge.design_ir.document import preorder
 from sketchforge.design_ir.schema import ComponentType, DesignDocument
+from sketchforge.editor.layer_operations import reorder
 
 
 # Map component type → icon label (fallback until real icon assets exist)
@@ -193,15 +194,22 @@ class LayerPanel(QWidget):
             self.status_message.emit(f"Error: {exc}")
 
     def _move_up(self) -> None:
-        cid = self._selected_id()
-        if cid:
-            self.status_message.emit(
-                f"Layer re-ordering for '{cid}': planned for next milestone."
-            )
+        self._reorder_selected("up")
 
     def _move_down(self) -> None:
+        self._reorder_selected("down")
+
+    def _reorder_selected(self, direction: str) -> None:
         cid = self._selected_id()
-        if cid:
-            self.status_message.emit(
-                f"Layer re-ordering for '{cid}': planned for next milestone."
-            )
+        if not cid:
+            return
+        try:
+            command = reorder(self._ctrl.document, cid, direction)
+            if not command.commands:
+                return
+            self._ctrl.execute(command)
+            self.refresh()
+            self.sync_selection(cid)
+            self.status_message.emit(f"Moved layer {direction}: {cid}")
+        except Exception as exc:
+            self.status_message.emit(f"Error: {exc}")
