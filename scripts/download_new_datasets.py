@@ -61,45 +61,32 @@ def download_rico(dest: Path) -> None:
     """Download RICO from HuggingFace (creative-graphic-design/Rico)."""
     print("=" * 60)
     print("Downloading: RICO Android UI Dataset")
-    print("Source: https://huggingface.co/datasets/creative-graphic-design/Rico")
+    print("Source: https://huggingface.co/datasets/Voxel51/rico")
     print(f"Destination: {dest}")
     print("=" * 60)
     print()
-    print("NOTE: The full RICO dataset is very large (~13 GB).")
-    print("We will download the semantic annotations version which is smaller")
-    print("and already has clean component bounding boxes.")
+    print("The official Voxel51 mirror is approximately 8.3 GB and uses CC-BY-4.0.")
+    print("It includes semantic UI detections and is saved in the format read by RICOAdapter.")
     print()
 
     try:
         from datasets import load_dataset  # type: ignore[import]
     except ImportError:
         print("ERROR: huggingface datasets not installed.")
-        print("Run: pip install datasets")
+        print("Run: pip install -e '.[data]'")
         return
 
     print("Fetching RICO from HuggingFace (this may take a while)...")
     try:
-        # Try the semantic version first (smaller, better annotations)
         ds = load_dataset(
             "Voxel51/rico",
             split="train",
             cache_dir=str(dest / ".cache"),
         )
-    except Exception:
-        try:
-            ds = load_dataset(
-                "creative-graphic-design/Rico",
-                split="train",
-                cache_dir=str(dest / ".cache"),
-            )
-        except Exception as exc:
-            print(f"ERROR: Could not load RICO: {exc}")
-            print()
-            print("Alternative: Download manually from:")
-            print("  http://www.interactionmining.org/rico.html")
-            print("Then place images at: datasets/raw/rico/combined/")
-            print("And annotations at:   datasets/raw/rico/semantic_annotations.json")
-            return
+    except Exception as exc:
+        print(f"ERROR: Could not load the licensed Voxel51 mirror: {exc}")
+        print("No fallback dataset was substituted, to avoid misattributing source and license.")
+        return
 
     print(f"Downloaded {len(ds)} samples.")
     save_path = dest / "dataset"

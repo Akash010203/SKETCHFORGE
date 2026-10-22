@@ -227,7 +227,7 @@ class SaltSketch2CodeAdapter(BaseAdapter):
 
     def is_available(self) -> bool:
         img_dir = self._resolve_img_dir()
-        return img_dir is not None and any(img_dir.glob("*.png"))
+        return img_dir is not None and any(img_dir.rglob("*.png"))
 
     def _resolve_img_dir(self) -> Path | None:
         for candidate in ("sketches", "images", ""):
@@ -383,17 +383,50 @@ class Sketch2DiagramAdapter(BaseAdapter):
     def is_available(self) -> bool:
         if not self._dir.is_dir():
             return False
-        return any(self._dir.rglob("*.png")) or any(self._dir.rglob("*.jpg")) or any(self._dir.glob("*.zip"))
+        benchmark = next((p for p in self._dir.rglob("test_set_sketch_2_code.json")), None)
+        if benchmark is not None:
+            try:
+                records = json.loads(benchmark.read_text(encoding="utf-8"))
+                base = benchmark.parent
+                return any(
+                    (base / str(ref).removeprefix("./")).is_file()
+                    and (base / str(ref).removeprefix("./")).stat().st_size > 0
+                    for record in records
+                    for ref in record.get("sketch_image", [])
+                )
+            except (OSError, json.JSONDecodeError, TypeError):
+                return False
+        return any(p.stat().st_size > 0 for p in self._dir.rglob("initial_image/*.png"))
 
     def samples(self) -> Iterator[RawSample]:
-        for img_path in sorted(self._dir.rglob("*")):
-            if img_path.suffix.lower() in {".png", ".jpg", ".jpeg"}:
-                yield RawSample(
-                    sample_id=f"diagram-{img_path.stem}",
-                    source_dataset=self.dataset_id,
-                    image_path=img_path,
-                    provenance={"rel_path": str(img_path.relative_to(self._dir))},
-                )
+        benchmark = next(iter(self._dir.rglob("test_set_sketch_2_code.json")), None)
+        if benchmark is None:
+            return
+        try:
+            records = json.loads(benchmark.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            log.warning("Sketch2DiagramAdapter: cannot read benchmark records: %s", exc)
+            return
+        base = benchmark.parent
+        for record in records:
+            refs = record.get("sketch_image", [])
+            if isinstance(refs, str):
+                refs = [refs]
+            img_path = next((base / str(ref).removeprefix("./") for ref in refs
+                             if (base / str(ref).removeprefix("./")).is_file()
+                             and (base / str(ref).removeprefix("./")).stat().st_size > 0), None)
+            if img_path is None:
+                continue
+            prompt = "\n".join(str(m.get("content", "")) for m in record.get("messages", [])
+                               if m.get("role") == "user")
+            yield RawSample(
+                sample_id=f"diagram-{record.get('id', img_path.stem)}",
+                source_dataset=self.dataset_id,
+                image_path=img_path,
+                label=prompt or None,
+                provenance={"benchmark_id": record.get("id"),
+                            "code_image": record.get("code_image", [])},
+            )
 
 
 # ---- ImageCLEF DrawnUI 2021 ------------------------------------------------
@@ -494,6 +527,8 @@ class RICOAdapter(BaseAdapter):
         self._dir = Path(data_dir) if data_dir else repo_root() / "datasets" / "raw" / "rico"
 
     def is_available(self) -> bool:
+        if (self._dir / "dataset").is_dir():
+            return True
         # Accept either JSONL semantics file or combined/ image directory
         has_images = (self._dir / "combined").is_dir() and any(
             (self._dir / "combined").glob("*.jpg")
@@ -503,6 +538,42 @@ class RICOAdapter(BaseAdapter):
 
     def samples(self) -> Iterator[RawSample]:
         img_dir = self._dir / "combined"
+        saved_dataset = self._dir / "dataset"
+        if saved_dataset.is_dir():
+            try:
+                from datasets import load_from_disk  # type: ignore[import]
+                dataset = load_from_disk(str(saved_dataset))
+            except ImportError:
+                log.warning("RICOAdapter: install the data extra: pip install -e '.[data]'")
+                return
+            except Exception as exc:  # noqa: BLE001
+                log.warning("RICOAdapter: cannot open saved Hugging Face dataset: %s", exc)
+                return
+            for i, row in enumerate(dataset):
+                image = row.get("image", row.get("screenshot"))
+                image_bytes = _image_bytes(image)
+                if image_bytes is None:
+                    continue
+                width = int(row.get("width", 0) or 0)
+                height = int(row.get("height", 0) or 0)
+                try:
+                    from PIL import Image
+                    import io
+                    with Image.open(io.BytesIO(image_bytes)) as decoded:
+                        width, height = decoded.size
+                except Exception:  # noqa: BLE001
+                    pass
+                boxes = _rico_row_boxes(row, width, height)
+                yield RawSample(
+                    sample_id=f"rico-{row.get('screen_id', row.get('id', i))}",
+                    source_dataset=self.dataset_id,
+                    image_path=None,
+                    image_bytes=image_bytes,
+                    bboxes=boxes,
+                    provenance={"row": i, "has_annotations": bool(boxes), "format": "huggingface"},
+                )
+            return
+
         # Find annotation source: prefer semantic_annotations.json
         ann_file = self._dir / "semantic_annotations.json"
         if not ann_file.exists():
@@ -605,15 +676,27 @@ class MrtoyMobileUIAdapter(BaseAdapter):
                                   split="train")
             for i, row in enumerate(ds):
                 img = row.get("image")
-                bboxes_raw = row.get("bbox", row.get("bboxes", []))
-                categories = row.get("category", row.get("categories", []))
+                # Current mrtoy/mobile-ui-design stores its annotations in an
+                # `objects` struct: {bbox: [...], category: [...], ...}.
+                # Older exports used top-level bbox/category columns.
+                objects = row.get("objects", {})
+                if not isinstance(objects, dict):
+                    objects = {}
+                mrtoy_xyxy = "bbox" in objects
+                bboxes_raw = row.get("bbox", row.get("bboxes", objects.get("bbox", [])))
+                categories = row.get("category", row.get("categories", objects.get("category", [])))
                 bboxes = []
                 # bbox format varies — normalize to {label, x, y, w, h}
                 for j, bbox in enumerate(bboxes_raw if isinstance(bboxes_raw, list) else []):
                     cat = categories[j] if isinstance(categories, list) and j < len(categories) else "unknown"
                     if isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
                         x, y, w, h = float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])
-                        bboxes.append({"label": str(cat), "x": x, "y": y, "w": w, "h": h})
+                        # MrToy uses [x1, y1, x2, y2]; older exports use [x,y,w,h].
+                        if mrtoy_xyxy:
+                            w, h = w - x, h - y
+                        label = {"rectangle": "container", "group": "container"}.get(
+                            str(cat).lower(), str(cat).lower())
+                        bboxes.append({"label": label, "x": x, "y": y, "w": w, "h": h})
                     elif isinstance(bbox, dict):
                         bboxes.append({
                             "label": str(cat),
@@ -879,6 +962,55 @@ def available_adapters() -> list[str]:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _image_bytes(image: object) -> bytes | None:
+    """Encode a Hugging Face image feature or image payload as PNG bytes."""
+    if isinstance(image, bytes):
+        return image
+    if isinstance(image, dict):
+        payload = image.get("bytes")
+        if payload:
+            return payload
+        image_path = image.get("path")
+        if image_path and Path(str(image_path)).is_file():
+            return Path(str(image_path)).read_bytes()
+        return None
+    if image is not None and hasattr(image, "save"):
+        import io
+        output = io.BytesIO()
+        image.save(output, format="PNG")
+        return output.getvalue()
+    return None
+
+
+def _rico_row_boxes(row: dict, width: int, height: int) -> list[dict]:
+    """Normalize common RICO/FiftyOne detection records to pixel xywh boxes."""
+    detections = row.get("detections", row.get("components", []))
+    if isinstance(detections, dict):
+        detections = detections.get("detections", detections.get("objects", []))
+    if not isinstance(detections, list):
+        return []
+    result = []
+    for item in detections:
+        if not isinstance(item, dict):
+            continue
+        label = str(item.get("label", item.get("component_label", item.get("componentLabel", "unknown"))))
+        label = RICOAdapter._TYPE_MAP.get(label, RICOAdapter._TYPE_MAP.get(label.title(), label.lower()))
+        bbox = item.get("bounding_box", item.get("bbox"))
+        if not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
+            bounds = item.get("bounds")
+            if not isinstance(bounds, (list, tuple)) or len(bounds) < 4:
+                continue
+            x1, y1, x2, y2 = map(float, bounds[:4])
+            x, y, w, h = x1, y1, x2 - x1, y2 - y1
+        else:
+            x, y, w, h = map(float, bbox[:4])
+            if max(abs(x), abs(y), abs(w), abs(h)) <= 1.0 and width > 0 and height > 0:
+                x, w = x * width, w * width
+                y, h = y * height, h * height
+        if w > 0 and h > 0:
+            result.append({"label": label, "x": x, "y": y, "w": w, "h": h})
+    return result
 
 def _parse_voc_xml(path: Path) -> list[dict]:
     """Parse a Pascal VOC XML annotation file into a list of bbox dicts."""

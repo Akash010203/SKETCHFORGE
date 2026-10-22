@@ -36,7 +36,15 @@ def truth_to_targets(
     from sketchforge.models.component_detector.architecture import CLASS_TO_IDX
 
     boxes, labels = [], []
-    for component in truth.get("components", []):
+    components = truth.get("components", [])
+    if not components and truth.get("bboxes"):
+        components = [
+            {"type": item.get("label", "unknown"),
+             "bbox": [item.get("x", 0), item.get("y", 0),
+                      item.get("w", 0), item.get("h", 0)]}
+            for item in truth["bboxes"]
+        ]
+    for component in components:
         kind = _TYPE_ALIASES.get(str(component.get("type", "unknown")).lower(),
                                  str(component.get("type", "unknown")).lower())
         label = CLASS_TO_IDX.get(kind, CLASS_TO_IDX["unknown"])
@@ -47,6 +55,40 @@ def truth_to_targets(
                       w / image_w, h / image_h))
         labels.append(label)
     return boxes, labels
+
+
+class ProcessedDetectorDataset:
+    """Read labeled samples emitted by ``scripts/process_datasets.py``.
+
+    Samples without boxes are skipped. Box coordinates remain in source image
+    pixels and are normalized after aspect-preserving resize.
+    """
+
+    def __init__(self, data_dir: str | Path, target_size: int = 512) -> None:
+        import json
+
+        self.data_dir = Path(data_dir)
+        self.target_size = target_size
+        manifest = json.loads((self.data_dir / "manifest.json").read_text(encoding="utf-8"))
+        self.records = [r for r in manifest.get("samples", []) if r.get("has_detection_labels")]
+
+    def __len__(self) -> int:
+        return len(self.records)
+
+    def __getitem__(self, index: int) -> DetectorSample:
+        import cv2
+        record = self.records[index]
+        path = self.data_dir / record["image"]
+        bgr = cv2.imread(str(path), cv2.IMREAD_COLOR)
+        if bgr is None:
+            raise ValueError(f"cannot read detector image: {path}")
+        h, w = bgr.shape[:2]
+        scale = self.target_size / max(h, w)
+        size = (max(1, round(w * scale)), max(1, round(h * scale)))
+        bgr = cv2.resize(bgr, size, interpolation=cv2.INTER_AREA)
+        boxes, labels = truth_to_targets(record, w, h)
+        return DetectorSample(image=_ink_mask(bgr), boxes=boxes, labels=labels,
+                              source=str(record.get("source_dataset", "processed")))
 
 
 def _ink_mask(bgr: np.ndarray) -> np.ndarray:

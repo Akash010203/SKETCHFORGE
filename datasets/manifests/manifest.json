@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "reviewed_on": "2026-10-20",
+  "reviewed_on": "2026-10-22",
   "datasets": [
     {
       "id": "salt-sketch2code",
@@ -35,6 +35,38 @@
       "expected_download_bytes": 21474836480,
       "artifacts": [],
       "notes": "Screenshot + HTML/Tailwind pairs. Total ~145 GB. Capped at 20 GB download (~8-10 shards)."
+    },
+    {
+      "id": "mrtoy-mobile-ui",
+      "name": "MrToy Mobile UI Design",
+      "source_url": "https://huggingface.co/datasets/mrtoy/mobile-ui-design",
+      "revision": "main",
+      "license_spdx": "Apache-2.0",
+      "license_source_url": "https://huggingface.co/datasets/mrtoy/mobile-ui-design",
+      "access": "public",
+      "intended_use": [
+        "training",
+        "research"
+      ],
+      "expected_download_bytes": null,
+      "artifacts": [],
+      "notes": "Mobile UI screenshots with component boxes stored in objects.bbox. The local Hugging Face dataset has 7,846 rows; processed subsets are recorded separately."
+    },
+    {
+      "id": "rico",
+      "name": "RICO Semantic UI Dataset (Voxel51 mirror)",
+      "source_url": "https://huggingface.co/datasets/Voxel51/rico",
+      "revision": "main",
+      "license_spdx": "CC-BY-4.0",
+      "license_source_url": "https://huggingface.co/datasets/Voxel51/rico",
+      "access": "public",
+      "intended_use": [
+        "training",
+        "research"
+      ],
+      "expected_download_bytes": 8875687936,
+      "artifacts": [],
+      "notes": "Semantic screenshots with component detections. Download only from the Voxel51 mirror; the creative-graphic-design mirror has unclear license metadata and is not substituted."
     },
     {
       "id": "webcode2m",

@@ -23,6 +23,8 @@ ui = ["PySide6-Essentials>=6.6", "PySide6-Addons>=6.6"]
 remote = ["openai>=1.40"]
 # Own-model training (Phase 6). Not needed for Milestone 1.
 ml = ["torch>=2.2"]
+browser = ["playwright>=1.45"]
+data = ["datasets>=2.19"]
 ocr = ["torch>=2.2", "transformers>=4.40", "sentencepiece>=0.1.99"]
 ocr-train = ["torch>=2.2", "pyarrow>=14"]
 dev = ["pytest>=8.0", "ruff>=0.5"]

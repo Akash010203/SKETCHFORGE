@@ -2,7 +2,7 @@
 # requests unless `enabled: true` AND the user acknowledges the egress notice in the session.
 # Credentials are never stored here: set NEBIUS_API_KEY in the environment (see .env.example).
 nebius:
-  enabled: false
+  enabled: true
   base_url: "https://api.tokenfactory.nebius.com/v1/"
   api_key_env: NEBIUS_API_KEY
   # Identifiers taken from Nebius's August-2026 deprecation notice (replacements for removed NVIDIA

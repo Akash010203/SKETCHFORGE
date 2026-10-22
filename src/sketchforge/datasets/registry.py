@@ -133,6 +133,7 @@ class DatasetRegistry:
     # ------------------------------------------------------------------ construction
     def _build(self) -> None:
         raw_dir = self._root / "raw"
+        processed_dir = self._root / "processed"
         for record in self._manifest.datasets:
             local = raw_dir / record.id
             if not local.is_dir():
@@ -140,7 +141,21 @@ class DatasetRegistry:
                 alt = raw_dir / record.id.split("-v0")[0]
                 if alt.is_dir():
                     local = alt
-            count = self._count_samples(local) if local.is_dir() else 0
+            raw_count = 0
+            if local.is_dir():
+                try:
+                    from sketchforge.datasets.source_adapters import get_adapter
+                    adapter = get_adapter(record.id)
+                except KeyError:
+                    # Keep a file-presence count for non-image/code corpora that
+                    # do not currently have a normalized source adapter.
+                    raw_count = self._count_samples(local)
+                else:
+                    # Avoid counting metadata-only caches as usable datasets.
+                    if adapter.is_available():
+                        raw_count = self._count_samples(local)
+            processed_count = self._count_samples(processed_dir / record.id)
+            count = max(raw_count, processed_count)
             self._entries.append(CatalogueEntry(
                 record=record,
                 local_artifacts_present=count > 0,
@@ -155,6 +170,16 @@ class DatasetRegistry:
     def _count_samples(path: Path) -> int:
         if not path.is_dir():
             return 0
+        # Hugging Face save_to_disk() exports its row count in dataset_info.json.
+        dataset_info = path / "dataset_info.json"
+        if dataset_info.is_file():
+            try:
+                info = json.loads(dataset_info.read_text(encoding="utf-8"))
+                splits = info.get("splits", {})
+                if splits:
+                    return sum(int(split.get("num_examples", 0)) for split in splits.values())
+            except (OSError, ValueError, TypeError):
+                pass
         # 1. Count images recursively (e.g. sketches/, webpages/, images/)
         img_count = sum(1 for f in path.rglob("*") if f.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"})
         if img_count > 0:
