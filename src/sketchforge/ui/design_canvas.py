@@ -175,7 +175,7 @@ class DesignCanvas(QGraphicsView):
     # ------------------------------------------------------------------ mouse
     def _on_handle(self, comp: Component, pos: QPointF) -> bool:
         b = comp.bbox
-        tol = max(HANDLE, 8.0 / max(self.transform().m11(), 1e-6))
+        tol = min(12.0, max(HANDLE, 8.0 / max(self.transform().m11(), 1e-6)))
         return abs(pos.x() - b.x2) <= tol and abs(pos.y() - b.y2) <= tol
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 (Qt API)

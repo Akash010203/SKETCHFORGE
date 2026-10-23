@@ -41,7 +41,7 @@ def _model_detections(ink: object) -> tuple[list[Detection] | None, str | None]:
     if mode not in {"", "1", "true", "on", "auto"}:
         return None, f"unknown SKETCHFORGE_COMPONENT_MODEL value {mode!r}; using CV"
     try:
-        from sketchforge.integrations.nvidia.local_inference import LocalInferenceSession
+        from sketchforge.models.component_detector.inference import LocalInferenceSession
 
         if _LOCAL_DETECTOR is None:
             _LOCAL_DETECTOR = LocalInferenceSession()

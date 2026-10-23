@@ -25,6 +25,7 @@ def decode(
     box_preds: torch.Tensor | None = None,
     conf_threshold: float = 0.3,
     image_wh: tuple[int, int] | None = None,
+    max_detections: int = 300,
 ) -> list[Detection]:
     """Convert model outputs to a list of Detections.
 
@@ -37,18 +38,22 @@ def decode(
     probs = torch.softmax(class_logits, dim=-1)  # (N, C)
     confs, class_ids = probs.max(dim=-1)         # (N,), (N,)
 
+    eligible = torch.nonzero((class_ids > 0) & (confs >= conf_threshold), as_tuple=False).flatten()
+    if eligible.numel() > max_detections:
+        eligible = eligible[torch.topk(confs[eligible], max_detections).indices]
+    rows = eligible.tolist()
+    ids = class_ids[eligible].tolist()
+    scores = confs[eligible].tolist()
+    boxes = box_preds[eligible].tolist() if box_preds is not None else [None] * len(rows)
+
     detections: list[Detection] = []
-    for i in range(class_ids.shape[0]):
-        cid  = class_ids[i].item()
-        conf = confs[i].item()
-        if cid == 0 or conf < conf_threshold:
-            continue
+    for cid, conf, box in zip(ids, scores, boxes, strict=True):
         name = CLASS_NAMES[cid] if cid < len(CLASS_NAMES) else f"cls_{cid}"
 
         bbox = (0.0, 0.0, 0.0, 0.0)
         bbox_px = None
-        if box_preds is not None:
-            cx, cy, w, h = box_preds[i].tolist()
+        if box is not None:
+            cx, cy, w, h = box
             bbox = (cx, cy, w, h)
             if image_wh is not None:
                 W, H = image_wh

@@ -57,46 +57,75 @@ def _run_model_inference(checkpoint_path: Path, layouts, conditions, seeds):
     """Run the trained model on synthetic sketches and return metrics."""
     try:
         import torch
-        from sketchforge.models.component_detector.architecture import ComponentDetector
-        from sketchforge.models.component_detector.inference import run_inference
+        import cv2
+        import numpy as np
+        from sketchforge.models.component_detector.inference import ComponentDetectorInference
     except ImportError as exc:
         print(f"  ERROR: {exc}")
         return None
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    ckpt = torch.load(str(checkpoint_path), map_location=device, weights_only=True)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    detector = ComponentDetectorInference(checkpoint_path, device=device)
+    print(f"  Loaded checkpoint: epoch {detector.checkpoint_meta.get('epoch', '?')} on {device}")
 
-    num_classes = ckpt.get("num_classes", 15)
-    model = ComponentDetector(num_classes=num_classes).to(device)
-    model.load_state_dict(ckpt["model_state"])
-    model.eval()
-    print(f"  Loaded checkpoint: epoch {ckpt.get('epoch', '?')} | val metric {ckpt.get('val_metric', '?')}")
-
-    from sketchforge.datasets.synthetic_generator import ALL_LAYOUTS, render_sketch
+    from sketchforge.datasets.synthetic_generator import render_sketch
     from sketchforge.evaluation.component_metrics import BoxItem, score_detection
+    from sketchforge.training.metrics import detection_metrics
 
     true_pos = false_pos = false_neg = 0
-    iou_sum = 0.0
+    matched_total = 0
+    correct_type_total = 0
     n_cases = 0
+    ap_predictions = []
+    ap_targets = []
 
     for layout_name, layout_fn in layouts.items():
         for cond_name in conditions:
             for seed in seeds:
                 spec = layout_fn()
                 image, truth = render_sketch(spec, seed=seed, condition=cond_name)
-                preds = run_inference(model, image, device=device)
+                height, width = image.shape[:2]
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                gray = cv2.resize(gray, (512, 512), interpolation=cv2.INTER_AREA)
+                tensor = torch.from_numpy((1.0 - gray.astype(np.float32) / 255.0).copy())[None]
+                # Keep low-confidence candidates for AP; separately score the default threshold.
+                candidates = detector.predict(tensor, conf_threshold=0.01, image_wh=(512, 512))
+                defaults = [p for p in candidates if p.confidence >= 0.3]
 
                 gt_items = [
                     BoxItem(c["type"], tuple(c["bbox"]))
                     for c in truth["components"] if c["type"] != "page"
                 ]
-                pred_items = [BoxItem(p["type"], tuple(p["bbox"])) for p in preds]
+                pred_items = [
+                    BoxItem(p.class_name, ((p.bbox[0] - p.bbox[2] / 2) * width,
+                                           (p.bbox[1] - p.bbox[3] / 2) * height,
+                                           p.bbox[2] * width, p.bbox[3] * height))
+                    for p in defaults
+                ]
                 scores = score_detection(pred_items, gt_items)
-                true_pos += scores.true_pos
-                false_pos += scores.false_pos
-                false_neg += scores.false_neg
-                iou_sum += scores.mean_iou
+                true_pos += scores.n_matched
+                false_pos += len(pred_items) - scores.n_matched
+                false_neg += len(gt_items) - scores.n_matched
+                matched_total += scores.n_matched
+                correct_type_total += round(scores.type_accuracy * scores.n_matched)
                 n_cases += 1
+
+                ap_predictions.append([
+                    {"label": p.class_id, "score": p.confidence, "box": p.bbox}
+                    for p in candidates
+                ])
+                from sketchforge.models.component_detector.architecture import CLASS_TO_IDX
+                ap_targets.append({
+                    "boxes": torch.tensor([
+                        ((x + w / 2) / width, (y + h / 2) / height, w / width, h / height)
+                        for component in truth["components"] if component["type"] != "page"
+                        for x, y, w, h in [component["bbox"]]
+                    ], dtype=torch.float32).reshape(-1, 4),
+                    "labels": torch.tensor([
+                        CLASS_TO_IDX.get(component["type"], CLASS_TO_IDX["unknown"])
+                        for component in truth["components"] if component["type"] != "page"
+                    ], dtype=torch.long),
+                })
 
     if n_cases == 0:
         return None
@@ -104,12 +133,16 @@ def _run_model_inference(checkpoint_path: Path, layouts, conditions, seeds):
     precision = true_pos / max(true_pos + false_pos, 1)
     recall = true_pos / max(true_pos + false_neg, 1)
     f1 = 2 * precision * recall / max(precision + recall, 1e-9)
+    mean_iou, map50 = detection_metrics(ap_predictions, ap_targets, iou_threshold=0.5)
     return {
         "f1": round(f1, 4),
         "precision": round(precision, 4),
         "recall": round(recall, 4),
-        "type_accuracy": None,  # not available from inference directly
-        "mean_iou": round(iou_sum / n_cases, 4),
+        "type_accuracy": round(correct_type_total / matched_total, 4) if matched_total else 0.0,
+        "mean_iou": round(mean_iou, 4),
+        "mAP50": round(map50, 4),
+        "confidence_threshold": 0.3,
+        "ap_candidate_threshold": 0.01,
         "cases": n_cases,
     }
 

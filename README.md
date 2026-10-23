@@ -130,5 +130,4 @@ environment. No credentials are stored in the repository (`.env` is git-ignored)
 
 ## License
 
-No license has been chosen yet; that is the owner's decision. Until one is added, all rights are
-reserved by default.
+Released under the MIT License. See LICENSE for details.

@@ -159,23 +159,6 @@ class GenerationPanel(QWidget):
         self.database_target.currentIndexChanged.connect(self._set_migration_availability)
         self._set_migration_availability()
 
-    def _set_backend_controls(self, enabled: bool) -> None:
-        for control in (self.database_target, self.orm_target, self.api_target,
-                        self.auth_option, self.migrations_option):
-            control.setEnabled(enabled)
-        self._set_migration_availability()
-
-    def _set_migration_availability(self, *_args) -> None:
-        orm = self.orm_target.currentText().lower()
-        database = self.database_target.currentText().lower()
-        if orm == "prisma" and self.auth_option.isChecked():
-            self.auth_option.setChecked(False)
-        self.migrations_option.setEnabled(
-            self.backend.isChecked() and (orm in {"sqlalchemy", "prisma"} or database != "sqlite")
-        )
-        self.auth_option.setEnabled(self.backend.isChecked() and orm != "prisma")
-        self.api_target.setEnabled(self.backend.isChecked() and orm != "prisma")
-
         self.generate_button = QPushButton("✦   Generate full stack")
         self.generate_button.setObjectName("generateButton")
         self.generate_button.clicked.connect(self.generate)
@@ -246,6 +229,23 @@ class GenerationPanel(QWidget):
         self.recent.setObjectName("workspaceHint")
         self.recent.setWordWrap(True)
         layout.addWidget(self.recent)
+
+    def _set_backend_controls(self, enabled: bool) -> None:
+        for control in (self.database_target, self.orm_target, self.api_target,
+                        self.auth_option, self.migrations_option):
+            control.setEnabled(enabled)
+        self._set_migration_availability()
+
+    def _set_migration_availability(self, *_args) -> None:
+        orm = self.orm_target.currentText().lower()
+        database = self.database_target.currentText().lower()
+        if orm == "prisma" and self.auth_option.isChecked():
+            self.auth_option.setChecked(False)
+        self.migrations_option.setEnabled(
+            self.backend.isChecked() and (orm in {"sqlalchemy", "prisma"} or database != "sqlite")
+        )
+        self.auth_option.setEnabled(self.backend.isChecked() and orm != "prisma")
+        self.api_target.setEnabled(self.backend.isChecked() and orm != "prisma")
 
     # ------------------------------------------------------------------
     def choose_output_folder(self) -> None:
