@@ -8,6 +8,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog,
+    QApplication,
+    QCheckBox,
+    QDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -30,6 +33,7 @@ from sketchforge.ui.component_tree import ComponentTree
 from sketchforge.ui.correction_panel import CorrectionPanel
 from sketchforge.ui.dataset_panel import DatasetPanel
 from sketchforge.ui.design_canvas import DesignCanvas
+from sketchforge.ui.generation_panel import GenerationPanel
 from sketchforge.ui.layer_panel import LayerPanel
 from sketchforge.ui.preview_panel import PreviewPanel
 from sketchforge.ui.properties_panel import PropertiesPanel
@@ -63,9 +67,12 @@ class MainWindow(QMainWindow):
         self.training = TrainingPanel(controller)
         self.datasets = DatasetPanel(controller)
         self.progress = TaskProgress()
+        self.generator = GenerationPanel()
+        self.setStyleSheet(_studio_stylesheet())
 
         # -- left tab widget --
         left = QTabWidget()
+        left.addTab(self.generator, "Create")
         left.addTab(self.tree, "Components")
         left.addTab(self.sketch_view, "Sketch")
         left.addTab(self.layer_panel, "Layers")
@@ -73,10 +80,12 @@ class MainWindow(QMainWindow):
 
         # -- right tab widget --
         right = QTabWidget()
+        right.addTab(self.preview, "Preview")
         right.addTab(self.properties, "Properties")
         right.addTab(self.correction, "Measure && repair")
-        right.addTab(self.preview, "Code")
         right.addTab(self.training, "Training")
+        left.setCurrentWidget(self.generator)
+        right.setCurrentWidget(self.preview)
 
         self.left_tabs, self.right_tabs = left, right
 
@@ -113,7 +122,22 @@ class MainWindow(QMainWindow):
 
         self._build_actions()
         self._wire()
+        self.generator.project_ready.connect(self._on_generated_project)
+        self.generator.generation_failed.connect(self._on_generation_failed)
+        self.generator.status_message.connect(lambda m: self.statusBar().showMessage(m, 8000))
         self._refresh_all()
+
+    def _on_generated_project(self, root: str) -> None:
+        try:
+            self.preview.attach_project(root)
+        except (OSError, ValueError) as exc:
+            self.statusBar().showMessage(f"Project files were created, but preview could not start: {exc}", 10000)
+            return
+        self.right_tabs.setCurrentWidget(self.preview)
+
+    def _on_generation_failed(self, message: str) -> None:
+        self.preview.show_error(message, "Project generation failed")
+        self.right_tabs.setCurrentWidget(self.preview)
 
     # ------------------------------------------------------------------ actions
     def _action(self, text: str, slot, shortcut: str | QKeySequence.StandardKey | None = None) -> QAction:
@@ -129,6 +153,7 @@ class MainWindow(QMainWindow):
         self.act_save = self._action("Save project", self.save_project, QKeySequence.StandardKey.Save)
         self.act_save_as = self._action("Save project as…", lambda: self.save_project(as_new=True))
         self.act_export = self._action("Export design…", self.export_design)
+        self.act_share = self._action("Share", self.show_share)
         self.act_quit = self._action("Quit", self.close, QKeySequence.StandardKey.Quit)
         self.act_undo = self._action("Undo", self.undo, QKeySequence.StandardKey.Undo)
         self.act_redo = self._action("Redo", self.redo, QKeySequence.StandardKey.Redo)
@@ -169,7 +194,7 @@ class MainWindow(QMainWindow):
         bar = self.addToolBar("Main")
         bar.setMovable(False)
         bar.addActions([self.act_import, self.act_save, self.act_undo, self.act_redo, self.act_fit,
-                        self.act_evaluate, self.act_repair])
+                        self.act_evaluate, self.act_repair, self.act_share])
 
     def _wire(self) -> None:
         b = self.bridge
@@ -336,6 +361,52 @@ class MainWindow(QMainWindow):
         """Open application preferences for the active controller."""
         SettingsDialog(self.controller, self).exec()
 
+    def show_share(self) -> None:
+        """Offer a clear, local-only preview link until public hosting is configured."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Share Project")
+        dialog.setFixedWidth(410)
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(22, 18, 22, 20)
+        heading = QHBoxLayout()
+        title = QLabel("Share project")
+        title.setStyleSheet("font-size: 17px; font-weight: 700;")
+        close = QPushButton("×")
+        close.setFixedWidth(32)
+        close.clicked.connect(dialog.reject)
+        heading.addWidget(title, 1)
+        heading.addWidget(close)
+        layout.addLayout(heading)
+
+        toggle = QCheckBox("Enable sharing & remixing")
+        toggle.setChecked(False)
+        layout.addWidget(toggle)
+        access = QLabel("Only you can access this project")
+        access.setObjectName("mutedText")
+        layout.addWidget(access)
+        notice = QLabel(
+            "Your generated project is stored on this computer. Public sharing needs a hosting service. "
+            "A local preview address only works on this device."
+        )
+        notice.setWordWrap(True)
+        notice.setStyleSheet("background:#19181f;border:1px solid #ffffff22;border-radius:8px;padding:11px;color:#b6b3bd;")
+        layout.addWidget(notice)
+        copy = QPushButton("Copy local preview address")
+        copy.setEnabled(False)
+        layout.addWidget(copy)
+
+        def update_access(enabled: bool) -> None:
+            access.setText("Local preview link enabled for this device" if enabled else "Only you can access this project")
+            copy.setEnabled(enabled and bool(self.preview._project_url))
+
+        toggle.toggled.connect(update_access)
+        def copy_address() -> None:
+            QApplication.clipboard().setText(self.preview._project_url)
+            self.statusBar().showMessage("Copied a local preview address. It works only on this device.", 7000)
+            dialog.accept()
+        copy.clicked.connect(copy_address)
+        dialog.exec()
+
     def confirm_discard(self) -> bool:
         """True when it is safe to replace the open project (override in tests)."""
         if not (self.controller.has_project and self.controller.project.dirty):
@@ -352,5 +423,43 @@ class MainWindow(QMainWindow):
             return
         self.workspace.sync_tabs(self.left_tabs, self.right_tabs)
         self.bridge.detach()
+        self.preview._stop_server()
         self.controller.close()
         event.accept()
+
+
+def _studio_stylesheet() -> str:
+    """Dark, compact studio chrome inspired by the supplied Stitch references."""
+    return """
+    QMainWindow, QWidget { background: #111116; color: #eeedf3; font-family: 'Segoe UI', sans-serif; font-size: 12px; }
+    QMenuBar { background: #0d0d11; color: #c9c7d0; border-bottom: 1px solid #ffffff19; padding: 4px; }
+    QMenuBar::item { padding: 6px 10px; border-radius: 6px; }
+    QMenuBar::item:selected, QMenu::item:selected { background: #2d2b36; }
+    QMenu { background: #1c1b22; border: 1px solid #34323d; }
+    QToolBar { background: #0d0d11; border: 0; border-bottom: 1px solid #ffffff19; spacing: 7px; padding: 5px 9px; }
+    QToolButton, QPushButton { background: #24232b; color: #e8e6ee; border: 1px solid #ffffff1c; border-radius: 8px; padding: 7px 10px; }
+    QToolButton:hover, QPushButton:hover { background: #302e39; border-color: #d9ff5f66; }
+    QToolButton:disabled, QPushButton:disabled { color: #77747e; }
+    QTabWidget::pane { border: 1px solid #ffffff1a; border-radius: 10px; top: -1px; }
+    QTabBar::tab { background: #17171d; color: #9996a2; padding: 9px 12px; margin: 3px 2px 0; border-radius: 7px; }
+    QTabBar::tab:selected { background: #2a2932; color: #f2f0f7; }
+    QSplitter::handle { background: #24232b; width: 1px; }
+    QLineEdit, QPlainTextEdit, QTextEdit, QComboBox { background: #17171d; color: #ebe9f1; border: 1px solid #ffffff21; border-radius: 8px; padding: 7px 9px; selection-background-color: #596d29; }
+    QCheckBox { color: #c8c5cf; spacing: 8px; }
+    QCheckBox::indicator { width: 15px; height: 15px; }
+    QCheckBox::indicator:checked { background: #d9ff5f; border: 1px solid #d9ff5f; border-radius: 4px; }
+    QStatusBar { background: #0d0d11; color: #aaa7b2; border-top: 1px solid #ffffff16; }
+    QScrollBar:vertical { background: #15151a; width: 9px; margin: 0; }
+    QScrollBar::handle:vertical { background: #3c3a45; min-height: 25px; border-radius: 4px; }
+    QLabel#eyebrow { color: #d9ff5f; font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+    QLabel#generationTitle { color: #f2f0f7; font-size: 20px; font-weight: 700; }
+    QLabel#mutedText { color: #9d9aa6; font-size: 10px; }
+    QPlainTextEdit#generationPrompt { background: #1b1a21; border: 1px solid #ffffff29; border-radius: 10px; padding: 10px; font-size: 11px; }
+    QPushButton#generateButton { background: #d9ff5f; color: #17180f; border: 0; font-weight: 700; padding: 10px; }
+    QPushButton#generateButton:hover { background: #e7ff96; }
+    QPushButton#suggestionButton { background: #1b1a20; color: #c6c3ce; text-align: left; padding: 7px 9px; }
+    QLabel#workspaceHint { color: #918e9b; background: #1a191f; border: 1px solid #ffffff15; border-radius: 9px; padding: 10px; font-size: 10px; }
+    QWidget#previewControls { background: #18171d; border-bottom: 1px solid #ffffff18; }
+    QLabel#previewEmptyState { color: #a6a3ae; font-size: 13px; line-height: 1.6; background: #101014; }
+    QLabel#runtimeError { color: #ff9f9f; background: #351c22; padding: 8px; }
+    """

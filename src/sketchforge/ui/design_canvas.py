@@ -48,6 +48,21 @@ class DesignCanvas(QGraphicsView):
         self._show_issues = on
         self.refresh_overlays()
 
+    def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # noqa: N802 (Qt API)
+        """Paint the dark dotted studio board behind the editable design."""
+        painter.fillRect(rect, QColor("#101014"))
+        painter.save()
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor("#31303a"))
+        spacing = 24
+        x0 = int(rect.left() // spacing) * spacing
+        y0 = int(rect.top() // spacing) * spacing
+        x1, y1 = int(rect.right()) + spacing, int(rect.bottom()) + spacing
+        for x in range(x0, x1, spacing):
+            for y in range(y0, y1, spacing):
+                painter.drawEllipse(QPointF(x, y), 1.0, 1.0)
+        painter.restore()
+
     def reload(self) -> None:
         """Re-render the current document (call after any document change)."""
         scene = self.scene()
