@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import os
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -28,6 +29,10 @@ try:
 except ImportError:  # Optional desktop component.
     QWebEngineSettings = None
     QWebEngineView = None
+
+LIVE_PREVIEW_AVAILABLE = (
+    QWebEngineView is not None and os.environ.get("QT_QPA_PLATFORM") != "offscreen"
+)
 
 from sketchforge.application.app_controller import AppController
 from sketchforge.design_ir.serialization import to_json
@@ -74,7 +79,7 @@ class PreviewPanel(QTabWidget):
         self.js_view = _code_view()
 
         self.preview_page = QWidget()
-        self.web_view = _PreviewView(self) if QWebEngineView else QWidget()
+        self.web_view = _PreviewView(self) if LIVE_PREVIEW_AVAILABLE else QWidget()
         preview_layout = QVBoxLayout(self.preview_page)
         preview_layout.setContentsMargins(0, 0, 0, 0)
         preview_layout.setSpacing(0)
@@ -118,7 +123,7 @@ class PreviewPanel(QTabWidget):
         error_layout.addWidget(self.error_detail)
         error_layout.addWidget(self.recover_button, alignment=Qt.AlignmentFlag.AlignCenter)
         error_layout.addStretch()
-        if QWebEngineView is not None:
+        if LIVE_PREVIEW_AVAILABLE:
             self.preview_stack.addWidget(self.empty_state)
             self.preview_stack.addWidget(self.loading_state)
             self.preview_stack.addWidget(self.error_state)
@@ -127,9 +132,11 @@ class PreviewPanel(QTabWidget):
             settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
         else:
             fallback = QLabel(
-                "The live preview needs PySide6 Addons. Install the desktop extras with:\n"
-                "python -m pip install -e \".[ui]\"\n\n"
-                "Then restart SketchForge to preview generated project files here."
+                ("Live preview is disabled in headless mode. Run SketchForge in a desktop session."
+                 if QWebEngineView is not None else
+                 "The live preview needs PySide6 WebEngine. Install the desktop extras with:\n"
+                 "python -m pip install -e \".[ui]\"\n\n"
+                 "Then restart SketchForge to preview generated project files here.")
             )
             fallback.setAlignment(Qt.AlignmentFlag.AlignCenter)
             fallback.setWordWrap(True)
@@ -214,10 +221,10 @@ class PreviewPanel(QTabWidget):
         if not self.project_root:
             self._show_state("empty")
             return
-        if QWebEngineView is None:
+        if not LIVE_PREVIEW_AVAILABLE:
             return
         self._show_state("starting")
-        self.error_label.setVisible(False)
+        self.runtime_bar.setVisible(False)
         self.web_view.setHtml(self._sandbox_document(self._project_url), QUrl("about:blank"))
 
     @staticmethod
@@ -235,7 +242,7 @@ html,body{{margin:0;width:100%;height:100%;overflow:hidden;background:#101014}}i
             self.preview_stack.setCurrentWidget(self.loading_state)
         elif state == "error":
             self.preview_stack.setCurrentWidget(self.error_state)
-        elif QWebEngineView is not None:
+        elif LIVE_PREVIEW_AVAILABLE:
             self.preview_stack.setCurrentWidget(self.web_view)
 
     def _load_finished(self, ok: bool) -> None:
@@ -252,7 +259,7 @@ html,body{{margin:0;width:100%;height:100%;overflow:hidden;background:#101014}}i
         self._show_state("error")
 
     def _set_viewport(self, _index: int) -> None:
-        if QWebEngineView is None:
+        if not LIVE_PREVIEW_AVAILABLE:
             return
         width = self.viewport.currentData()
         self.web_view.page().runJavaScript(
@@ -261,7 +268,7 @@ html,body{{margin:0;width:100%;height:100%;overflow:hidden;background:#101014}}i
         )
 
     def open_separately(self) -> None:
-        if not self._project_url or QWebEngineView is None:
+        if not self._project_url or not LIVE_PREVIEW_AVAILABLE:
             return
         dialog = QDialog(self)
         dialog.setWindowTitle("SketchForge · Live Preview")

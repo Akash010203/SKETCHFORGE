@@ -18,7 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # Desktop UI. Essentials is enough: QtWidgets, QtGui, QtSvg.
-ui = ["PySide6-Essentials>=6.6", "PySide6-Addons>=6.6"]
+ui = ["PySide6-Essentials>=6.6", "PySide6-Addons>=6.6", "PySide6-WebEngine>=6.6"]
 # Optional remote provider client (NVIDIA models on Nebius Token Factory). Off by default.
 remote = ["openai>=1.40"]
 # Own-model training (Phase 6). Not needed for Milestone 1.
