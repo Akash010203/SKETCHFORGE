@@ -14,10 +14,11 @@ from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsScene, QGraphicsView
 
 from sketchforge.application.app_controller import AppController
 from sketchforge.design_ir.schema import BBox, Component
-from sketchforge.editor.selection import components_in_rect, hit_test
+from sketchforge.editor.selection import hit_test
 from sketchforge.domain.component_types import ComponentType
 from sketchforge.domain.component import Style, Typography
 from sketchforge.editor.design_commands import AddComponentCommand, CompositeCommand
+from sketchforge.editor.design_commands import MoveCommand, RemoveComponentCommand
 from sketchforge.exceptions import SketchForgeError
 
 HANDLE = 10.0  # resize handle edge in design px
@@ -38,6 +39,7 @@ class DesignCanvas(QGraphicsView):
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setMouseTracking(True)
+        self.setAcceptDrops(True)
         self._renderer: QSvgRenderer | None = None
         self._svg_item: QGraphicsSvgItem | None = None
         self._overlays: list[QGraphicsRectItem] = []
@@ -156,6 +158,7 @@ class DesignCanvas(QGraphicsView):
         if event.button() != Qt.MouseButton.LeftButton or not self.controller.has_project:
             return super().mousePressEvent(event)
         pos = self.mapToScene(event.position().toPoint())
+        self.setFocus(Qt.FocusReason.MouseFocusReason)
         if self._tool is not None:
             self._drag = {"mode": "create", "start": pos, "moved": False, "kind": self._tool}
             return
@@ -179,6 +182,7 @@ class DesignCanvas(QGraphicsView):
         if hit.id != primary:
             self.selection_requested.emit([hit.id])
         ids = self.controller.project.selection.ids if hit.id in self.controller.project.selection.ids else (hit.id,)
+        ids = tuple(cid for cid in ids if not self._has_selected_ancestor(cid, set(ids)))
         boxes = {cid: self.controller.document.require(cid).bbox for cid in ids}
         self._drag = {"mode": "move", "id": hit.id, "ids": tuple(ids), "start": pos, "box": hit.bbox, "boxes": boxes, "moved": False}
 
@@ -222,16 +226,16 @@ class DesignCanvas(QGraphicsView):
         tolerance = 7.0 / max(self.transform().m11(), 1e-6)
         xs = (source.x + dx, source.cx + dx, source.x2 + dx)
         ys = (source.y + dy, source.cy + dy, source.y2 + dy)
-        x_candidates = [(abs(x - edge), edge - x) for x in xs for box in targets for edge in (box.x, box.cx, box.x2)]
-        y_candidates = [(abs(y - edge), edge - y) for y in ys for box in targets for edge in (box.y, box.cy, box.y2)]
-        snap_x = min(x_candidates, default=(tolerance + 1, 0), key=lambda item: item[0])
-        snap_y = min(y_candidates, default=(tolerance + 1, 0), key=lambda item: item[0])
+        x_candidates = [(abs(x - edge), edge - x, edge) for x in xs for box in targets for edge in (box.x, box.cx, box.x2)]
+        y_candidates = [(abs(y - edge), edge - y, edge) for y in ys for box in targets for edge in (box.y, box.cy, box.y2)]
+        snap_x = min(x_candidates, default=(tolerance + 1, 0, 0), key=lambda item: item[0])
+        snap_y = min(y_candidates, default=(tolerance + 1, 0, 0), key=lambda item: item[0])
         if snap_x[0] <= tolerance:
             dx += snap_x[1]
-            self._add_guide(True, xs[0] + snap_x[1])
+            self._add_guide(True, snap_x[2])
         if snap_y[0] <= tolerance:
             dy += snap_y[1]
-            self._add_guide(False, ys[0] + snap_y[1])
+            self._add_guide(False, snap_y[2])
         return dx, dy
 
     def _add_guide(self, vertical: bool, coordinate: float) -> None:
@@ -262,7 +266,10 @@ class DesignCanvas(QGraphicsView):
             if d["moved"]:
                 p = self.mapToScene(event.position().toPoint())
                 box = QRectF(d["start"], p).normalized()
-                ids = [c.id for c in components_in_rect(self.controller.document, BBox(x=box.x(), y=box.y(), w=max(box.width(), .01), h=max(box.height(), .01)))]
+                ids = [c.id for c in self.controller.document.components
+                       if c.id != self.controller.document.root_id and c.visible
+                       and c.bbox.x <= box.right() and c.bbox.x2 >= box.left()
+                       and c.bbox.y <= box.bottom() and c.bbox.y2 >= box.top()]
                 self.selection_requested.emit(ids)
             else:
                 self.selection_requested.emit([])
@@ -300,12 +307,94 @@ class DesignCanvas(QGraphicsView):
         self.controller.execute(AddComponentCommand(comp))
         self.selection_requested.emit([comp.id])
 
+    def _has_selected_ancestor(self, component_id: str, selected: set[str]) -> bool:
+        doc = self.controller.document
+        parent = doc.get(doc.require(component_id).parent_id or "")
+        while parent is not None and parent.id != doc.root_id:
+            if parent.id in selected:
+                return True
+            parent = doc.get(parent.parent_id or "")
+        return False
+
+    def dragEnterEvent(self, event) -> None:  # noqa: N802
+        if event.mimeData().hasFormat("application/x-sketchforge-component") and self.controller.has_project:
+            event.setDropAction(Qt.DropAction.CopyAction)
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event) -> None:  # noqa: N802
+        self.dragEnterEvent(event)
+
+    def dropEvent(self, event) -> None:  # noqa: N802
+        try:
+            kind = ComponentType(bytes(event.mimeData().data("application/x-sketchforge-component")).decode())
+            pos = self.mapToScene(event.position().toPoint())
+            size = {ComponentType.BUTTON: (150, 44), ComponentType.INPUT: (220, 44),
+                    ComponentType.TEXT: (160, 36), ComponentType.HEADING: (240, 52),
+                    ComponentType.CARD: (240, 150), ComponentType.CONTAINER: (280, 180)}[kind]
+            self._add_component(kind, QRectF(pos.x(), pos.y(), *size))
+            event.setDropAction(Qt.DropAction.CopyAction)
+            event.accept()
+        except (ValueError, SketchForgeError) as exc:
+            self.status_message.emit(str(exc))
+            event.ignore()
+
     def wheelEvent(self, event) -> None:  # noqa: N802
         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
             self.zoom(1.15 if event.angleDelta().y() > 0 else 1 / 1.15)
             event.accept()
         else:
             super().wheelEvent(event)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        if not self.controller.has_project:
+            return super().keyPressEvent(event)
+        ids = list(self.controller.project.selection.ids)
+        if event.key() == Qt.Key.Key_Escape:
+            self._tool = None
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+            self.selection_requested.emit([])
+            event.accept()
+            return
+        if event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace) and ids:
+            selected = set(ids)
+            roots = []
+            for cid in ids:
+                comp = self.controller.document.require(cid)
+                parent = self.controller.document.get(comp.parent_id or "")
+                while parent is not None and parent.id != self.controller.document.root_id and parent.id not in selected:
+                    parent = self.controller.document.get(parent.parent_id or "")
+                if parent is None or parent.id == self.controller.document.root_id:
+                    roots.append(comp.id)
+            try:
+                self.controller.execute(CompositeCommand([RemoveComponentCommand(cid) for cid in roots], "delete selection"))
+            except SketchForgeError as exc:
+                self.status_message.emit(str(exc))
+            event.accept()
+            return
+        directions = {Qt.Key.Key_Left: (-1, 0), Qt.Key.Key_Right: (1, 0),
+                      Qt.Key.Key_Up: (0, -1), Qt.Key.Key_Down: (0, 1)}
+        if event.key() in directions and ids:
+            dx, dy = directions[event.key()]
+            step = 10 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier else 1
+            selected = set(ids)
+            doc = self.controller.document
+            roots = []
+            for cid in ids:
+                parent = doc.get(doc.require(cid).parent_id or "")
+                while parent is not None and parent.id != doc.root_id and parent.id not in selected:
+                    parent = doc.get(parent.parent_id or "")
+                if parent is None or parent.id == doc.root_id:
+                    roots.append(cid)
+            try:
+                self.controller.execute(CompositeCommand(
+                    [MoveCommand(cid, dx * step, dy * step) for cid in roots], "nudge selection"))
+            except SketchForgeError as exc:
+                self.status_message.emit(str(exc))
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)

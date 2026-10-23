@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtCore import QByteArray, Qt
+from PySide6.QtGui import QAction, QDrag, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog,
     QApplication,
@@ -46,6 +46,34 @@ from sketchforge.ui.training_panel import TrainingPanel
 from sketchforge.ui.workspace import WorkspaceState
 
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp);;All files (*)"
+
+
+class CanvasToolButton(QPushButton):
+    """A palette item can be clicked to draw or dragged directly onto the canvas."""
+
+    def __init__(self, label: str, kind: ComponentType, parent=None) -> None:
+        super().__init__(label, parent)
+        self.kind = kind
+        self._press_pos = None
+        self.setCheckable(True)
+        self.setToolTip(f"Click, then draw {label}, or drag it onto the canvas")
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        self._press_pos = event.position().toPoint()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802
+        if (self._press_pos is not None and event.buttons() & Qt.MouseButton.LeftButton
+                and (event.position().toPoint() - self._press_pos).manhattanLength() >= 8):
+            from PySide6.QtCore import QMimeData
+            drag = QDrag(self)
+            mime = QMimeData()
+            mime.setData("application/x-sketchforge-component", QByteArray(self.kind.value.encode()))
+            drag.setMimeData(mime)
+            drag.exec(Qt.DropAction.CopyAction)
+            self._press_pos = None
+            return
+        super().mouseMoveEvent(event)
 
 
 class MainWindow(QMainWindow):
@@ -119,11 +147,19 @@ class MainWindow(QMainWindow):
         for label, kind in (("Button", ComponentType.BUTTON), ("Input", ComponentType.INPUT),
                              ("Text", ComponentType.TEXT), ("Heading", ComponentType.HEADING),
                              ("Card", ComponentType.CARD), ("Container", ComponentType.CONTAINER)):
-            button = QPushButton(label)
-            button.setCheckable(True)
+            button = CanvasToolButton(label, kind)
             button.clicked.connect(lambda checked=False, k=kind, b=button: self._choose_canvas_tool(k, b, checked))
             palette_row.addWidget(button)
             self._palette_buttons.append(button)
+        self._align_buttons = {}
+        for label, mode in (("Left", "left"), ("Center X", "center_x"), ("Right", "right"),
+                            ("Top", "top"), ("Center Y", "center_y"), ("Bottom", "bottom")):
+            button = QPushButton(label)
+            button.setToolTip(f"Align selected components: {label.lower()}")
+            button.setEnabled(False)
+            button.clicked.connect(lambda _checked=False, m=mode: self.align_selection(m))
+            palette_row.addWidget(button)
+            self._align_buttons[mode] = button
         palette_row.addStretch(1)
 
         central = QWidget(self)
@@ -177,6 +213,7 @@ class MainWindow(QMainWindow):
         self.act_quit = self._action("Quit", self.close, QKeySequence.StandardKey.Quit)
         self.act_undo = self._action("Undo", self.undo, QKeySequence.StandardKey.Undo)
         self.act_redo = self._action("Redo", self.redo, QKeySequence.StandardKey.Redo)
+        self.act_delete = self._action("Delete selection", self.delete_selection, QKeySequence.StandardKey.Delete)
         self.act_fit = self._action("Fit to window", self.canvas.fit, "Ctrl+0")
         self.act_zoom_in = self._action("Zoom in", lambda: self.canvas.zoom(1.25), "Ctrl+=")
         self.act_zoom_out = self._action("Zoom out", lambda: self.canvas.zoom(0.8), "Ctrl+-")
@@ -200,7 +237,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(self.act_quit)
         edit = self.menuBar().addMenu("&Edit")
-        edit.addActions([self.act_undo, self.act_redo])
+        edit.addActions([self.act_undo, self.act_redo, self.act_delete])
         edit.addSeparator()
         edit.addAction(self.act_settings)
         view = self.menuBar().addMenu("&View")
@@ -266,6 +303,7 @@ class MainWindow(QMainWindow):
         self.layer_panel.sync_selection(self.controller.project.selection.primary
                                         if self.controller.has_project else None)
         self.properties.refresh()
+        self._update_actions()
 
     def _on_repair_finished(self, report) -> None:
         self.progress.finish("")
@@ -294,6 +332,10 @@ class MainWindow(QMainWindow):
         self.apply_prompt_button.setEnabled(has)
         for button in self._palette_buttons:
             button.setEnabled(has)
+        selected = len(self.controller.project.selection.ids) if has else 0
+        for button in self._align_buttons.values():
+            button.setEnabled(selected > 1)
+        self.act_delete.setEnabled(selected > 0)
         stack = self.controller.project.stack if has else None
         self.act_undo.setEnabled(bool(stack and stack.can_undo))
         self.act_redo.setEnabled(bool(stack and stack.can_redo))
@@ -335,6 +377,62 @@ class MainWindow(QMainWindow):
         self.edit_prompt.clear()
         explanation = plan.explanation or "Edit applied"
         self.statusBar().showMessage(explanation, 6000)
+
+    def _selected_roots(self):
+        ids = set(self.controller.project.selection.ids)
+        doc = self.controller.document
+        roots = []
+        for cid in ids:
+            comp = doc.require(cid)
+            parent = doc.get(comp.parent_id or "")
+            nested_selected = False
+            while parent is not None and parent.id != doc.root_id:
+                if parent.id in ids:
+                    nested_selected = True
+                    break
+                parent = doc.get(parent.parent_id or "")
+            if not nested_selected:
+                roots.append(comp)
+        return roots
+
+    def nudge_selection(self, dx: float, dy: float) -> None:
+        from sketchforge.editor.design_commands import CompositeCommand, MoveCommand
+        if not self.controller.has_project or not self.controller.project.selection.ids:
+            return
+        cmds = [MoveCommand(c.id, dx, dy) for c in self._selected_roots()]
+        self._run(lambda: self.controller.execute(CompositeCommand(cmds, "nudge selection")))
+
+    def align_selection(self, mode: str) -> None:
+        from sketchforge.design_ir.schema import BBox
+        from sketchforge.editor.design_commands import CompositeCommand, SetBBoxCommand
+        comps = self._selected_roots()
+        if len(comps) < 2:
+            return
+        boxes = [c.bbox for c in comps]
+        target = {"left": min(b.x for b in boxes), "center_x": sum(b.cx for b in boxes) / len(boxes),
+                  "right": max(b.x2 for b in boxes), "top": min(b.y for b in boxes),
+                  "center_y": sum(b.cy for b in boxes) / len(boxes), "bottom": max(b.y2 for b in boxes)}[mode]
+        commands = []
+        for comp in comps:
+            b = comp.bbox
+            x, y = b.x, b.y
+            if mode == "left": x = target
+            elif mode == "center_x": x = target - b.w / 2
+            elif mode == "right": x = target - b.w
+            elif mode == "top": y = target
+            elif mode == "center_y": y = target - b.h / 2
+            elif mode == "bottom": y = target - b.h
+            if x != b.x or y != b.y:
+                commands.append(SetBBoxCommand(comp.id, BBox(x=x, y=y, w=b.w, h=b.h)))
+        if commands:
+            self._run(lambda: self.controller.execute(CompositeCommand(commands, f"align selection {mode}")))
+
+    def delete_selection(self) -> None:
+        from sketchforge.editor.design_commands import CompositeCommand, RemoveComponentCommand
+        roots = self._selected_roots() if self.controller.has_project else []
+        if roots:
+            self._run(lambda: self.controller.execute(CompositeCommand(
+                [RemoveComponentCommand(c.id) for c in roots], "delete selection")))
 
     def choose_sketch(self) -> None:
         start = str(self.controller.sample_sketches()[0].parent) if self.controller.sample_sketches() else ""
