@@ -24,7 +24,6 @@ from sketchforge.vision.perspective import (
 from sketchforge.vision.preprocessing import PreprocessResult, preprocess
 from sketchforge.vision.region_proposals import RegionProposals, build_proposals
 
-
 _LOCAL_DETECTOR = None
 _DETECTOR_LABELS = {
     "header", "footer", "sidebar", "card", "container", "button", "input",

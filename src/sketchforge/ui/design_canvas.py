@@ -14,11 +14,15 @@ from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsScene, QGraphicsView
 
 from sketchforge.application.app_controller import AppController
 from sketchforge.design_ir.schema import BBox, Component
-from sketchforge.editor.selection import hit_test
-from sketchforge.domain.component_types import ComponentType
 from sketchforge.domain.component import Style, Typography
-from sketchforge.editor.design_commands import AddComponentCommand, CompositeCommand
-from sketchforge.editor.design_commands import MoveCommand, RemoveComponentCommand
+from sketchforge.domain.component_types import ComponentType
+from sketchforge.editor.design_commands import (
+    AddComponentCommand,
+    CompositeCommand,
+    MoveCommand,
+    RemoveComponentCommand,
+)
+from sketchforge.editor.selection import hit_test
 from sketchforge.exceptions import SketchForgeError
 
 HANDLE = 10.0  # resize handle edge in design px

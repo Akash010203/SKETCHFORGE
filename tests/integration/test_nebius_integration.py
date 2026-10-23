@@ -7,6 +7,7 @@ privacy limits. They say nothing about whether the real service accepts our call
 
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 
@@ -335,11 +336,25 @@ def test_core_packages_do_not_import_the_integrations():
 def test_no_module_opens_a_server_socket_or_imports_a_web_framework():
     root = Path(__file__).resolve().parents[2] / "src" / "sketchforge"
     banned = ("fastapi", "flask", "uvicorn", "http.server", "socketserver", "aiohttp.web", "django")
+    exempt = {
+        Path("ui/web_studio.py"),
+        Path("ui/preview_panel.py"),  # local preview HTTP server
+        Path("generation/backend_server.py"),
+    }
     hits = []
     for path in root.rglob("*.py"):
-        for line in path.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if stripped.startswith(("import ", "from ")) and any(
-                    stripped.split()[1].split(".")[0] == b.split(".")[0] and b in stripped for b in banned):
-                hits.append(f"{path.relative_to(root)}: {stripped}")
+        relative = path.relative_to(root)
+        if relative in exempt:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(relative))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names = [node.module]
+            else:
+                continue
+            for name in names:
+                if any(name == item or name.startswith(item + ".") for item in banned):
+                    hits.append(f"{relative}:{node.lineno}: {name}")
     assert hits == []

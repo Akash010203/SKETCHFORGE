@@ -199,7 +199,7 @@ class LocalInferenceSession:
     # ------------------------------------------------------------------ public API
     def predict(
         self,
-        image: "Any",   # numpy uint8 BGR array (H, W, 3) or (H, W)
+        image: Any,   # numpy uint8 BGR array (H, W, 3) or (H, W)
         image_wh: tuple[int, int] | None = None,
     ) -> InferenceResult:
         """Run the detector on a preprocessed image.
@@ -230,8 +230,9 @@ class LocalInferenceSession:
             )
 
         try:
-            import torch
             import numpy as np
+            import torch
+
             from sketchforge.models.component_detector.decoder import decode, nms
 
             # Preprocess: grayscale ink mask in [0,1]
@@ -332,7 +333,7 @@ def _resolve_checkpoint(path: Path | str | None) -> Path:
     return next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
 
 
-def _resolve_device(pref: str) -> "torch.device":  # type: ignore[name-defined]
+def _resolve_device(pref: str) -> Any:
     import torch
     if pref == "auto":
         name = "cuda" if torch.cuda.is_available() else "cpu"
@@ -343,7 +344,7 @@ def _resolve_device(pref: str) -> "torch.device":  # type: ignore[name-defined]
     return torch.device(name)
 
 
-def _pad_to_square(arr: "Any") -> "Any":
+def _pad_to_square(arr: Any) -> Any:
     """Pad a 2-D float32 array to a square with zeros (paper colour)."""
     import numpy as np
     h, w = arr.shape[:2]
@@ -383,7 +384,7 @@ def _raw_to_detection(raw: Any) -> Detection:
 # ---------------------------------------------------------------------------
 
 def run_local_inference(
-    image: "Any",
+    image: Any,
     *,
     checkpoint_path: Path | str | None = None,
     device: str = "auto",

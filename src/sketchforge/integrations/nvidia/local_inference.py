@@ -6,10 +6,10 @@ from sketchforge.models.component_detector.inference import (
     LocalInferenceSession,
     LocalRuntimeUnavailable,
     _resolve_checkpoint,
-    predict,
+    run_local_inference,
 )
 
 __all__ = [
     "Detection", "InferenceError", "InferenceResult", "LocalInferenceSession",
-    "LocalRuntimeUnavailable", "_resolve_checkpoint", "predict",
+    "LocalRuntimeUnavailable", "_resolve_checkpoint", "run_local_inference",
 ]
