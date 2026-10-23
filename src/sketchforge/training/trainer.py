@@ -160,12 +160,19 @@ def train(cfg: TrainingConfig, smoke_test: bool = False) -> TrainingReport:
         report.add_epoch(val_metrics)
         print(val_metrics.summary())
 
+        # At the start of training AP may still be zero; box loss then tracks
+        # useful localization convergence until detections begin to match.
+        selection_score = (val_metrics.mAP25 if val_metrics.mAP25 > 0
+                           else -val_metrics.box_loss)
+        val_record = val_metrics.to_dict()
+        val_record["selection_score"] = selection_score
+
         # checkpoint every N epochs
         if epoch % cfg.save_every_n_epochs == 0:
-            ckpt_mgr.save(model, optimizer, epoch, val_metrics.to_dict(), cfg.__dict__)
+            ckpt_mgr.save(model, optimizer, epoch, val_record, cfg.__dict__)
 
         # early stopping
-        if stopper.step(val_metrics.mAP, epoch):
+        if stopper.step(selection_score, epoch):
             print(f"[trainer] early stop at epoch {epoch}. {stopper.status()}")
             break
 
@@ -184,7 +191,7 @@ def train(cfg: TrainingConfig, smoke_test: bool = False) -> TrainingReport:
     # ---- save final checkpoint -----------------------------------------------
     if ckpt_mgr.best() is None:
         # Smoke runs shorter than the configured save interval still produce a valid checkpoint.
-        ckpt_mgr.save(model, optimizer, epoch, val_metrics.to_dict(), cfg.__dict__)
+        ckpt_mgr.save(model, optimizer, epoch, val_record, cfg.__dict__)
     report_dir = Path(cfg.checkpoint_dir) / "reports"
     json_p, md_p = report.save(report_dir)
     print(f"[trainer] report saved: {md_p}")

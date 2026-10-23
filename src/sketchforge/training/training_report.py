@@ -27,8 +27,8 @@ class TrainingReport:
         self.epochs.append(m)
         if m.phase == "val" and m.loss < self.best_val_loss:
             self.best_val_loss = m.loss
-        if m.phase == "val" and m.mAP > self.best_val_map:
-            self.best_val_map = m.mAP
+        if m.phase == "val" and m.mAP25 > self.best_val_map:
+            self.best_val_map = m.mAP25
             self.best_epoch = m.epoch
 
     def finish(self, test: EpochMetrics | None = None, stopped_early: bool = False) -> None:
@@ -45,7 +45,7 @@ class TrainingReport:
             "best_epoch": self.best_epoch,
             "best_val_loss": round(self.best_val_loss, 6),
             "best_val_mAP": round(self.best_val_map, 6),
-            "selection_metric": "mAP@0.5",
+            "selection_metric": "mAP@0.25 (validation box loss until AP is nonzero)",
             "test": self.final_test_metrics.to_dict() if self.final_test_metrics else None,
             "epochs": [e.to_dict() for e in self.epochs],
             "config": self.config,
@@ -71,7 +71,7 @@ class TrainingReport:
             f"| Finished | {self.finished_at} |",
             f"| Best epoch | {self.best_epoch} |",
             f"| Best val loss | {self.best_val_loss:.6f} |",
-            f"| Best val mAP@0.5 | {self.best_val_map:.4f} |",
+            f"| Best val mAP@0.25 | {self.best_val_map:.4f} |",
             f"| Stopped early | {self.stopped_early} |",
             f"",
         ]

@@ -39,7 +39,7 @@ class CheckpointManager:
         """Serialize model + optimizer state and write a metadata file."""
         import torch
 
-        score = (metrics.get("mAP", 0.0) if self.mode == "max"
+        score = (metrics.get("selection_score", metrics.get("mAP@0.25", metrics.get("mAP", 0.0))) if self.mode == "max"
                  else metrics.get("val_loss", metrics.get("loss", 0.0)))
         stem = f"epoch_{epoch:04d}_score_{score:.6f}"
         ckpt_path = self.directory / f"{stem}.pt"

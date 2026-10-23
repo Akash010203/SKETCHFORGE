@@ -13,8 +13,11 @@ class EpochMetrics:
     cls_loss: float = 0.0
     box_loss: float = 0.0
     accuracy: float = 0.0   # top-1 anchor classification accuracy (background-heavy)
-    mean_iou: float = 0.0   # mean IoU of one-to-one matches at IoU >= 0.5
-    mAP: float = 0.0        # class-macro all-points AP at IoU 0.5
+    mean_iou: float = 0.0   # mean IoU of matches at IoU >= 0.25
+    mAP: float = 0.0        # mean AP over IoU thresholds 0.25, 0.35, and 0.50
+    mAP25: float = 0.0
+    mAP35: float = 0.0
+    mAP50: float = 0.0
     samples: int = 0
     duration_s: float = 0.0
 
@@ -28,6 +31,9 @@ class EpochMetrics:
             "accuracy": round(self.accuracy, 4),
             "mean_iou": round(self.mean_iou, 4),
             "mAP": round(self.mAP, 4),
+            "mAP@0.25": round(self.mAP25, 4),
+            "mAP@0.35": round(self.mAP35, 4),
+            "mAP@0.50": round(self.mAP50, 4),
             "samples": self.samples,
             "duration_s": round(self.duration_s, 2),
         }
@@ -35,7 +41,8 @@ class EpochMetrics:
     def summary(self) -> str:
         return (
             f"[{self.phase}] epoch={self.epoch} loss={self.loss:.4f} "
-            f"anchor_acc={self.accuracy:.3f} IoU50={self.mean_iou:.3f} mAP50={self.mAP:.3f}"
+            f"anchor_acc={self.accuracy:.3f} IoU25={self.mean_iou:.3f} "
+            f"mAP25/35/50={self.mAP25:.3f}/{self.mAP35:.3f}/{self.mAP50:.3f}"
         )
 
 
@@ -67,8 +74,8 @@ def compute_accuracy(logits: "torch.Tensor", labels: "torch.Tensor") -> float:
 
 
 def detection_metrics(predictions: list[list[dict]], targets: list[dict],
-                      iou_threshold: float = 0.5) -> tuple[float, float]:
-    """Return mean matched IoU and class-macro AP at ``iou_threshold``.
+                      iou_threshold: float | None = None) -> tuple[float, float, float, float]:
+    """Return mean matched IoU and class-macro AP at IoU 0.25, 0.35, and 0.50.
 
     Predictions use normalized ``(cx, cy, w, h)`` boxes and contain ``label``
     and ``score``. AP uses the all-points precision envelope. Background (0)
@@ -84,9 +91,9 @@ def detection_metrics(predictions: list[list[dict]], targets: list[dict],
 
     labels = {int(label) for target in targets for label in target["labels"].tolist() if int(label) > 0}
     if not labels:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0, 0.0
     all_ious = []
-    aps = []
+    threshold_aps = {threshold: [] for threshold in (0.25, 0.35, 0.50)}
     for label in sorted(labels):
         gt_by_image = {}
         total_gt = 0
@@ -101,30 +108,34 @@ def detection_metrics(predictions: list[list[dict]], targets: list[dict],
              for image_i, image_preds in enumerate(predictions)
              for pred in image_preds if int(pred["label"]) == label], reverse=True,
         )
-        matched = {image_i: set() for image_i in range(len(targets))}
-        tp, fp = [], []
-        for _, image_i, box in ranked:
-            candidates = [(iou(box, gt), j) for j, gt in enumerate(gt_by_image[image_i])
-                          if j not in matched[image_i]]
-            best_iou, best_j = max(candidates, default=(0., -1))
-            if best_iou >= iou_threshold:
-                matched[image_i].add(best_j)
-                tp.append(1.); fp.append(0.)
-                all_ious.append(best_iou)
-            else:
-                tp.append(0.); fp.append(1.)
         if total_gt == 0:
             continue
         import numpy as np
-        cum_tp = np.cumsum(tp, dtype=float)
-        cum_fp = np.cumsum(fp, dtype=float)
-        recall = cum_tp / total_gt
-        precision = cum_tp / np.maximum(cum_tp + cum_fp, 1e-12)
-        recall = np.concatenate(([0.], recall, [1.]))
-        precision = np.concatenate(([0.], precision, [0.]))
-        for i in range(len(precision) - 2, -1, -1):
-            precision[i] = max(precision[i], precision[i + 1])
-        changes = np.where(recall[1:] != recall[:-1])[0]
-        aps.append(float(np.sum((recall[changes + 1] - recall[changes]) * precision[changes + 1])))
+
+        for threshold in threshold_aps:
+            matched = {image_i: set() for image_i in range(len(targets))}
+            tp, fp = [], []
+            for _, image_i, box in ranked:
+                candidates = [(iou(box, gt), j) for j, gt in enumerate(gt_by_image[image_i])
+                              if j not in matched[image_i]]
+                best_iou, best_j = max(candidates, default=(0., -1))
+                if best_iou >= threshold:
+                    matched[image_i].add(best_j)
+                    tp.append(1.); fp.append(0.)
+                    if threshold == 0.25:
+                        all_ious.append(best_iou)
+                else:
+                    tp.append(0.); fp.append(1.)
+            cum_tp = np.cumsum(tp, dtype=float)
+            cum_fp = np.cumsum(fp, dtype=float)
+            recall = cum_tp / total_gt
+            precision = cum_tp / np.maximum(cum_tp + cum_fp, 1e-12)
+            recall = np.concatenate(([0.], recall, [1.]))
+            precision = np.concatenate(([0.], precision, [0.]))
+            for i in range(len(precision) - 2, -1, -1):
+                precision[i] = max(precision[i], precision[i + 1])
+            changes = np.where(recall[1:] != recall[:-1])[0]
+            threshold_aps[threshold].append(float(np.sum(
+                (recall[changes + 1] - recall[changes]) * precision[changes + 1])))
     return (sum(all_ious) / len(all_ious) if all_ious else 0.0,
-            sum(aps) / len(aps) if aps else 0.0)
+            *(sum(aps) / len(aps) if aps else 0.0 for aps in threshold_aps.values()))

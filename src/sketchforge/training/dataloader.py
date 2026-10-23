@@ -48,6 +48,41 @@ class ComponentDetectorDataset:
                 boxes = [(1.0 - cx, cy, bw, bh) for cx, cy, bw, bh in boxes]
             gain = random.uniform(0.8, 1.2)
             image = np.clip(image * gain, 0.0, 1.0)
+            # Apply one projective transform to both pixels and box corners.
+            angle = random.uniform(-5.0, 5.0)
+            affine = cv2.getRotationMatrix2D((size / 2.0, size / 2.0), angle,
+                                             random.uniform(0.97, 1.03))
+            matrix = np.vstack((affine, [0.0, 0.0, 1.0])).astype(np.float32)
+            if random.random() < 0.5:
+                corners = np.float32([[0, 0], [size, 0], [size, size], [0, size]])
+                jitter = size * 0.025
+                warped = corners + np.random.uniform(-jitter, jitter, corners.shape).astype(np.float32)
+                matrix = cv2.getPerspectiveTransform(corners, warped) @ matrix
+            image = cv2.warpPerspective(image, matrix, (size, size), flags=cv2.INTER_LINEAR,
+                                        borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
+            transformed, transformed_labels = [], []
+            for (cx, cy, bw, bh), label in zip(boxes, labels):
+                points = np.float32([
+                    [(cx - bw / 2) * size, (cy - bh / 2) * size],
+                    [(cx + bw / 2) * size, (cy - bh / 2) * size],
+                    [(cx + bw / 2) * size, (cy + bh / 2) * size],
+                    [(cx - bw / 2) * size, (cy + bh / 2) * size],
+                ]).reshape(-1, 1, 2)
+                points = cv2.perspectiveTransform(points, matrix).reshape(-1, 2)
+                x1, y1 = np.maximum(points.min(axis=0), 0.0)
+                x2, y2 = np.minimum(points.max(axis=0), float(size))
+                if x2 > x1 and y2 > y1:
+                    transformed.append(((x1 + x2) / (2 * size), (y1 + y2) / (2 * size),
+                                        (x2 - x1) / size, (y2 - y1) / size))
+                    transformed_labels.append(label)
+            boxes = transformed
+            labels = transformed_labels
+            # Mild morphology varies stroke weight without changing annotations.
+            if random.random() < 0.5:
+                kernel = np.ones((random.choice((2, 3)),) * 2, np.uint8)
+                mask = (image * 255).astype(np.uint8)
+                morphology = cv2.dilate if random.random() < 0.5 else cv2.erode
+                image = morphology(mask, kernel, iterations=1).astype(np.float32) / 255.0
         return torch.from_numpy(image.copy()).unsqueeze(0), {
             "boxes": torch.tensor(boxes, dtype=torch.float32).reshape(-1, 4),
             "labels": torch.tensor(labels, dtype=torch.long),

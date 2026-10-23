@@ -73,7 +73,8 @@ def validate_epoch(
                 all_targets.append({"boxes": target["boxes"].cpu(), "labels": target["labels"].cpu()})
 
     n = max(n_batches, 1)
-    mean_iou, mean_ap = detection_metrics(all_predictions, all_targets)
+    mean_iou, map25, map35, map50 = detection_metrics(all_predictions, all_targets)
+    mean_ap = (map25 + map35 + map50) / 3.0
     return EpochMetrics(
         epoch=epoch,
         phase=phase,
@@ -83,6 +84,9 @@ def validate_epoch(
         accuracy=total_acc / n,
         mean_iou=mean_iou,
         mAP=mean_ap,
+        mAP25=map25,
+        mAP35=map35,
+        mAP50=map50,
         samples=len(all_targets),
         duration_s=time.perf_counter() - t0,
     )
