@@ -26,9 +26,14 @@ def generate_studio_project(
     target: Path,
     *,
     include_backend: bool = True,
+    database: str = "sqlite",
+    orm: str = "dataclass",
+    api_target: str = "flask",
+    authentication: bool = False,
+    migrations: bool = False,
     progress: Callable[[str], None] | None = None,
 ) -> Path:
-    """Materialise frontend and optional SQLite backend files under ``target``.
+    """Materialise frontend and optional configurable backend files under ``target``.
 
     Tries AI generation first; falls back to the template generator when the
     AI service is unavailable or returns unusable output.
@@ -37,21 +42,19 @@ def generate_studio_project(
     if not brief:
         raise ValueError("Describe the app you want to build first.")
 
-    # --- AI generation path ---
-    try:
-        from sketchforge.generation.ai_generator import ai_generate_project
-        ai_root = ai_generate_project(
-            brief, target,
-            include_backend=include_backend,
-            progress=progress,
-        )
-        if ai_root is not None and ai_root.is_dir():
-            return ai_root
-    except Exception as exc:  # noqa: BLE001
-        import logging
-        logging.getLogger(__name__).warning("AI generation failed (%s); using templates.", exc)
-        if progress:
-            progress(f"AI generation unavailable ({exc}); generating from templates...")
+    # AI-generated output has a fixed Flask/SQLite contract; use the canonical
+    # target renderers whenever the user selected another backend combination.
+    if (database, orm, api_target, authentication, migrations) == ("sqlite", "dataclass", "flask", False, False):
+        try:
+            from sketchforge.generation.ai_generator import ai_generate_project
+            ai_root = ai_generate_project(brief, target, include_backend=include_backend, progress=progress)
+            if ai_root is not None and ai_root.is_dir():
+                return ai_root
+        except Exception as exc:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).warning("AI generation failed (%s); using templates.", exc)
+            if progress:
+                progress(f"AI generation unavailable ({exc}); generating from templates...")
 
     # --- Template fallback path ---
     if progress:
@@ -80,33 +83,49 @@ def generate_studio_project(
         entities=[EntitySpec("Submission", fields)] if include_backend else [],
         tech_frontend="html-css-js",
         tech_backend="python-sqlite" if include_backend else "none",
+        database=database,
+        orm=orm,
+        api_target=api_target,
+        authentication=authentication,
+        migrations=migrations,
         acceptance_criteria=["Responsive pages render locally", "Forms validate and save submissions"]
     )
     root = target.resolve() / _slug(name)
     materialise(plan_html_css(spec), root)
 
-    from sketchforge.generation.frontend.project_export import _backend
     if include_backend:
-        from sketchforge.generation.project_planner import PlannedFile, ProjectPlan
-        backend_plan = ProjectPlan(spec, "html-css-js", "python-sqlite")
-        for path, tag in (("backend/schema.sql", "backend_schema"),
-                          ("backend/models.py", "backend_models"),
-                          ("backend/database.py", "backend_db"),
-                          ("backend/logic.py", "backend_logic"),
-                          ("backend/tests/test_models.py", "backend_test")):
-            content = _backend(PlannedFile(path, tag), backend_plan)
+        from sketchforge.generation.frontend.project_export import render_file
+        # Reuse the canonical backend plan to keep Studio and planner generation aligned.
+        from sketchforge.generation.project_planner import plan_react_ts
+        canonical = plan_react_ts(spec)
+        backend_files = [f for f in canonical.files if f.generator.startswith("backend_")]
+        for planned in backend_files:
+            path = planned.relative_path
+            content = render_file(planned, canonical)
             destination = root / path
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_text(content or "", encoding="utf-8")
     _write_frontend(root, spec)
-    if include_backend:
-        _write_backend_api(root, spec)
-        (root / "requirements.txt").write_text("Flask>=3.0\n", encoding="utf-8")
+    if include_backend and orm != "prisma":
+        from sketchforge.generation.backend.schema_generator import _requirements
+        (root / "requirements.txt").write_text(_requirements(spec), encoding="utf-8")
     backend_notes = (
-        "- `backend/`: SQLite schema, data models, database setup, CRUD helpers, Flask REST API, and tests.\n"
-        "- Run the API with `python backend/api.py` (defaults to port 5000).\n"
-        "- Initialize the database with `python backend/database.py`."
+        f"- `backend/prisma/schema.prisma`: Prisma schema; run `cd backend && npm install && npm run db:migrate`.\n"
+        if include_backend and orm == "prisma" else
+        f"- `backend/`: {database} schema, generated models/CRUD, {api_target} API, and optional auth.\n"
+        f"- Install API dependencies with `python -m pip install -r requirements.txt`.\n"
+        f"- Start Flask with `python -m backend.api`; start FastAPI/GraphQL with `uvicorn backend.api:app`.\n"
+        f"- Set `DATABASE_URL` for PostgreSQL/MySQL. Set `AUTH_SECRET` for authentication. "
+        f"Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to enable Google OAuth2."
+        f"{' Apply schema changes with `alembic upgrade head`.' if migrations else ''}"
         if include_backend else "- Backend generation was not selected."
+    )
+    backend_start = (
+        "Backend generation was not selected."
+        if not include_backend else
+        "Run `cd backend && npm install && npm run db:migrate` for the Prisma database client."
+        if orm == "prisma" else
+        "Run `uvicorn backend.api:app` for FastAPI/GraphQL, or `python -m backend.api` for Flask."
     )
     (root / "README.md").write_text(f"""# {name}
 
@@ -124,14 +143,9 @@ Then visit `http://localhost:8000`.
 
 ## Backend API
 
-Start the Flask API server:
+{backend_start}
 
-```bash
-python backend/api.py
-```
-
-The API runs on `http://localhost:5000`. When you generate the project from within
-SketchForge Studio, the backend starts automatically and the preview connects to it.
+When generated from within SketchForge Studio, supported API backends start automatically for preview.
 
 ## Project files
 

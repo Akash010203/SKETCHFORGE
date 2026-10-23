@@ -1,8 +1,9 @@
 # Architecture
 
-SketchForge is a **local-first, single-process** desktop application. There is no HTTP server,
-no REST/GraphQL API, no microservice and no cloud backend of our own. Modules call each other
-directly with typed objects; long work runs on background threads and reports back through events.
+SketchForge is a **local-first, single-process** desktop application. The desktop app itself has no
+HTTP server, API, microservice, or cloud backend; its modules call each other with typed objects.
+The separate project generator can emit Flask/FastAPI REST or Strawberry GraphQL APIs for generated
+apps. Long desktop work runs on background threads and reports back through events.
 
 ```
 ┌───────────────────────────────┐

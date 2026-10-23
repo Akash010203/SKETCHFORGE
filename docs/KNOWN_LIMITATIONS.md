@@ -56,6 +56,27 @@ construction, not a hypothetical.
   detections (re-import regenerates them) or the undo history.
 * Only one document is open at a time.
 
+## Generated backend targets
+
+* The project generator can emit SQLite, PostgreSQL, and MySQL schema definitions. PostgreSQL/MySQL
+  and SQLAlchemy projects need a matching `DATABASE_URL` and database driver; this workspace does
+  not provision or connect to a database server for the generated project.
+* SQLAlchemy is the Python ORM path for all three databases. Prisma output includes a schema and
+  Prisma CLI migration/client scripts under `backend/`; it does not generate a Python API or CRUD
+  implementation. Prisma authentication is not supported.
+* Generated Python APIs support Flask REST, FastAPI REST, or Strawberry GraphQL CRUD. GraphQL
+  exposes list and create/update/delete operations through GraphQL mutations; REST provides the
+  standard CRUD routes. These generated APIs are starter code and still need deployment-specific
+  rate limits, logging, monitoring, and operational configuration.
+* Optional authentication provides scrypt password hashes, JWT bearer tokens with server-side
+  logout revocation, protected CRUD routes, and Google OAuth2 routes for Flask/FastAPI/GraphQL
+  projects. Google OAuth requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; set a stable,
+  random `AUTH_SECRET` for deployments. The Studio preview supplies a temporary local secret when
+  one is not configured. OAuth account linking currently uses verified email as the account key.
+* Alembic scaffolding is emitted when selected with SQLAlchemy. Create the first revision and apply
+  it with the commands in the generated README. Schema autogeneration must be reviewed before
+  applying migrations.
+
 ## Currently in progress / remaining items
 
 * **Vision**: Collect and annotate licensed photographed sketches, then run `scripts/benchmark_photographs.py`. The benchmark runner is implemented, but no photograph scores are available until a non-empty local manifest and its image/annotation files are supplied.

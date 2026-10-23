@@ -61,10 +61,10 @@ class AppSpec:
     entities: list[EntitySpec] = field(default_factory=list)
     requires_auth: bool = False
     tech_frontend: str = "react-ts"  # "react-ts" | "html-css-js"
-    tech_backend: str = "none"       # "none" | "python-sqlite"
+    tech_backend: str = "none"       # "none" | "python-sqlite" (legacy enabled flag)
     database: str = "sqlite"          # sqlite | postgresql | mysql
-    orm: str = "dataclass"            # dataclass | sqlalchemy | prisma
-    api_target: str = "flask"         # flask | fastapi | graphql
+    orm: str = "dataclass"            # dataclass | sqlalchemy | prisma (Prisma schema/client)
+    api_target: str = "flask"         # flask | fastapi | graphql (Python targets)
     migrations: bool = False
     authentication: bool = False      # session/password/JWT/OAuth scaffolding
     acceptance_criteria: list[str] = field(default_factory=list)

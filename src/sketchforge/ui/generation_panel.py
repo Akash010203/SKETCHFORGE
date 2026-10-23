@@ -14,6 +14,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QThread, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -39,11 +40,12 @@ class _GenerateWorker(QObject):
     finished = Signal(str)   # project root path
     failed = Signal(str)     # error message
 
-    def __init__(self, prompt: str, output_base: Path, include_backend: bool) -> None:
+    def __init__(self, prompt: str, output_base: Path, include_backend: bool, options: dict) -> None:
         super().__init__()
         self._prompt = prompt
         self._output_base = output_base
         self._include_backend = include_backend
+        self._options = options
 
     def run(self) -> None:  # called by QThread.started
         try:
@@ -51,6 +53,7 @@ class _GenerateWorker(QObject):
                 self._prompt,
                 self._output_base,
                 include_backend=self._include_backend,
+                **self._options,
                 progress=lambda msg: self.progress.emit(msg),
             )
         except (OSError, ValueError, RuntimeError) as exc:
@@ -90,7 +93,7 @@ class _ReviseWorker(QObject):
 
 
 class GenerationPanel(QWidget):
-    """Prompt-driven frontend and optional SQLite-backend project generator."""
+    """Prompt-driven frontend and configurable backend project generator."""
 
     project_ready = Signal(str)
     generation_failed = Signal(str)
@@ -128,12 +131,50 @@ class GenerationPanel(QWidget):
         self.prompt.setFixedHeight(130)
         layout.addWidget(self.prompt)
 
-        self.backend = QCheckBox("Add a Python + SQLite backend")
+        self.backend = QCheckBox("Add a backend")
         self.backend.setChecked(True)
         self.backend.setToolTip(
-            "Generate backend models, schema, database helpers, CRUD logic, Flask API, and tests."
+            "Choose the database, ORM, API framework, authentication, and migration options below."
         )
         layout.addWidget(self.backend)
+
+        self.database_target = QComboBox()
+        self.database_target.addItems(["SQLite", "PostgreSQL", "MySQL"])
+        self.orm_target = QComboBox()
+        self.orm_target.addItems(["Dataclass", "SQLAlchemy", "Prisma"])
+        self.api_target = QComboBox()
+        self.api_target.addItems(["Flask", "FastAPI", "GraphQL"])
+        self.auth_option = QCheckBox("Add password, JWT sessions, and Google OAuth2")
+        self.migrations_option = QCheckBox("Add database migrations")
+        for label, control in (("Database", self.database_target), ("ORM", self.orm_target),
+                               ("API", self.api_target)):
+            row = QHBoxLayout()
+            row.addWidget(QLabel(label))
+            row.addWidget(control)
+            layout.addLayout(row)
+        layout.addWidget(self.auth_option)
+        layout.addWidget(self.migrations_option)
+        self.backend.toggled.connect(self._set_backend_controls)
+        self.orm_target.currentIndexChanged.connect(self._set_migration_availability)
+        self.database_target.currentIndexChanged.connect(self._set_migration_availability)
+        self._set_migration_availability()
+
+    def _set_backend_controls(self, enabled: bool) -> None:
+        for control in (self.database_target, self.orm_target, self.api_target,
+                        self.auth_option, self.migrations_option):
+            control.setEnabled(enabled)
+        self._set_migration_availability()
+
+    def _set_migration_availability(self, *_args) -> None:
+        orm = self.orm_target.currentText().lower()
+        database = self.database_target.currentText().lower()
+        if orm == "prisma" and self.auth_option.isChecked():
+            self.auth_option.setChecked(False)
+        self.migrations_option.setEnabled(
+            self.backend.isChecked() and (orm in {"sqlalchemy", "prisma"} or database != "sqlite")
+        )
+        self.auth_option.setEnabled(self.backend.isChecked() and orm != "prisma")
+        self.api_target.setEnabled(self.backend.isChecked() and orm != "prisma")
 
         self.generate_button = QPushButton("✦   Generate full stack")
         self.generate_button.setObjectName("generateButton")
@@ -226,7 +267,14 @@ class GenerationPanel(QWidget):
         self.progress_label.setText("Starting…")
         self.progress_label.setVisible(True)
 
-        worker = _GenerateWorker(prompt, self._output_base, self.backend.isChecked())
+        options = {
+            "database": self.database_target.currentText().lower(),
+            "orm": self.orm_target.currentText().lower(),
+            "api_target": self.api_target.currentText().lower(),
+            "authentication": self.auth_option.isChecked(),
+            "migrations": self.migrations_option.isChecked(),
+        }
+        worker = _GenerateWorker(prompt, self._output_base, self.backend.isChecked(), options)
         thread = QThread(self)
         worker.moveToThread(thread)
         worker.progress.connect(self._on_progress)

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 import subprocess
 import sys
 import threading
@@ -46,9 +47,21 @@ class BackendServer:
 
         port = _free_port()
         env = {**os.environ, "FLASK_ENV": "development", "PYTHONUNBUFFERED": "1"}
+        api_source = api_script.read_text(encoding="utf-8", errors="replace")
+        if (project_root / "backend" / "auth.py").is_file() and not env.get("AUTH_SECRET"):
+            # Preview-only key: production users must configure their own stable secret.
+            env["AUTH_SECRET"] = secrets.token_urlsafe(48)
+        is_asgi = "FastAPI(" in api_source or "GraphQL(schema" in api_source
+        module_entry = "run python -m backend.api" in api_source
+        if is_asgi:
+            command = [sys.executable, "-m", "uvicorn", "backend.api:app", "--host", "127.0.0.1", "--port", str(port)]
+        elif module_entry:
+            command = [sys.executable, "-m", "backend.api", "--host", "127.0.0.1", "--port", str(port)]
+        else:
+            command = [sys.executable, str(api_script), "--host", "127.0.0.1", "--port", str(port)]
         try:
             proc = subprocess.Popen(
-                [sys.executable, str(api_script), "--port", str(port)],
+                command,
                 cwd=str(project_root),
                 env=env,
                 stdout=subprocess.PIPE,

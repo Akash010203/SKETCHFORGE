@@ -34,7 +34,8 @@ def render_file(pf: PlannedFile, plan: ProjectPlan) -> str | None:
         return _readme(pf, plan)
     if g in ("backend_models", "backend_db", "backend_logic", "backend_schema", "backend_test",
              "backend_api", "backend_auth", "backend_prisma", "backend_alembic_ini",
-             "backend_migration_env", "backend_requirements"):
+             "backend_migration_env", "backend_migration_template", "backend_requirements",
+             "backend_prisma_package"):
         return _backend(pf, plan)
     return None
 
@@ -279,6 +280,27 @@ def _types(pf: PlannedFile, plan: ProjectPlan) -> str:
 
 def _readme(pf: PlannedFile, plan: ProjectPlan) -> str:
     spec = plan.spec
+    backend_docs = ""
+    if spec.tech_backend != "none":
+        if spec.orm == "prisma":
+            backend_docs = """
+## Database
+
+Run `cd backend && npm install && npm run db:migrate` to generate the Prisma client and database migration.
+Set `DATABASE_URL` for PostgreSQL or MySQL.
+"""
+        else:
+            api_command = "uvicorn backend.api:app" if spec.api_target in {"fastapi", "graphql"} else "python -m backend.api"
+            migration_command = "\nRun `alembic revision --autogenerate -m 'initial'` and `alembic upgrade head`.\n" if spec.migrations else ""
+            auth_env = "\nSet `AUTH_SECRET` to at least 32 random characters; add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for Google OAuth2.\n" if spec.authentication else ""
+            database_env = "Set `DATABASE_URL` before startup for PostgreSQL/MySQL.\n" if spec.database != "sqlite" else ""
+            backend_docs = f"""
+## Backend
+
+Install dependencies with `python -m pip install -r requirements.txt`.
+Start the API with `{api_command}`.
+{database_env}{auth_env}{migration_command}
+"""
     return f'''\
 # {spec.name}
 
@@ -292,6 +314,7 @@ npm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
+{backend_docs}
 
 ## Available scripts
 

@@ -119,21 +119,27 @@ def plan_react_ts(spec: AppSpec) -> ProjectPlan:
     # ---- backend stub (if needed) -------------------------------------------
     if spec.tech_backend != "none":
         plan.directory_roots.extend(["backend", "backend/tests"])
-        plan.add("backend/models.py",    "backend_models",    description="Generated data models")
-        plan.add("backend/database.py",  "backend_db",        description="DB init and session management")
-        plan.add("backend/logic.py",     "backend_logic",     description="Business logic and CRUD functions")
-        plan.add("backend/schema.sql",   "backend_schema",    description="Raw SQL schema DDL")
-        plan.add("backend/tests/test_models.py", "backend_test", description="pytest model tests")
-        plan.add("backend/api.py", "backend_api", description=f"{spec.api_target} API")
+        if spec.orm != "prisma":
+            plan.add("backend/models.py",    "backend_models",    description="Generated data models")
+            plan.add("backend/database.py",  "backend_db",        description="DB init and session management")
+            plan.add("backend/logic.py",     "backend_logic",     description="Business logic and CRUD functions")
+            plan.add("backend/schema.sql",   "backend_schema",    description="Raw SQL schema DDL")
+        if spec.orm == "dataclass" and spec.database == "sqlite":
+            plan.add("backend/tests/test_models.py", "backend_test", description="pytest model tests")
+        if spec.orm != "prisma":
+            plan.add("backend/api.py", "backend_api", description=f"{spec.api_target} API")
         if spec.orm == "prisma":
-            plan.add("backend/schema.prisma", "backend_prisma", description="Prisma schema")
-        if spec.orm == "sqlalchemy":
-            plan.add("requirements-backend.txt", "backend_requirements", description="Backend dependencies")
+            plan.add("backend/prisma/schema.prisma", "backend_prisma", description="Prisma schema")
+            plan.add("backend/package.json", "backend_prisma_package", description="Prisma client scripts and dependencies")
+        if spec.orm != "prisma":
+            plan.add("requirements.txt", "backend_requirements", description="Backend dependencies")
         if spec.authentication:
             plan.add("backend/auth.py", "backend_auth", description="Password and JWT helpers")
-        if spec.migrations:
+        if spec.migrations and spec.orm != "prisma":
+            plan.directory_roots.append("migrations/versions")
             plan.add("alembic.ini", "backend_alembic_ini", description="Alembic configuration")
             plan.add("migrations/env.py", "backend_migration_env", description="Alembic migration environment")
+            plan.add("migrations/script.py.mako", "backend_migration_template", description="Alembic revision template")
 
     # ---- README ---------------------------------------------------------------
     plan.add(
@@ -165,6 +171,26 @@ def plan_html_css(spec: AppSpec) -> ProjectPlan:
 
 def make_plan(spec: AppSpec) -> ProjectPlan:
     """Entry point: choose the right planner from the AppSpec."""
+    if spec.database not in {"sqlite", "postgresql", "mysql"}:
+        raise ValueError(f"Unsupported database: {spec.database}")
+    if spec.orm not in {"dataclass", "sqlalchemy", "prisma"}:
+        raise ValueError(f"Unsupported ORM: {spec.orm}")
+    if spec.api_target not in {"flask", "fastapi", "graphql"}:
+        raise ValueError(f"Unsupported API target: {spec.api_target}")
+    from sketchforge.generation.backend.schema_generator import _check_identifier, _snake
+    for entity in spec.entities:
+        _check_identifier(entity.name)
+        _check_identifier(entity.primary_key)
+        _check_identifier(_snake(entity.name))
+        for field_spec in entity.fields:
+            _check_identifier(field_spec.name)
+    if spec.orm == "prisma" and spec.migrations:
+        # Prisma migrations are included in backend/package.json scripts.
+        pass
+    elif spec.migrations and spec.orm != "sqlalchemy" and spec.database == "sqlite":
+        raise ValueError("Alembic migrations require orm='sqlalchemy'.")
+    if spec.orm == "prisma" and spec.authentication:
+        raise ValueError("Prisma authentication generation is not available; use orm='sqlalchemy' or 'dataclass'.")
     if spec.tech_frontend == "react-ts":
         return plan_react_ts(spec)
     return plan_html_css(spec)

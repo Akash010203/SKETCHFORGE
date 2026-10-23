@@ -70,6 +70,11 @@ def _model_detections(ink: object) -> tuple[list[Detection] | None, str | None]:
                 confidence=max(0.001, min(1.0, float(item.confidence))),
                 type_scores={label: 1.0}, evidence=["local component detector"], ambiguous=False,
             ))
+        if not converted:
+            return None, (
+                f"local component model returned no detections "
+                f"({result.model_name}, {result.device}); using CV"
+            )
         return converted, f"local component model enabled ({result.model_name}, {result.device})"
     except Exception as exc:  # optional runtime must not prevent CV analysis
         return None, f"component model failed ({type(exc).__name__}: {exc}); using CV"
