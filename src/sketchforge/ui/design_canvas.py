@@ -7,7 +7,7 @@ actions become controller commands only on release (one undo step per drag).
 from __future__ import annotations
 
 from PySide6.QtCore import QByteArray, QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsScene, QGraphicsView
@@ -72,6 +72,30 @@ class DesignCanvas(QGraphicsView):
         for x in range(x0, x1, spacing):
             for y in range(y0, y1, spacing):
                 painter.drawEllipse(QPointF(x, y), 1.0, 1.0)
+        painter.restore()
+
+    def drawForeground(self, painter: QPainter, rect: QRectF) -> None:  # noqa: N802 (Qt API)
+        if self.controller.has_project:
+            return
+        center = self.mapToScene(self.viewport().rect().center())
+        card = QRectF(center.x() - 235, center.y() - 96, 470, 192)
+        painter.save()
+        painter.setPen(QPen(QColor("#ffffff22"), 1))
+        painter.setBrush(QColor("#19191f"))
+        painter.drawRoundedRect(card, 18, 18)
+        painter.setPen(QColor("#d9ff5f"))
+        painter.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
+        painter.drawText(QRectF(card.left() + 28, card.top() + 32, card.width() - 56, 22),
+                         Qt.AlignmentFlag.AlignCenter, "YOUR CANVAS IS READY")
+        painter.setPen(QColor("#f2f0f7"))
+        painter.setFont(QFont("Segoe UI", 19, QFont.Weight.Bold))
+        painter.drawText(QRectF(card.left() + 24, card.top() + 63, card.width() - 48, 34),
+                         Qt.AlignmentFlag.AlignCenter, "Start with a sketch")
+        painter.setPen(QColor("#a6a3ae"))
+        painter.setFont(QFont("Segoe UI", 10))
+        painter.drawText(QRectF(card.left() + 24, card.top() + 106, card.width() - 48, 45),
+                         Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
+                         "Import a sketch or open a sample from File to create your first editable design.")
         painter.restore()
 
     def reload(self) -> None:

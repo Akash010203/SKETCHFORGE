@@ -119,11 +119,21 @@ def plan_react_ts(spec: AppSpec) -> ProjectPlan:
     # ---- backend stub (if needed) -------------------------------------------
     if spec.tech_backend != "none":
         plan.directory_roots.extend(["backend", "backend/tests"])
-        plan.add("backend/models.py",    "backend_models",    description="SQLite/SQLAlchemy data models")
+        plan.add("backend/models.py",    "backend_models",    description="Generated data models")
         plan.add("backend/database.py",  "backend_db",        description="DB init and session management")
         plan.add("backend/logic.py",     "backend_logic",     description="Business logic and CRUD functions")
         plan.add("backend/schema.sql",   "backend_schema",    description="Raw SQL schema DDL")
         plan.add("backend/tests/test_models.py", "backend_test", description="pytest model tests")
+        plan.add("backend/api.py", "backend_api", description=f"{spec.api_target} API")
+        if spec.orm == "prisma":
+            plan.add("backend/schema.prisma", "backend_prisma", description="Prisma schema")
+        if spec.orm == "sqlalchemy":
+            plan.add("requirements-backend.txt", "backend_requirements", description="Backend dependencies")
+        if spec.authentication:
+            plan.add("backend/auth.py", "backend_auth", description="Password and JWT helpers")
+        if spec.migrations:
+            plan.add("alembic.ini", "backend_alembic_ini", description="Alembic configuration")
+            plan.add("migrations/env.py", "backend_migration_env", description="Alembic migration environment")
 
     # ---- README ---------------------------------------------------------------
     plan.add(

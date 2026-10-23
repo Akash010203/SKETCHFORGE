@@ -11,12 +11,14 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSplitter,
     QTabWidget,
     QVBoxLayout,
@@ -53,6 +55,7 @@ class CanvasToolButton(QPushButton):
 
     def __init__(self, label: str, kind: ComponentType, parent=None) -> None:
         super().__init__(label, parent)
+        self.setObjectName("paletteTool")
         self.kind = kind
         self._press_pos = None
         self.setCheckable(True)
@@ -115,7 +118,7 @@ class MainWindow(QMainWindow):
         right.addTab(self.correction, "Measure && repair")
         right.addTab(self.training, "Training")
         left.setCurrentWidget(self.generator)
-        right.setCurrentWidget(self.preview)
+        right.setCurrentWidget(self.properties)
 
         self.left_tabs, self.right_tabs = left, right
 
@@ -132,17 +135,21 @@ class MainWindow(QMainWindow):
         # interactive design surface; this bar translates requests into undoable IR commands.
         self.edit_prompt = QLineEdit()
         self.edit_prompt.setObjectName("naturalLanguageEditPrompt")
-        self.edit_prompt.setPlaceholderText("Describe an edit, e.g. “make the button blue”")
+        self.edit_prompt.setPlaceholderText("Try “make the primary button blue” or “move the title down 12 px”…")
         self.edit_prompt.setAccessibleName("Natural language design edit")
         self.edit_prompt.returnPressed.connect(self.apply_prompt)
         self.apply_prompt_button = QPushButton("Apply edit")
         self.apply_prompt_button.clicked.connect(self.apply_prompt)
         prompt_row = QHBoxLayout()
-        prompt_row.addWidget(QLabel("Ask"))
+        prompt_label = QLabel("✦  ASK SKETCHFORGE")
+        prompt_label.setObjectName("sectionEyebrow")
+        prompt_row.addWidget(prompt_label)
         prompt_row.addWidget(self.edit_prompt, 1)
         prompt_row.addWidget(self.apply_prompt_button)
         palette_row = QHBoxLayout()
-        palette_row.addWidget(QLabel("Add to canvas"))
+        insert_label = QLabel("INSERT")
+        insert_label.setObjectName("sectionEyebrow")
+        palette_row.addWidget(insert_label)
         self._palette_buttons = []
         for label, kind in (("Button", ComponentType.BUTTON), ("Input", ComponentType.INPUT),
                              ("Text", ComponentType.TEXT), ("Heading", ComponentType.HEADING),
@@ -162,11 +169,25 @@ class MainWindow(QMainWindow):
             self._align_buttons[mode] = button
         palette_row.addStretch(1)
 
+        palette_frame = QWidget()
+        palette_frame.setObjectName("canvasPalette")
+        palette_frame.setMinimumWidth(1080)
+        palette_frame.setLayout(palette_row)
+        palette_scroll = QScrollArea()
+        palette_scroll.setObjectName("paletteScroll")
+        palette_scroll.setWidgetResizable(True)
+        palette_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        palette_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        palette_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        palette_scroll.setFixedHeight(50)
+        palette_scroll.setWidget(palette_frame)
+
         central = QWidget(self)
         central_layout = QVBoxLayout(central)
         central_layout.setContentsMargins(8, 8, 8, 8)
+        central_layout.setSpacing(7)
         central_layout.addLayout(prompt_row)
-        central_layout.addLayout(palette_row)
+        central_layout.addWidget(palette_scroll)
         central_layout.addWidget(splitter, 1)
         self.setCentralWidget(central)
         self.statusBar().addPermanentWidget(self.progress)
@@ -287,6 +308,8 @@ class MainWindow(QMainWindow):
         self.canvas._fit_pending = True
         self.progress.finish("")
         self._refresh_all()
+        self.left_tabs.setCurrentWidget(self.tree)
+        self.right_tabs.setCurrentWidget(self.properties)
         self.setWindowTitle(self._title())
         project = self.controller.project
         n = len(self.controller.document.components) - 1
@@ -304,6 +327,8 @@ class MainWindow(QMainWindow):
                                         if self.controller.has_project else None)
         self.properties.refresh()
         self._update_actions()
+        selected = len(self.controller.project.selection.ids) if self.controller.has_project else 0
+        self.statusBar().showMessage(f"{selected} component{'s' if selected != 1 else ''} selected" if selected else "Ready", 2500)
 
     def _on_repair_finished(self, report) -> None:
         self.progress.finish("")
@@ -342,6 +367,7 @@ class MainWindow(QMainWindow):
         if stack is not None:
             self.act_undo.setToolTip(f"Undo: {stack.undo_label()}" if stack.can_undo else "Nothing to undo")
             self.act_redo.setToolTip(f"Redo: {stack.redo_label()}" if stack.can_redo else "Nothing to redo")
+        self.act_delete.setEnabled(bool(has and self.controller.project.selection.ids))
         for act in (self.act_save, self.act_save_as, self.act_export, self.act_evaluate, self.act_repair, self.act_fit):
             act.setEnabled(has)
         self.setWindowTitle(self._title())
@@ -565,6 +591,15 @@ def _studio_stylesheet() -> str:
     QToolBar { background: #0d0d11; border: 0; border-bottom: 1px solid #ffffff19; spacing: 7px; padding: 5px 9px; }
     QToolButton, QPushButton { background: #24232b; color: #e8e6ee; border: 1px solid #ffffff1c; border-radius: 8px; padding: 7px 10px; }
     QToolButton:hover, QPushButton:hover { background: #302e39; border-color: #d9ff5f66; }
+    QPushButton#paletteTool { background: #1a191f; border: 1px solid #ffffff20; border-radius: 9px; min-width: 62px; padding: 8px 10px; }
+    QPushButton#paletteTool:checked { background: #353b25; color: #e7ff96; border-color: #d9ff5f99; }
+    QPushButton#paletteTool:hover { background: #2a2932; }
+    QPushButton#paletteTool:checked:hover { background: #414a2b; }
+    QWidget#canvasPalette { background: #141419; }
+    QScrollArea#paletteScroll { background: #141419; border: 1px solid #ffffff16; border-radius: 10px; }
+    QScrollBar:horizontal { background: #15151a; height: 6px; margin: 0 8px; }
+    QScrollBar::handle:horizontal { background: #3c3a45; min-width: 25px; border-radius: 3px; }
+    QLabel#sectionEyebrow { color: #aaa7b2; font-size: 9px; font-weight: 700; letter-spacing: 1px; padding: 0 7px; }
     QToolButton:disabled, QPushButton:disabled { color: #77747e; }
     QTabWidget::pane { border: 1px solid #ffffff1a; border-radius: 10px; top: -1px; }
     QTabBar::tab { background: #17171d; color: #9996a2; padding: 9px 12px; margin: 3px 2px 0; border-radius: 7px; }

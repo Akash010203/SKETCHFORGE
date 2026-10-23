@@ -32,7 +32,9 @@ def render_file(pf: PlannedFile, plan: ProjectPlan) -> str | None:
         return _types(pf, plan)
     if g == "readme":
         return _readme(pf, plan)
-    if g in ("backend_models", "backend_db", "backend_logic", "backend_schema", "backend_test"):
+    if g in ("backend_models", "backend_db", "backend_logic", "backend_schema", "backend_test",
+             "backend_api", "backend_auth", "backend_prisma", "backend_alembic_ini",
+             "backend_migration_env", "backend_requirements"):
         return _backend(pf, plan)
     return None
 

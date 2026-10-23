@@ -62,6 +62,11 @@ class AppSpec:
     requires_auth: bool = False
     tech_frontend: str = "react-ts"  # "react-ts" | "html-css-js"
     tech_backend: str = "none"       # "none" | "python-sqlite"
+    database: str = "sqlite"          # sqlite | postgresql | mysql
+    orm: str = "dataclass"            # dataclass | sqlalchemy | prisma
+    api_target: str = "flask"         # flask | fastapi | graphql
+    migrations: bool = False
+    authentication: bool = False      # session/password/JWT/OAuth scaffolding
     acceptance_criteria: list[str] = field(default_factory=list)
 
     def page_by_name(self, name: str) -> PageSpec | None:
