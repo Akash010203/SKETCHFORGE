@@ -17,7 +17,7 @@ class PrivacyConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     allow_images: bool = False
     include_user_text: bool = False
-    max_prompt_chars: int = Field(12_000, gt=0)
+    max_prompt_chars: int = Field(32_000, gt=0)
     max_components: int = Field(120, gt=0)
 
 

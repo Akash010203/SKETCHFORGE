@@ -22,8 +22,8 @@ from sketchforge.integrations.provider_interface import (
 class ConsentGate:
     """Per-session record that the user has seen and accepted the egress notice."""
 
-    def __init__(self) -> None:
-        self._acknowledged_at: float | None = None
+    def __init__(self, *, consented: bool = False) -> None:
+        self._acknowledged_at: float | None = time.time() if consented else None
         self._lock = threading.Lock()
 
     @property
@@ -74,6 +74,6 @@ def check_request(config: NebiusConfig, request: CompletionRequest) -> int:
             "(nebius.privacy.max_prompt_chars)")
     if not request.messages:
         raise PolicyViolation("a request needs at least one message")
-    if request.max_tokens <= 0 or request.max_tokens > 4096:
-        raise PolicyViolation("max_tokens must be between 1 and 4096")
+    if request.max_tokens <= 0 or request.max_tokens > 16384:
+        raise PolicyViolation("max_tokens must be between 1 and 16384")
     return chars

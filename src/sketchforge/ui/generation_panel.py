@@ -1,10 +1,17 @@
-"""Stitch-inspired prompt surface for generating complete application projects."""
+"""Stitch-inspired prompt surface for generating complete application projects.
+
+Changes in this revision:
+  - Generation runs in a QThread so the UI stays responsive.
+  - Live progress messages appear while the model works.
+  - A follow-up / revise bar lets the user iterate on the generated project.
+  - generate_studio_project now receives a progress callback.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QObject, QThread, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QFileDialog,
@@ -20,6 +27,68 @@ from sketchforge.generation.studio_generator import generate_studio_project
 from sketchforge.utilities.paths import repo_root
 
 
+# ---------------------------------------------------------------------------
+# Background worker
+# ---------------------------------------------------------------------------
+
+
+class _GenerateWorker(QObject):
+    """Runs generate_studio_project off the GUI thread."""
+
+    progress = Signal(str)
+    finished = Signal(str)   # project root path
+    failed = Signal(str)     # error message
+
+    def __init__(self, prompt: str, output_base: Path, include_backend: bool) -> None:
+        super().__init__()
+        self._prompt = prompt
+        self._output_base = output_base
+        self._include_backend = include_backend
+
+    def run(self) -> None:  # called by QThread.started
+        try:
+            root = generate_studio_project(
+                self._prompt,
+                self._output_base,
+                include_backend=self._include_backend,
+                progress=lambda msg: self.progress.emit(msg),
+            )
+        except (OSError, ValueError, RuntimeError) as exc:
+            self.failed.emit(str(exc))
+        else:
+            self.finished.emit(str(root))
+
+
+class _ReviseWorker(QObject):
+    """Runs ai_revise_project off the GUI thread."""
+
+    progress = Signal(str)
+    finished = Signal(bool)   # True = files updated
+
+    def __init__(self, project_root: Path, instruction: str) -> None:
+        super().__init__()
+        self._root = project_root
+        self._instruction = instruction
+
+    def run(self) -> None:
+        try:
+            from sketchforge.generation.ai_generator import ai_revise_project
+            ok = ai_revise_project(
+                self._root,
+                self._instruction,
+                progress=lambda msg: self.progress.emit(msg),
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.progress.emit(f"Revision failed: {exc}")
+            ok = False
+        self.finished.emit(ok)
+
+
+# ---------------------------------------------------------------------------
+# Panel
+# ---------------------------------------------------------------------------
+
+
 class GenerationPanel(QWidget):
     """Prompt-driven frontend and optional SQLite-backend project generator."""
 
@@ -30,6 +99,10 @@ class GenerationPanel(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("generationPanel")
+        self._output_base = repo_root() / "output" / "projects"
+        self._current_project_root: Path | None = None
+        self._thread: QThread | None = None
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 14, 15, 14)
         layout.setSpacing(11)
@@ -41,7 +114,10 @@ class GenerationPanel(QWidget):
         title.setObjectName("generationTitle")
         title.setWordWrap(True)
         layout.addWidget(title)
-        intro = QLabel("Start with an idea, a workflow, or a sketch. Your frontend and backend live together in one project.")
+        intro = QLabel(
+            "Start with an idea, a workflow, or a sketch. "
+            "Your frontend and backend live together in one project."
+        )
         intro.setObjectName("mutedText")
         intro.setWordWrap(True)
         layout.addWidget(intro)
@@ -54,13 +130,22 @@ class GenerationPanel(QWidget):
 
         self.backend = QCheckBox("Add a Python + SQLite backend")
         self.backend.setChecked(True)
-        self.backend.setToolTip("Generate backend models, schema, database helpers, CRUD logic, and tests.")
+        self.backend.setToolTip(
+            "Generate backend models, schema, database helpers, CRUD logic, Flask API, and tests."
+        )
         layout.addWidget(self.backend)
 
         self.generate_button = QPushButton("✦   Generate full stack")
         self.generate_button.setObjectName("generateButton")
         self.generate_button.clicked.connect(self.generate)
         layout.addWidget(self.generate_button)
+
+        # Progress label — shows streaming messages during generation
+        self.progress_label = QLabel("")
+        self.progress_label.setObjectName("mutedText")
+        self.progress_label.setWordWrap(True)
+        self.progress_label.setVisible(False)
+        layout.addWidget(self.progress_label)
 
         row = QHBoxLayout()
         self.choose_button = QPushButton("Choose output folder…")
@@ -86,18 +171,46 @@ class GenerationPanel(QWidget):
             button.setObjectName("suggestionButton")
             button.setMinimumHeight(42)
             button.setStyleSheet("text-align: left; white-space: normal;")
-            button.clicked.connect(lambda _checked=False, text=suggestion: self.prompt.setPlainText(text))
+            button.clicked.connect(
+                lambda _checked=False, text=suggestion: self.prompt.setPlainText(text)
+            )
             layout.addWidget(button)
 
+        # --- Follow-up / revise section (hidden until a project is ready) ---
+        self.revise_separator = QLabel("✦  REVISE PROJECT")
+        self.revise_separator.setObjectName("eyebrow")
+        self.revise_separator.setVisible(False)
+        layout.addSpacing(6)
+        layout.addWidget(self.revise_separator)
+
+        self.revise_prompt = QPlainTextEdit()
+        self.revise_prompt.setObjectName("generationPrompt")
+        self.revise_prompt.setPlaceholderText(
+            "Describe a change, e.g. \"Add a dark-mode toggle\" or \"Change accent color to blue\""
+        )
+        self.revise_prompt.setFixedHeight(72)
+        self.revise_prompt.setVisible(False)
+        layout.addWidget(self.revise_prompt)
+
+        self.revise_button = QPushButton("↻   Apply revision")
+        self.revise_button.setObjectName("generateButton")
+        self.revise_button.setVisible(False)
+        self.revise_button.clicked.connect(self.revise)
+        layout.addWidget(self.revise_button)
+
         layout.addStretch(1)
-        self.recent = QLabel("YOUR WORKSPACE\n\nGenerated projects appear in the preview and project folder.")
+        self.recent = QLabel(
+            "YOUR WORKSPACE\n\nGenerated projects appear in the preview and project folder."
+        )
         self.recent.setObjectName("workspaceHint")
         self.recent.setWordWrap(True)
         layout.addWidget(self.recent)
-        self._output_base = repo_root() / "output" / "projects"
 
+    # ------------------------------------------------------------------
     def choose_output_folder(self) -> None:
-        path = QFileDialog.getExistingDirectory(self, "Choose generated project folder", str(self._output_base))
+        path = QFileDialog.getExistingDirectory(
+            self, "Choose generated project folder", str(self._output_base)
+        )
         if path:
             self._output_base = Path(path)
             self.output_label.setText(str(self._output_base))
@@ -108,19 +221,96 @@ class GenerationPanel(QWidget):
             self.status_message.emit("Add a short description before generating your app.")
             self.prompt.setFocus()
             return
-        self.generate_button.setEnabled(False)
-        self.generate_button.setText("◌   Building your project…")
-        self.status_message.emit("Generating frontend and backend files…")
-        try:
-            root = generate_studio_project(prompt, self._output_base,
-                                          include_backend=self.backend.isChecked())
-        except (OSError, ValueError, RuntimeError) as exc:
-            self.status_message.emit(f"Could not generate the project: {exc}")
-            self.generation_failed.emit(str(exc))
+
+        self._set_busy(True)
+        self.progress_label.setText("Starting…")
+        self.progress_label.setVisible(True)
+
+        worker = _GenerateWorker(prompt, self._output_base, self.backend.isChecked())
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        worker.progress.connect(self._on_progress)
+        worker.finished.connect(self._on_generate_done)
+        worker.failed.connect(self._on_generate_failed)
+        worker.finished.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        thread.started.connect(worker.run)
+        thread.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        self._thread = thread
+        thread.start()
+
+    def revise(self) -> None:
+        if self._current_project_root is None:
+            self.status_message.emit("Generate a project first before applying a revision.")
+            return
+        instruction = self.revise_prompt.toPlainText().strip()
+        if not instruction:
+            self.status_message.emit("Describe what you'd like to change.")
+            self.revise_prompt.setFocus()
+            return
+
+        self._set_busy(True)
+        self.progress_label.setText("Sending revision to AI…")
+        self.progress_label.setVisible(True)
+
+        worker = _ReviseWorker(self._current_project_root, instruction)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        worker.progress.connect(self._on_progress)
+        worker.finished.connect(self._on_revise_done)
+        worker.finished.connect(thread.quit)
+        thread.started.connect(worker.run)
+        thread.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        self._thread = thread
+        thread.start()
+
+    # ------------------------------------------------------------------
+    def _on_progress(self, msg: str) -> None:
+        self.progress_label.setText(msg)
+        self.status_message.emit(msg)
+
+    def _on_generate_done(self, root_str: str) -> None:
+        root = Path(root_str)
+        self._current_project_root = root
+        n = len(list(root.rglob("*.*")))
+        self.recent.setText(
+            f"LATEST PROJECT\n\n{root.name}\n{n} generated files\n{root}"
+        )
+        backend_label = "SQLite backend scaffold" if self.backend.isChecked() else "no backend"
+        self.status_message.emit(f"Generated {root.name} with frontend and {backend_label}.")
+        self.progress_label.setVisible(False)
+        self._set_busy(False)
+        self._show_revise(True)
+        self.project_ready.emit(root_str)
+
+    def _on_generate_failed(self, message: str) -> None:
+        self.status_message.emit(f"Could not generate the project: {message}")
+        self.generation_failed.emit(message)
+        self.progress_label.setVisible(False)
+        self._set_busy(False)
+
+    def _on_revise_done(self, updated: bool) -> None:
+        if updated:
+            self.status_message.emit("Revision applied — refreshing preview…")
+            if self._current_project_root:
+                self.project_ready.emit(str(self._current_project_root))
         else:
-            self.recent.setText(f"LATEST PROJECT\n\n{root.name}\n{len(list(root.rglob('*.*')))} generated files\n{root}")
-            self.project_ready.emit(str(root))
-            self.status_message.emit(f"Generated {root.name} with frontend and {'SQLite backend scaffold' if self.backend.isChecked() else 'no backend'}.")
-        finally:
-            self.generate_button.setEnabled(True)
-            self.generate_button.setText("✦   Generate full stack")
+            self.status_message.emit("Revision could not be applied (AI returned no changes).")
+        self.revise_prompt.clear()
+        self.progress_label.setVisible(False)
+        self._set_busy(False)
+
+    def _set_busy(self, busy: bool) -> None:
+        self.generate_button.setEnabled(not busy)
+        self.generate_button.setText(
+            "◌   Building your project…" if busy else "✦   Generate full stack"
+        )
+        self.revise_button.setEnabled(not busy)
+        self.choose_button.setEnabled(not busy)
+
+    def _show_revise(self, visible: bool) -> None:
+        self.revise_separator.setVisible(visible)
+        self.revise_prompt.setVisible(visible)
+        self.revise_button.setVisible(visible)

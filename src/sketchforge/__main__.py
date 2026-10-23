@@ -66,6 +66,12 @@ def cmd_gui(args: argparse.Namespace) -> int:
                    screenshot=Path(args.screenshot) if args.screenshot else None)
 
 
+def cmd_studio(args: argparse.Namespace) -> int:
+    from sketchforge.ui.web_studio import serve_studio
+    serve_studio(host=args.host, port=args.port)
+    return 0
+
+
 def cmd_info(_: argparse.Namespace) -> int:
     import platform
 
@@ -102,6 +108,11 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--image", help="sketch to import on start")
     g.add_argument("--screenshot", help="headless: import, inject a fault, save a PNG of the window, exit")
     g.set_defaults(func=cmd_gui)
+
+    w = sub.add_parser("studio", help="run the local browser-based app generator studio")
+    w.add_argument("--host", default="127.0.0.1", help="bind locally by default")
+    w.add_argument("--port", type=int, default=8000)
+    w.set_defaults(func=cmd_studio)
 
     i = sub.add_parser("info", help="print versions and bundled samples")
     i.set_defaults(func=cmd_info)

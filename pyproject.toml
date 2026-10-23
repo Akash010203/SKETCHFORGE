@@ -37,6 +37,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "sketchforge.generation" = ["templates/*.tpl"]
+"sketchforge.ui" = ["web_studio/*.html", "web_studio/*.css", "web_studio/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
