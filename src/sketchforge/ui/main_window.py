@@ -27,6 +27,8 @@ from sketchforge import __version__
 from sketchforge.application.app_controller import AppController
 from sketchforge.assist.edit_plan import PlanCommand, validate_plan
 from sketchforge.assist.local_parser import parse_instruction
+from sketchforge.assist.model_planner import plan_with_model
+from sketchforge.domain.component_types import ComponentType
 from sketchforge.exceptions import SketchForgeError
 from sketchforge.ui.bridge import ControllerBridge
 from sketchforge.ui.component_tree import ComponentTree
@@ -111,11 +113,24 @@ class MainWindow(QMainWindow):
         prompt_row.addWidget(QLabel("Ask"))
         prompt_row.addWidget(self.edit_prompt, 1)
         prompt_row.addWidget(self.apply_prompt_button)
+        palette_row = QHBoxLayout()
+        palette_row.addWidget(QLabel("Add to canvas"))
+        self._palette_buttons = []
+        for label, kind in (("Button", ComponentType.BUTTON), ("Input", ComponentType.INPUT),
+                             ("Text", ComponentType.TEXT), ("Heading", ComponentType.HEADING),
+                             ("Card", ComponentType.CARD), ("Container", ComponentType.CONTAINER)):
+            button = QPushButton(label)
+            button.setCheckable(True)
+            button.clicked.connect(lambda checked=False, k=kind, b=button: self._choose_canvas_tool(k, b, checked))
+            palette_row.addWidget(button)
+            self._palette_buttons.append(button)
+        palette_row.addStretch(1)
 
         central = QWidget(self)
         central_layout = QVBoxLayout(central)
         central_layout.setContentsMargins(8, 8, 8, 8)
         central_layout.addLayout(prompt_row)
+        central_layout.addLayout(palette_row)
         central_layout.addWidget(splitter, 1)
         self.setCentralWidget(central)
         self.statusBar().addPermanentWidget(self.progress)
@@ -134,6 +149,11 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Project files were created, but preview could not start: {exc}", 10000)
             return
         self.right_tabs.setCurrentWidget(self.preview)
+
+    def _choose_canvas_tool(self, kind: ComponentType, selected: QPushButton, checked: bool) -> None:
+        for button in self._palette_buttons:
+            button.setChecked(button is selected and checked)
+        self.canvas.set_tool(kind if checked else None)
 
     def _on_generation_failed(self, message: str) -> None:
         self.preview.show_error(message, "Project generation failed")
@@ -272,6 +292,8 @@ class MainWindow(QMainWindow):
         has = self.controller.has_project
         self.edit_prompt.setEnabled(has)
         self.apply_prompt_button.setEnabled(has)
+        for button in self._palette_buttons:
+            button.setEnabled(has)
         stack = self.controller.project.stack if has else None
         self.act_undo.setEnabled(bool(stack and stack.can_undo))
         self.act_redo.setEnabled(bool(stack and stack.can_redo))
@@ -294,18 +316,24 @@ class MainWindow(QMainWindow):
         instruction = self.edit_prompt.text().strip()
         if not instruction or not self.controller.has_project:
             return
-        result = parse_instruction(instruction, self.controller.document)
-        if not result.ok:
-            self.statusBar().showMessage(result.reason or "Could not understand that edit.", 8000)
+        provider = self.controller.model_provider
+        result = plan_with_model(provider, self.controller.document, instruction) if provider else None
+        plan = result.plan if result and result.ok else None
+        reason = result.reason if result and result.kind not in ("provider_error", "bad_output") else None
+        if plan is None and reason is None:
+            local = parse_instruction(instruction, self.controller.document)
+            plan, reason = local.plan, local.reason
+        if plan is None:
+            self.statusBar().showMessage(reason or "Could not understand that edit.", 8000)
             return
         try:
-            validate_plan(result.plan, self.controller.document)
-            self.controller.execute(PlanCommand(result.plan))
+            validate_plan(plan, self.controller.document)
+            self.controller.execute(PlanCommand(plan))
         except SketchForgeError as exc:
             self.statusBar().showMessage(str(exc), 8000)
             return
         self.edit_prompt.clear()
-        explanation = result.plan.explanation or "Edit applied"
+        explanation = plan.explanation or "Edit applied"
         self.statusBar().showMessage(explanation, 6000)
 
     def choose_sketch(self) -> None:

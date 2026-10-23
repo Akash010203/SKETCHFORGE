@@ -13,8 +13,11 @@ from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsScene, QGraphicsView
 
 from sketchforge.application.app_controller import AppController
-from sketchforge.design_ir.schema import Component
-from sketchforge.editor.selection import hit_test
+from sketchforge.design_ir.schema import BBox, Component
+from sketchforge.editor.selection import components_in_rect, hit_test
+from sketchforge.domain.component_types import ComponentType
+from sketchforge.domain.component import Style, Typography
+from sketchforge.editor.design_commands import AddComponentCommand, CompositeCommand
 from sketchforge.exceptions import SketchForgeError
 
 HANDLE = 10.0  # resize handle edge in design px
@@ -42,6 +45,12 @@ class DesignCanvas(QGraphicsView):
         self._fit_pending = True
         self._drag: dict | None = None
         self._ghost: QGraphicsRectItem | None = None
+        self._snap_guides: list[QGraphicsRectItem] = []
+        self._tool: ComponentType | None = None
+
+    def set_tool(self, kind: ComponentType | None) -> None:
+        self._tool = kind
+        self.setCursor(Qt.CursorShape.CrossCursor if kind else Qt.CursorShape.ArrowCursor)
 
     # ------------------------------------------------------------------ public
     def set_show_issues(self, on: bool) -> None:
@@ -99,6 +108,9 @@ class DesignCanvas(QGraphicsView):
         for item in self._overlays:
             scene.removeItem(item)
         self._overlays = []
+        for item in self._snap_guides:
+            scene.removeItem(item)
+        self._snap_guides = []
         if not self.controller.has_project:
             return
         doc = self.controller.document
@@ -144,6 +156,16 @@ class DesignCanvas(QGraphicsView):
         if event.button() != Qt.MouseButton.LeftButton or not self.controller.has_project:
             return super().mousePressEvent(event)
         pos = self.mapToScene(event.position().toPoint())
+        if self._tool is not None:
+            self._drag = {"mode": "create", "start": pos, "moved": False, "kind": self._tool}
+            return
+        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+            hit = hit_test(self.controller.document, pos.x(), pos.y())
+            if hit:
+                ids = list(self.controller.project.selection.ids)
+                ids.remove(hit.id) if hit.id in ids else ids.append(hit.id)
+                self.selection_requested.emit(ids)
+            return
         doc = self.controller.document
         primary = self.controller.project.selection.primary
         current = doc.get(primary) if primary else None
@@ -152,11 +174,13 @@ class DesignCanvas(QGraphicsView):
             return
         hit = hit_test(doc, pos.x(), pos.y())
         if hit is None:
-            self.selection_requested.emit([])
+            self._drag = {"mode": "select", "start": pos, "moved": False}
             return
         if hit.id != primary:
             self.selection_requested.emit([hit.id])
-        self._drag = {"mode": "move", "id": hit.id, "start": pos, "box": hit.bbox, "moved": False}
+        ids = self.controller.project.selection.ids if hit.id in self.controller.project.selection.ids else (hit.id,)
+        boxes = {cid: self.controller.document.require(cid).bbox for cid in ids}
+        self._drag = {"mode": "move", "id": hit.id, "ids": tuple(ids), "start": pos, "box": hit.bbox, "boxes": boxes, "moved": False}
 
     def mouseMoveEvent(self, event) -> None:  # noqa: N802
         if self._drag is None:
@@ -167,14 +191,18 @@ class DesignCanvas(QGraphicsView):
         if not d["moved"] and (dx * dx + dy * dy) ** 0.5 < DRAG_THRESHOLD:
             return
         d["moved"] = True
-        b = d["box"]
+        b = d.get("box")
         if d["mode"] == "move":
-            rect = QRectF(b.x + dx, b.y + dy, b.w, b.h)
+            dx, dy = self._snap_delta(d, dx, dy)
+        if d["mode"] == "select":
+            rect = QRectF(d["start"], pos).normalized()
+        elif d["mode"] in ("move", "create"):
+            rect = QRectF(b.x + dx, b.y + dy, b.w, b.h) if d["mode"] == "move" else QRectF(d["start"], pos).normalized()
         else:
             rect = QRectF(b.x, b.y, max(b.w + dx, 4.0), max(b.h + dy, 4.0))
         if self._ghost is None:
             self._ghost = QGraphicsRectItem()
-            pen = QPen(QColor("#2563eb"), 1.5, Qt.PenStyle.DashLine)
+            pen = QPen(QColor("#2563eb" if d["mode"] != "create" else "#d9ff5f"), 1.5, Qt.PenStyle.DashLine)
             pen.setCosmetic(True)
             self._ghost.setPen(pen)
             self._ghost.setBrush(QBrush(QColor(37, 99, 235, 40)))
@@ -183,23 +211,94 @@ class DesignCanvas(QGraphicsView):
         self._ghost.setRect(rect)
         d["delta"] = (dx, dy)
 
+    def _snap_delta(self, drag: dict, dx: float, dy: float) -> tuple[float, float]:
+        """Snap moving bounds to nearby component edges/centres and show magnetic guides."""
+        for item in self._snap_guides:
+            self.scene().removeItem(item)
+        self._snap_guides = []
+        source = drag["box"]
+        targets = [c.bbox for c in self.controller.document.components
+                   if c.id not in drag["ids"] and c.id != self.controller.document.root_id and c.visible]
+        tolerance = 7.0 / max(self.transform().m11(), 1e-6)
+        xs = (source.x + dx, source.cx + dx, source.x2 + dx)
+        ys = (source.y + dy, source.cy + dy, source.y2 + dy)
+        x_candidates = [(abs(x - edge), edge - x) for x in xs for box in targets for edge in (box.x, box.cx, box.x2)]
+        y_candidates = [(abs(y - edge), edge - y) for y in ys for box in targets for edge in (box.y, box.cy, box.y2)]
+        snap_x = min(x_candidates, default=(tolerance + 1, 0), key=lambda item: item[0])
+        snap_y = min(y_candidates, default=(tolerance + 1, 0), key=lambda item: item[0])
+        if snap_x[0] <= tolerance:
+            dx += snap_x[1]
+            self._add_guide(True, xs[0] + snap_x[1])
+        if snap_y[0] <= tolerance:
+            dy += snap_y[1]
+            self._add_guide(False, ys[0] + snap_y[1])
+        return dx, dy
+
+    def _add_guide(self, vertical: bool, coordinate: float) -> None:
+        page = self.controller.document.page
+        item = QGraphicsRectItem(coordinate - .5 if vertical else 0,
+                                 0 if vertical else coordinate - .5,
+                                 1 if vertical else page.width,
+                                 page.height if vertical else 1)
+        pen = QPen(QColor("#d9ff5f"), 1)
+        pen.setCosmetic(True)
+        item.setPen(pen)
+        item.setBrush(QBrush(QColor("#d9ff5f")))
+        item.setZValue(19)
+        self.scene().addItem(item)
+        self._snap_guides.append(item)
+
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802
         d, self._drag = self._drag, None
         if self._ghost is not None:
             self.scene().removeItem(self._ghost)
             self._ghost = None
-        if d is None or not d["moved"]:
+        for item in self._snap_guides:
+            self.scene().removeItem(item)
+        self._snap_guides = []
+        if d is None:
+            return super().mouseReleaseEvent(event)
+        if d["mode"] == "select":
+            if d["moved"]:
+                p = self.mapToScene(event.position().toPoint())
+                box = QRectF(d["start"], p).normalized()
+                ids = [c.id for c in components_in_rect(self.controller.document, BBox(x=box.x(), y=box.y(), w=max(box.width(), .01), h=max(box.height(), .01)))]
+                self.selection_requested.emit(ids)
+            else:
+                self.selection_requested.emit([])
+            return
+        if not d["moved"]:
             return super().mouseReleaseEvent(event)
         dx, dy = d["delta"]
         try:
             if d["mode"] == "move":
-                self.controller.move_component(d["id"], round(dx, 1), round(dy, 1))
-            else:
+                commands = [__import__('sketchforge.editor.design_commands', fromlist=['MoveCommand']).MoveCommand(cid, round(dx, 1), round(dy, 1)) for cid in d["ids"]]
+                self.controller.execute(CompositeCommand(commands, f"move {len(commands)} component(s)"))
+            elif d["mode"] == "resize":
                 b = d["box"]
                 self.controller.resize_component(d["id"], round(max(b.w + dx, 4.0), 1), round(max(b.h + dy, 4.0), 1))
+            else:
+                p = self.mapToScene(event.position().toPoint())
+                rect = QRectF(d["start"], p).normalized()
+                if rect.width() < 8 or rect.height() < 8:
+                    rect.setSize(rect.size().expandedTo(__import__('PySide6.QtCore', fromlist=['QSizeF']).QSizeF(120, 40)))
+                self._add_component(d["kind"], rect)
         except SketchForgeError as exc:
             self.status_message.emit(str(exc))
             self.refresh_overlays()
+
+    def _add_component(self, kind: ComponentType, rect: QRectF) -> None:
+        doc = self.controller.document
+        idx = 1
+        while doc.get(f"{kind.value}-{idx}") is not None:
+            idx += 1
+        box = BBox(x=rect.x(), y=rect.y(), w=max(8, rect.width()), h=max(8, rect.height()))
+        text = {ComponentType.BUTTON: "Button", ComponentType.INPUT: "Enter text", ComponentType.TEXT: "Text", ComponentType.HEADING: "Heading"}.get(kind)
+        comp = Component(id=f"{kind.value}-{idx}", type=kind, parent_id=doc.root_id, bbox=box, text=text,
+                         style=Style(fill="#2563eb" if kind is ComponentType.BUTTON else "transparent"),
+                         typography=Typography() if kind in (ComponentType.BUTTON, ComponentType.INPUT, ComponentType.TEXT, ComponentType.HEADING) else None)
+        self.controller.execute(AddComponentCommand(comp))
+        self.selection_requested.emit([comp.id])
 
     def wheelEvent(self, event) -> None:  # noqa: N802
         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
