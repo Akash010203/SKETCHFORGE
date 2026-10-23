@@ -4,7 +4,7 @@ Supports two packaging modes:
   1. **Python wheel** (default): builds a wheel using the pyproject.toml
      configuration. Runnable on any machine with Python 3.11+.
   2. **Standalone executable** (--pyinstaller): uses PyInstaller to bundle
-     all dependencies into a single-directory distribution. Requires
+     all dependencies into a single-file GUI executable. Requires
      ``pip install pyinstaller`` first.
 
 Usage
@@ -12,7 +12,7 @@ Usage
     # Wheel only (always works if build is installed):
     python -I scripts/package_application.py
 
-    # Standalone executable:
+    # Standalone executable (install the UI extra first):
     python -I scripts/package_application.py --pyinstaller
 
     # Specify output directory:
@@ -26,6 +26,7 @@ explicitly configured by the user.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -68,7 +69,11 @@ def _build_wheel(out: Path) -> int:
 
 def _build_pyinstaller(out: Path) -> int:
     """Bundle into a standalone executable using PyInstaller."""
-    if shutil.which("pyinstaller") is None:
+    if sys.platform != "win32":
+        print("ERROR: the .exe must be built on Windows; PyInstaller is platform-specific.")
+        return 2
+
+    if importlib.util.find_spec("PyInstaller") is None:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "pyinstaller", "-q"],
             capture_output=True, text=True
@@ -79,28 +84,37 @@ def _build_pyinstaller(out: Path) -> int:
             return 1
 
     out.mkdir(parents=True, exist_ok=True)
+    try:
+        import PySide6  # noqa: F401
+    except ImportError:
+        print("ERROR: the desktop executable requires the UI dependencies.")
+        print("  Run: python -m pip install -e '.[ui]'")
+        return 2
+
     spec_args = [
-        "pyinstaller",
+        sys.executable, "-m", "PyInstaller",
         "--name", APP_NAME,
         "--distpath", str(out),
         "--workpath", str(ROOT / "build" / "pyinstaller"),
         "--specpath", str(ROOT / "build"),
-        "--onedir",                        # single-directory bundle
+        "--paths", str(SRC),
+        "--onefile",                       # one-click executable; PyInstaller extracts bundled data at launch
         "--windowed",                      # no console window on Windows
         "--noconfirm",                     # overwrite without prompting
         # Hidden imports needed for PySide6 and optional modules
         "--hidden-import", "PySide6.QtSvg",
         "--hidden-import", "PySide6.QtPrintSupport",
         "--hidden-import", "sketchforge",
+        "--collect-all", "PySide6",
         # Add assets
         f"--add-data={ROOT / 'assets'}{';' if sys.platform == 'win32' else ':'}assets",
         f"--add-data={ROOT / 'config'}{';' if sys.platform == 'win32' else ':'}config",
         # Entry point
-        str(ROOT / "src" / "sketchforge" / "__main__.py"),
+        str(ROOT / "scripts" / "desktop_entry.py"),
     ]
 
     print("Building standalone executable with PyInstaller …")
-    print(f"  Output: {out / APP_NAME}")
+    print(f"  Output: {out / (APP_NAME + '.exe')}")
     result = subprocess.run(spec_args, cwd=str(ROOT), capture_output=True, text=True)
     if result.returncode != 0:
         print("  PyInstaller FAILED:")
@@ -108,10 +122,13 @@ def _build_pyinstaller(out: Path) -> int:
         print(result.stderr[-3000:])
         return result.returncode
 
-    exe = out / APP_NAME / (APP_NAME + (".exe" if sys.platform == "win32" else ""))
+    exe = out / (APP_NAME + (".exe" if sys.platform == "win32" else ""))
     if exe.is_file():
         size_mb = exe.stat().st_size / 1024 ** 2
         print(f"  Executable: {exe}  ({size_mb:.1f} MB)")
+    else:
+        print("ERROR: PyInstaller completed without producing the expected executable.")
+        return 1
     return 0
 
 

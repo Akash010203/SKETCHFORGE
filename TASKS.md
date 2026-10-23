@@ -48,7 +48,7 @@ Caveat: the sample sketches are **synthetic**; no real photographed sketch has b
 | 8 | Frontend generation (React/TS, HTML/CSS) | TESTED | `generation/frontend/` (component, page, style generators, project export); verified via `tests/test_generation_pipeline.py`. |
 | 9 | Backend generation (SQLite DDL, models, CRUD logic, tests) | IMPLEMENTED | Split across `schema_generator.py`, `database_generator.py`, `business_logic_generator.py`, and `test_generator.py`; existing public imports remain available. Regression tests were not rerun after this refactor. |
 | 10 | Restricted execution + full-app verification | TESTED | Unit coverage in `tests/unit/test_execution.py` and `test_verification.py`; generated SQLite backend and its generated CRUD tests run in the sandbox in `tests/end_to_end/test_generated_project.py`. |
-| 11 | Performance + packaging | PARTIAL | `scripts/bundle_project.py` (one-file bundle, round-trip tests) implemented & tested; PyInstaller packager pending. |
+| 11 | Performance + packaging | PARTIAL | `scripts/bundle_project.py` (one-file bundle) and a Windows PyInstaller one-file GUI executable recipe are implemented; an actual `.exe` build still needs a Windows environment with `.[ui]` and PyInstaller installed. |
 
 ## Needs the owner
 

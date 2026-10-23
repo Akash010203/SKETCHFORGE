@@ -11,6 +11,12 @@ def repo_root() -> Path:
     Falls back to the current working directory when the package is installed
     outside a checkout, so the CLI still works from any directory.
     """
+    import sys
+
+    # PyInstaller unpacks one-file data into _MEIPASS for the lifetime of the app.
+    frozen_root = getattr(sys, "_MEIPASS", None)
+    if getattr(sys, "frozen", False) and frozen_root:
+        return Path(frozen_root)
     here = Path(__file__).resolve()
     for parent in here.parents:
         if (parent / "pyproject.toml").is_file() and (parent / "src" / "sketchforge").is_dir():

@@ -63,7 +63,8 @@ construction, not a hypothetical.
 * **Dataset processing**: 1,000 WebSight samples were normalized to PNG/HTML/JSON under `datasets/processed/websight-v02/`. They have no component bounding-box labels and are not detector-training data. DrawnUI source files are absent from this checkout; the processing command is ready for when they are provided.
 * **Retrieval**: Hybrid BM25/vector retrieval is local and dependency-free by default. Its default vector representation is feature hashing, which provides token-level similarity rather than pretrained semantic embeddings; a local embedding function can be supplied.
 * **Integrations**: Nebius client is implemented and verified against an in-process mock transport; live verification requires running `scripts/verify_nebius.py` with a valid `NEBIUS_API_KEY`. NVIDIA local runtime hooks (`integrations/nvidia/runtime.py`) are pending.
-* **Testing & Execution**: Sandboxed execution and verification runners are implemented, with dedicated unit tests in progress. Full browser automation (Playwright/Chrome) requires host browser configuration.
+* **Testing & Execution**: TypeScript checking invokes `npx tsc --noEmit` through the command sandbox. Browser smoke tests still rely on a host-installed Playwright CLI, its browser runtime, and a separately running preview server; they are not autonomous in a clean sandbox.
+* **Packaging**: `scripts/package_application.py --pyinstaller` builds a single-file Windows GUI executable when run on Windows with `.[ui]` and PyInstaller installed. This checkout has not produced or interactively verified a distributable `.exe`.
 * **Application**: Desktop UI primary workflow is operational; secondary panels (`layer_panel.py`, `settings_dialog.py`, `training_panel.py`, `dataset_panel.py`) and the natural-language "Ask" prompt bar are pending integration.
 
 ## Hardware & Environment
