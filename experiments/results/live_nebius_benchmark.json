@@ -1,7 +1,7 @@
 {
   "completion": {
     "completion_tokens": 96,
-    "latency_ms": 53061.8,
+    "latency_ms": 819.0,
     "model": "nvidia/Nemotron-3_5-Lightning",
     "ok": true,
     "prompt_tokens": 23
@@ -9,7 +9,7 @@
   "endpoint": "https://api.tokenfactory.nebius.com/v1/",
   "model_verified": true,
   "models_endpoint": {
-    "count": 28,
+    "count": 30,
     "nvidia_model_details": [
       {
         "accepts_images": false,

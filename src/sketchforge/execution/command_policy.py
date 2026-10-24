@@ -47,15 +47,25 @@ _ALLOWED: list[tuple[str, object]] = [
     ("regex", r"npx\.(cmd|ps1)$"),
     ("regex", r"node\.(exe)$"),
     ("regex", r"python\.(exe)$"),
+    ("regex", r"python3\.(exe)$"),
 ]
 
 # Specific sub-commands that are *blocked* even if the executable is allowed.
+# Order matters: these are evaluated before the allow-list.
 _BLOCKED_ARGV: list[tuple] = [
     ("npm", "publish"),
     ("npm", "unpublish"),
     ("pip", "install", "--index-url"),   # no custom indexes
     ("npx", "exec"),
     ("node", "-e"),                       # arbitrary inline eval
+    # ------------------------------------------------------------------ #
+    # SECURITY: Block inline Python code strings unconditionally.        #
+    # `python -c` and `python3 -c` allow arbitrary code execution and    #
+    # must never be permitted inside the sandbox regardless of the       #
+    # allow-list entry for the python/python3 executable.                #
+    # ------------------------------------------------------------------ #
+    ("python",  "-c"),
+    ("python3", "-c"),
 ]
 
 
@@ -91,7 +101,8 @@ def assert_permitted(cmd: Sequence[str]) -> None:
     if not is_permitted(cmd):
         raise CommandNotPermitted(
             f"Command not permitted in sandbox: {' '.join(str(x) for x in cmd[:4])!r}\n"
-            "Only npm, npx, node, python, pytest, ruff, eslint, and tsc are allowed."
+            "Allowed executables: npm, npx, node, python (module mode), pytest, ruff, eslint, tsc.\n"
+            "Blocked regardless of allow-list: python -c, python3 -c, node -e, npx exec."
         )
 
 

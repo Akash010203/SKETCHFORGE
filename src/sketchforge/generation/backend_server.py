@@ -107,11 +107,22 @@ class BackendServer:
         self._process: subprocess.Popen | None = None
         self._port: int | None = None
         self._project_root: Path | None = None
+        self._session_token: str | None = None
         self._lock = threading.Lock()
 
     @property
     def port(self) -> int | None:
         return self._port
+
+    @property
+    def session_token(self) -> str | None:
+        """The ephemeral X-Studio-Token for this preview session.
+
+        Web Studio must attach this value as the ``X-Studio-Token`` request
+        header on every proxied ``/api/*`` call so the backend token gate
+        accepts the request.
+        """
+        return self._session_token
 
     @property
     def running(self) -> bool:
@@ -128,8 +139,17 @@ class BackendServer:
 
         port = _free_port()
 
+        # Ephemeral session token — fresh per preview, 32 bytes URL-safe.
+        session_token = secrets.token_urlsafe(32)
+
         # Build a credential-scrubbed environment for the child process.
         child_env = _safe_env(dict(os.environ), port)
+
+        # Restrict CORS to the exact origin the preview iframe will use.
+        child_env["CORS_ORIGIN"] = f"http://127.0.0.1:{port}"
+
+        # Inject the ephemeral session token so the backend can gate /api/.
+        child_env["STUDIO_TOKEN"] = session_token
 
         # If the generated project includes an auth module, inject a preview-only
         # ephemeral secret (never the real AUTH_SECRET from the parent environment).
@@ -173,6 +193,7 @@ class BackendServer:
             self._process = proc
             self._port = port
             self._project_root = project_root
+            self._session_token = session_token
 
         log.info("Backend server started on port %d for %s (sandboxed env).", port, project_root.name)
         # Drain stdout in a daemon thread so the pipe does not block.
@@ -185,6 +206,7 @@ class BackendServer:
             self._process = None
             self._port = None
             self._project_root = None
+            self._session_token = None
         if proc is not None:
             try:
                 proc.terminate()

@@ -106,6 +106,19 @@ def _build_pyinstaller(out: Path) -> int:
         "--hidden-import", "PySide6.QtPrintSupport",
         "--hidden-import", "sketchforge",
         "--collect-all", "PySide6",
+        # The desktop app uses PyTorch, Transformers, and dataset readers only as
+        # optional accelerators/training tools. PyInstaller otherwise bundles the
+        # full local ML environment, including multi-gigabyte CUDA libraries, into
+        # the GUI executable. Keep the standalone build on the core CV fallback.
+        "--exclude-module", "torch",
+        "--exclude-module", "torchvision",
+        "--exclude-module", "torchaudio",
+        "--exclude-module", "transformers",
+        "--exclude-module", "datasets",
+        "--exclude-module", "pyarrow",
+        "--exclude-module", "onnxruntime",
+        "--exclude-module", "faiss",
+        "--exclude-module", "bitsandbytes",
         # Add assets
         f"--add-data={ROOT / 'assets'}{';' if sys.platform == 'win32' else ':'}assets",
         f"--add-data={ROOT / 'config'}{';' if sys.platform == 'win32' else ':'}config",

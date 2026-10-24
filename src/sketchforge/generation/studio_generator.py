@@ -338,7 +338,7 @@ def _write_backend_api(root: Path, spec: AppSpec) -> None:
 from __future__ import annotations
 
 import argparse
-import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -347,11 +347,43 @@ from flask import Flask, g, jsonify, request
 app = Flask(__name__)
 DB_PATH = Path(__file__).parent.parent / "data" / "{_snake(spec.name)}.db"
 
+# ---------------------------------------------------------------------------
+# Security: restricted CORS + ephemeral session-token gate
+# ---------------------------------------------------------------------------
+# CORS_ORIGIN is injected at startup by SketchForge Studio and set to the
+# exact iframe origin (e.g. "http://127.0.0.1:PORT").  Wildcard (*) is only
+# used when the env-var is absent so a bare `python backend/api.py` still
+# works during manual development.
+_ALLOWED_ORIGIN: str = os.environ.get("CORS_ORIGIN", "null")
+
+# STUDIO_TOKEN is an ephemeral secret generated per preview session.  Every
+# /api/ request must supply it in the X-Studio-Token header; requests without
+# the token receive 401 before any application logic runs.
+_STUDIO_TOKEN: str | None = os.environ.get("STUDIO_TOKEN") or None
+
+
+@app.before_request
+def _require_token():
+    """Reject /api/* requests that do not carry the correct session token."""
+    if not request.path.startswith("/api/"):
+        return  # health / static routes pass through
+    if request.method == "OPTIONS":
+        return  # CORS pre-flight must not be gated
+    if _STUDIO_TOKEN is None:
+        return  # token gate disabled (e.g. running outside Studio preview)
+    supplied = request.headers.get("X-Studio-Token", "")
+    if not supplied or supplied != _STUDIO_TOKEN:
+        return jsonify(error="unauthorized"), 401
+
 
 def _cors(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    """Attach restricted CORS headers to every response."""
+    # Only reflect the exact allowed origin, never a wildcard.
+    if _ALLOWED_ORIGIN and _ALLOWED_ORIGIN != "null":
+        response.headers["Access-Control-Allow-Origin"] = _ALLOWED_ORIGIN
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Studio-Token"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Vary"] = "Origin"
     return response
 
 
