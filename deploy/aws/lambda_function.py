@@ -125,16 +125,16 @@ def _decode_image(image_bytes: bytes) -> "Any":  # returns np.ndarray BGR
 def _run_pipeline(bgr: "Any") -> dict[str, Any]:
     """Execute the full SketchForge vision pipeline and return serialisable result dict."""
     from sketchforge.design_ir.serialization import to_dict
-    from sketchforge.vision.image_loader import LoadedImage
+    from sketchforge.vision.image_loader import from_array
     from sketchforge.vision.pipeline import analyze
 
-    # Wrap the numpy array in the LoadedImage dataclass that ``analyze`` expects.
-    loaded = LoadedImage(bgr=bgr, path=None, original_size=(bgr.shape[1], bgr.shape[0]))
+    # Wrap the decoded pixels with the current LoadedImage metadata contract.
+    loaded = from_array(bgr, name="lambda-input.png")
     result = analyze(loaded)
 
     # Build the Design IR document from detections.
-    from sketchforge.application.sketch_to_ir import build_design_document
-    doc = build_design_document(result)
+    from sketchforge.layout.design_refinement import build_document
+    doc, _ = build_document(result)
 
     return {
         "design_ir": to_dict(doc),

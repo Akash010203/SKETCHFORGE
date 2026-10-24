@@ -13,7 +13,7 @@ Synthetic dry-run mode (--synthetic N)
 ---------------------------------------
 When no manifest is available, pass ``--synthetic N`` to generate *N* synthetic
 annotated sketches on-the-fly.  This exercises the complete benchmark pipeline
-(detection → score_detection) without any real photographs, so the infrastructure
+(detection -> score_detection) without any real photographs, so the infrastructure
 can be validated immediately and the numbers serve as a reproducible baseline.
 
 Usage::

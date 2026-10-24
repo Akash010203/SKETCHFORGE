@@ -27,7 +27,10 @@ def _extract_entities_from_brief(prompt: str) -> list[EntitySpec]:
     brief = prompt.lower()
 
     def matches(*keywords: str) -> bool:
-        return any(re.search(rf"\b{re.escape(word)}s?\b", brief) for word in keywords)
+        return any(
+            re.search(rf"\b{re.escape(word)}(?:s|es)?\b", brief)
+            for word in keywords
+        )
 
     if matches("task", "todo", "project"):
         return [EntitySpec("Task", [
@@ -36,19 +39,46 @@ def _extract_entities_from_brief(prompt: str) -> list[EntitySpec]:
             FieldSpec("due_date", "Due date", "date", required=False),
             FieldSpec("status", "Status", "select", options=["Todo", "In progress", "Done"]),
         ])]
-    if matches("book", "store", "shop"):
+    if matches("book", "store", "shop", "catalog", "product", "inventory"):
         return [EntitySpec("Product", [
             FieldSpec("title", "Title"),
             FieldSpec("price", "Price", "number"),
             FieldSpec("category", "Category"),
             FieldSpec("stock", "Stock", "number"),
         ])]
-    if matches("clinic", "yoga", "appointment"):
+    if matches("clinic", "yoga", "appointment", "booking", "reservation", "schedule"):
         return [EntitySpec("Booking", [
             FieldSpec("client_name", "Client name"),
             FieldSpec("date", "Date", "date"),
             FieldSpec("service", "Service"),
             FieldSpec("status", "Status", "select", options=["Requested", "Confirmed", "Completed"]),
+        ])]
+    if matches("event", "conference", "meetup", "webinar"):
+        return [EntitySpec("Event", [
+            FieldSpec("title", "Title"),
+            FieldSpec("date", "Date", "date"),
+            FieldSpec("location", "Location"),
+            FieldSpec("description", "Description", required=False),
+        ])]
+    if matches("customer", "client", "contact", "lead"):
+        return [EntitySpec("Contact", [
+            FieldSpec("name", "Name"),
+            FieldSpec("email", "Email", "email"),
+            FieldSpec("company", "Company", required=False),
+            FieldSpec("notes", "Notes", required=False),
+        ])]
+    if matches("invoice", "payment", "billing", "expense"):
+        return [EntitySpec("Invoice", [
+            FieldSpec("title", "Title"),
+            FieldSpec("amount", "Amount", "number"),
+            FieldSpec("due_date", "Due date", "date", required=False),
+            FieldSpec("status", "Status", "select", options=["Pending", "Paid", "Overdue"]),
+        ])]
+    if matches("note", "journal", "diary"):
+        return [EntitySpec("Note", [
+            FieldSpec("title", "Title"),
+            FieldSpec("content", "Content"),
+            FieldSpec("category", "Category", required=False),
         ])]
     return [EntitySpec("Item", [
         FieldSpec("title", "Title"),
