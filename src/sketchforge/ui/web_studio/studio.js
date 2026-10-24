@@ -8,6 +8,7 @@
   const log = $('#agent-log');
 
   let currentSlug = '', currentUrl = '', pollTimer = null, zoom = 75;
+  let pendingSketchLayout = '';
 
   function addLog(text) { log.textContent = text + '\n' + log.textContent; }
 
@@ -137,7 +138,16 @@
   async function uploadImage(file) {
     if (!file || !file.type.startsWith('image/')) return;
     if (!currentSlug) {
-      addLog('Generate a project before adding an image.');
+      try {
+        const response = await fetch('/api/sketch-analysis', {
+          method: 'POST', headers: { 'Content-Type': file.type }, body: file
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Sketch analysis failed.');
+        pendingSketchLayout = payload.layout;
+        addLog(`${payload.summary} The analysis will guide your next generation.`);
+        $('#status').textContent = 'Sketch analyzed · ready to generate';
+      } catch (error) { addLog('Sketch analysis failed: ' + error.message); }
       return;
     }
     try {
@@ -191,6 +201,10 @@
   // ---------------------------------------------------------------------------
   async function generate(text) {
     if (!text.trim()) return;
+    if (!currentSlug && pendingSketchLayout) {
+      text += `\n\nUse this OpenCV analysis of my uploaded sketch as the layout guide. Keep the detected regions and their relative positions:\n${pendingSketchLayout}`;
+      pendingSketchLayout = '';
+    }
     const revising = Boolean(currentSlug);
     const frame = $('#preview');
     let saved = window.pendingPreviewState || {};

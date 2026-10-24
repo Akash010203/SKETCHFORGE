@@ -100,6 +100,41 @@ class StudioHandler(BaseHTTPRequestHandler):
             upload.parent.mkdir(parents=True, exist_ok=True)
             upload.write_bytes(data)
             self._json(201, {"url": f"/assets/uploads/{upload.name}"})
+        elif self.path == "/api/sketch-analysis":
+            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].lower()
+            extension = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/bmp": ".bmp", "image/tiff": ".tif"}.get(content_type)
+            length = int(self.headers.get("Content-Length", 0))
+            if extension is None or length < 1 or length > 10 * 1024 * 1024:
+                self._json(400, {"error": "Choose a PNG, JPEG, WebP, BMP, or TIFF sketch under 10 MB."})
+                return
+            data = self.rfile.read(length)
+            if len(data) != length:
+                self._json(400, {"error": "Sketch upload was incomplete."})
+                return
+            try:
+                from sketchforge.vision import analyze, load_image_bytes
+
+                loaded = load_image_bytes(data, f"sketch{extension}")
+                result = analyze(loaded)
+                width, height = loaded.width, loaded.height
+                observations = []
+                for detection in sorted(result.detections, key=lambda item: (item.bbox[1], item.bbox[0]))[:20]:
+                    x, y, w, h = detection.bbox
+                    observations.append(
+                        f"{detection.type} at ({round(x / width * 100)}%, {round(y / height * 100)}%), "
+                        f"about {round(w / width * 100)}% wide by {round(h / height * 100)}% tall"
+                    )
+                if not observations:
+                    observations = ["No distinct UI regions were detected; use the sketch as a loose visual guide."]
+                layout = "\n".join(f"- {item}" for item in observations)
+                self._json(200, {
+                    "width": width, "height": height,
+                    "count": len(result.detections),
+                    "layout": layout,
+                    "summary": f"Analyzed sketch ({width}×{height}); detected {len(result.detections)} UI region(s).",
+                })
+            except Exception as exc:  # noqa: BLE001
+                self._json(400, {"error": f"Could not analyze sketch: {exc}"})
         elif self.path == "/api/generate" or self.path.startswith("/api/revise/"):
             try:
                 data = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
