@@ -58,7 +58,28 @@ class StudioHandler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path == "/api/generate" or self.path.startswith("/api/revise/"):
+        if self.path.startswith("/api/upload/"):
+            slug = unquote(urlparse(self.path).path.rsplit("/", 1)[-1])
+            with _LOCK:
+                root = _PROJECTS.get(slug)
+            if root is None:
+                self._json(404, {"error": "Generate or open a project before adding an image."})
+                return
+            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].lower()
+            extension = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif"}.get(content_type)
+            length = int(self.headers.get("Content-Length", 0))
+            if extension is None or length < 1 or length > 10 * 1024 * 1024:
+                self._json(400, {"error": "Choose a PNG, JPEG, WebP, or GIF image under 10 MB."})
+                return
+            data = self.rfile.read(length)
+            if len(data) != length:
+                self._json(400, {"error": "Image upload was incomplete."})
+                return
+            upload = root / "assets" / "uploads" / f"{uuid.uuid4().hex}{extension}"
+            upload.parent.mkdir(parents=True, exist_ok=True)
+            upload.write_bytes(data)
+            self._json(201, {"url": f"/assets/uploads/{upload.name}"})
+        elif self.path == "/api/generate" or self.path.startswith("/api/revise/"):
             try:
                 data = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
                 prompt = str(data.get("prompt", "")).strip()
@@ -262,6 +283,27 @@ def _start_project_preview(slug: str, root: Path) -> str:
     class ProjectHandler(BaseHTTPRequestHandler):
         def _handle(self) -> None:
             path = urlparse(self.path).path
+            if path == "/__sketchforge/save" and self.command == "POST":
+                relative = unquote(pathlib_path_from_referer(self.headers.get("Referer", "")))
+                target = (root / relative).resolve()
+                if target.parent != root.resolve() or target.name not in {"home.html", "projects.html"}:
+                    self.send_error(400)
+                    return
+                try:
+                    length = int(self.headers.get("Content-Length", 0))
+                    if length > 2 * 1024 * 1024:
+                        raise ValueError("document too large")
+                    data = json.loads(self.rfile.read(length))
+                    html = data.get("html", "")
+                    if not isinstance(html, str) or "<html" not in html.lower():
+                        raise ValueError("invalid document")
+                    target.write_text(html, encoding="utf-8")
+                except (ValueError, json.JSONDecodeError) as exc:
+                    self.send_error(400, str(exc))
+                    return
+                self.send_response(204)
+                self.end_headers()
+                return
             if path.startswith("/api/"):
                 if backend_port is None:
                     payload = json.dumps({"error": "Generated backend did not start. Install project requirements."}).encode()
@@ -296,10 +338,17 @@ def _start_project_preview(slug: str, root: Path) -> str:
             payload = target.read_bytes()
             content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
             if target.suffix.lower() == ".html":
-                monitor = (b"<script>(function(){function report(m,l){parent.postMessage({type:'sketchforge-error',message:String(m),line:l||'?'},'*')}"
+                monitor = (b"<script data-sketchforge-editor>(function(){function report(m,l){parent.postMessage({type:'sketchforge-error',message:String(m),line:l||'?'},'*')}"
                            b"addEventListener('error',e=>report(e.message,e.lineno));addEventListener('unhandledrejection',e=>report(e.reason));"
+                           b"['dragenter','dragover'].forEach(t=>addEventListener(t,e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();e.dataTransfer.dropEffect='copy'}}));addEventListener('drop',e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')).forEach(file=>parent.postMessage({type:'sf-file-drop',file},'*'))}});"
                            b"let f=window.fetch.bind(window);window.fetch=(...a)=>f(...a).then(r=>{if(!r.ok)report('HTTP '+r.status+' '+a[0],'API');return r});"
-                           b"addEventListener('message',e=>{if(e.data?.type==='sf-snapshot'){parent.postMessage({type:'sf-state',state:{url:location.href,scrollX,scrollY,fields:[...document.querySelectorAll('input,textarea,select')].map((x,i)=>({i,value:x.value,checked:x.checked}))}},'*')}"
+                           b"function save(){let d=document.documentElement.cloneNode(true);d.querySelectorAll('[data-sketchforge-editor]').forEach(x=>x.remove());fetch('/__sketchforge/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({html:'<!doctype html>'+d.outerHTML})}).then(r=>{if(!r.ok)throw Error();parent.postMessage({type:'sf-edit-saved'},'*')}).catch(()=>parent.postMessage({type:'sf-edit-error'},'*'))}"
+                           b"let active=null;document.addEventListener('click',e=>{if(!window.sfEditMode)return;if(e.target.closest('[data-sketchforge-editor]'))return;e.preventDefault();e.stopPropagation();if(active)active.style.outline='';active=e.target;active.style.outline='2px solid #7c65e8';parent.postMessage({type:'sf-element-selected',text:active.innerText||active.alt||active.tagName},'*')},true);"
+                           b"document.addEventListener('dblclick',e=>{if(!window.sfEditMode||!active)return;e.preventDefault();active.contentEditable='true';active.focus()});document.addEventListener('focusout',e=>{if(e.target.contentEditable==='true'){e.target.contentEditable='false';e.target.style.outline='';active=null;save()}},true);"
+                           b"addEventListener('message',e=>{if(e.source!==parent)return;if(e.data?.type==='sf-snapshot'){parent.postMessage({type:'sf-state',state:{url:location.href,scrollX,scrollY,fields:[...document.querySelectorAll('input,textarea,select')].map((x,i)=>({i,value:x.value,checked:x.checked}))}},'*')}"
+                           b"if(e.data?.type==='sf-edit-mode'){window.sfEditMode=!!e.data.enabled;document.body.style.cursor=window.sfEditMode?'crosshair':'';parent.postMessage({type:'sf-edit-mode-ready'},'*')}"
+                           b"if(e.data?.type==='sf-insert-image'){let img=document.createElement('img');img.src=e.data.url;img.alt='Uploaded image';img.style.cssText='max-width:320px;height:auto;display:block;margin:16px;border-radius:8px';if(active&&active.parentElement)active.insertAdjacentElement('afterend',img);else(document.querySelector('main')||document.body).appendChild(img);active=img;save()}"
+                           b"if(e.data?.type==='sf-add-text'){let el=document.createElement('h2');el.textContent='Add your text';el.contentEditable='true';el.style.cssText='padding:12px;border:1px dashed #7c65e8;min-height:44px';(document.querySelector('main')||document.body).appendChild(el);el.focus();active=el;el.addEventListener('blur',()=>{el.contentEditable='false';el.style.border='';save()},{once:true})}"
                            b"if(e.data?.type==='sf-restore'){let s=e.data.state||{};(s.fields||[]).forEach(x=>{let el=document.querySelectorAll('input,textarea,select')[x.i];if(el){el.value=x.value;el.checked=x.checked}});scrollTo(s.scrollX||0,s.scrollY||0)}})})()</script>")
                 payload = payload.replace(b"</head>", monitor + b"</head>", 1)
             self.send_response(200)
@@ -322,3 +371,10 @@ def _start_project_preview(slug: str, root: Path) -> str:
     threading.Thread(target=preview_server.serve_forever, daemon=True, name=f"sketchforge-preview-{slug}").start()
     _PREVIEW_SERVERS.append(preview_server)
     return f"http://127.0.0.1:{preview_server.server_port}/home.html"
+
+
+def pathlib_path_from_referer(referer: str) -> str:
+    """Return the generated HTML page name for the editor save request."""
+    from urllib.parse import urlparse
+    name = Path(urlparse(referer).path).name
+    return name if name in {"home.html", "projects.html"} else ""

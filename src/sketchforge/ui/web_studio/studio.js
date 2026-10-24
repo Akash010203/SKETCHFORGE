@@ -23,6 +23,7 @@
     const frame = $('#preview');
     frame.onload = () => {
       $('#frame-state').textContent = 'Ready';
+      frame.contentWindow.postMessage({ type: 'sf-edit-mode', enabled: true }, '*');
       if (window.pendingPreviewState) {
         frame.contentWindow.postMessage({ type: 'sf-restore', state: window.pendingPreviewState }, '*');
         window.pendingPreviewState = null;
@@ -88,26 +89,31 @@
   _historyUpdateButtons();
 
   // ---------------------------------------------------------------------------
-  // Canvas drawing tools — mark experimental tools as "Coming Soon"
+  // Canvas selection and direct editing
   // ---------------------------------------------------------------------------
-  // The Select tool (index 0) is the default active tool and remains functional
-  // within the iframe preview context.  All other drawing tools (Frame, Draw,
-  // Pan, Image, Theme, Components) are experimental canvas-editing features that
-  // are not yet implemented.  We mark them visually so evaluators understand
-  // they are in-progress rather than broken.
   const toolButtons = document.querySelectorAll('.canvas-tools button');
+  function setEditMode(enabled) {
+    const frame = $('#preview');
+    if (frame) frame.contentWindow.postMessage({ type: 'sf-edit-mode', enabled }, '*');
+  }
   toolButtons.forEach((btn, i) => {
     if (i === 0) {
-      // Select tool — keep as active default.
       btn.classList.add('tool-active');
       btn.setAttribute('aria-pressed', 'true');
       btn.onclick = () => {
+        const enabled = !btn.classList.contains('tool-active');
         toolButtons.forEach(b => { b.classList.remove('tool-active'); b.setAttribute('aria-pressed', 'false'); });
-        btn.classList.add('tool-active');
-        btn.setAttribute('aria-pressed', 'true');
+        if (enabled) {
+          btn.classList.add('tool-active');
+          btn.setAttribute('aria-pressed', 'true');
+        }
+        setEditMode(enabled);
       };
+    } else if (i === 4) {
+      btn.onclick = () => $('#image-input').click();
+    } else if (i === 6) {
+      btn.onclick = () => $('#preview')?.contentWindow.postMessage({ type: 'sf-add-text' }, '*');
     } else {
-      // Experimental tools — visually disabled with "Coming Soon" tooltip.
       btn.classList.add('tool-coming-soon');
       btn.setAttribute('aria-disabled', 'true');
       btn.setAttribute('title', `${btn.getAttribute('title') || 'Tool'} — Coming Soon`);
@@ -120,9 +126,36 @@
   });
 
   // ---------------------------------------------------------------------------
-  // Attach & Mic buttons — Coming Soon
+  // Image upload
   // ---------------------------------------------------------------------------
-  $('#attach').onclick = () => addLog('ℹ️  Attach — Coming Soon.');
+  $('#attach').onclick = () => $('#image-input').click();
+  async function uploadImage(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    if (!currentSlug) {
+      addLog('Generate a project before adding an image.');
+      return;
+    }
+    try {
+      const response = await fetch('/api/upload/' + encodeURIComponent(currentSlug), {
+        method: 'POST', headers: { 'Content-Type': file.type }, body: file
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Image upload failed.');
+      const frame = $('#preview');
+      frame.contentWindow.postMessage({ type: 'sf-insert-image', url: new URL(payload.url, frame.src).href }, '*');
+      addLog('Added image: ' + file.name);
+    } catch (error) { addLog('Image upload failed: ' + error.message); }
+  }
+  $('#image-input').onchange = event => { uploadImage(event.target.files[0]); event.target.value = ''; };
+  ['dragenter', 'dragover'].forEach(type => window.addEventListener(type, event => {
+    if ([...event.dataTransfer.types].includes('Files')) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; }
+  }));
+  window.addEventListener('drop', event => {
+    if ([...event.dataTransfer.types].includes('Files')) {
+      event.preventDefault();
+      [...event.dataTransfer.files].filter(file => file.type.startsWith('image/')).forEach(uploadImage);
+    }
+  });
   $('#mic').onclick   = () => addLog('ℹ️  Voice input — Coming Soon.');
 
   // ---------------------------------------------------------------------------
@@ -272,12 +305,17 @@
   // iframe postMessage bridge
   // ---------------------------------------------------------------------------
   window.addEventListener('message', e => {
+    if (e.source !== $('#preview')?.contentWindow) return;
     if (e.data?.type === 'sketchforge-error') {
       const badge = $('#error-badge');
       badge.hidden = false;
       $('#error-text').textContent = `${e.data.message} · line ${e.data.line || '?'}`;
     }
     if (e.data?.type === 'sf-state') window.pendingPreviewState = e.data.state;
+    if (e.data?.type === 'sf-file-drop') uploadImage(e.data.file);
+    if (e.data?.type === 'sf-edit-saved') addLog('Canvas change saved to the generated page.');
+    if (e.data?.type === 'sf-edit-error') addLog('Could not save the canvas change.');
+    if (e.data?.type === 'sf-element-selected') $('#status').textContent = 'Selected: ' + e.data.text;
   });
 
   // ---------------------------------------------------------------------------

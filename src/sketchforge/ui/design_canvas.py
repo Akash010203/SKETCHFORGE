@@ -345,7 +345,10 @@ class DesignCanvas(QGraphicsView):
         return False
 
     def dragEnterEvent(self, event) -> None:  # noqa: N802
-        if event.mimeData().hasFormat("application/x-sketchforge-component") and self.controller.has_project:
+        mime = event.mimeData()
+        image_paths = [url.toLocalFile() for url in mime.urls() if url.isLocalFile()]
+        has_image = any(path.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif")) for path in image_paths)
+        if has_image or (mime.hasFormat("application/x-sketchforge-component") and self.controller.has_project):
             event.setDropAction(Qt.DropAction.CopyAction)
             event.accept()
         else:
@@ -355,6 +358,15 @@ class DesignCanvas(QGraphicsView):
         self.dragEnterEvent(event)
 
     def dropEvent(self, event) -> None:  # noqa: N802
+        image_paths = [url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()]
+        image_path = next((path for path in image_paths
+                           if path.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"))), None)
+        if image_path:
+            self.status_message.emit(f"Importing sketch: {image_path}")
+            self.controller.import_sketch_async(image_path)
+            event.setDropAction(Qt.DropAction.CopyAction)
+            event.accept()
+            return
         try:
             kind = ComponentType(bytes(event.mimeData().data("application/x-sketchforge-component")).decode())
             pos = self.mapToScene(event.position().toPoint())
