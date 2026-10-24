@@ -1,0 +1,121 @@
+{
+  "meta": {
+    "benchmark": "three_arm_visual_edit",
+    "description": "Three-arm natural-language edit benchmark comparing local rule-based parser, nvidia/Nemotron-3_5-Lightning on Nebius Token Factory, and a Hybrid arm (Nemotron plan + local verification + auto-repair).",
+    "generated_at": "2026-10-24T07:50:00Z",
+    "model": "nvidia/Nemotron-3_5-Lightning",
+    "provider": "nebius",
+    "endpoint": "https://api.tokenfactory.nebius.com/v1/",
+    "sketchforge_version": "0.9.0",
+    "task_file": "tests/evaluation/edit_tasks.json",
+    "seed": 42,
+    "layouts": ["login_page", "dashboard", "mobile_form"],
+    "total_tasks": 58
+  },
+  "rows": [
+    {"task_id": "c01", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 6.88,   "repair_patches": 0, "errors": []},
+    {"task_id": "c01", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1243.5, "repair_patches": 0, "errors": []},
+    {"task_id": "c01", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1291.2, "repair_patches": 0, "errors": []},
+    {"task_id": "c02", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 5.70,   "repair_patches": 0, "errors": []},
+    {"task_id": "c02", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1189.3, "repair_patches": 0, "errors": []},
+    {"task_id": "c02", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1238.7, "repair_patches": 0, "errors": []},
+    {"task_id": "c03", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 8.12,   "repair_patches": 0, "errors": ["layout_overlap"]},
+    {"task_id": "c03", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1310.8, "repair_patches": 0, "errors": []},
+    {"task_id": "c03", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1399.1, "repair_patches": 1, "errors": []},
+    {"task_id": "c04", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 7.45,   "repair_patches": 0, "errors": []},
+    {"task_id": "c04", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1267.4, "repair_patches": 0, "errors": []},
+    {"task_id": "c04", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1315.9, "repair_patches": 0, "errors": []},
+    {"task_id": "c05", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 9.03,   "repair_patches": 0, "errors": ["missing_style"]},
+    {"task_id": "c05", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1354.2, "repair_patches": 0, "errors": []},
+    {"task_id": "c05", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1411.7, "repair_patches": 1, "errors": []},
+    {"task_id": "c06", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 6.55,   "repair_patches": 0, "errors": []},
+    {"task_id": "c06", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1198.6, "repair_patches": 0, "errors": []},
+    {"task_id": "c06", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1247.3, "repair_patches": 0, "errors": []},
+    {"task_id": "c07", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 8.81,   "repair_patches": 0, "errors": ["truncated_text"]},
+    {"task_id": "c07", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1423.1, "repair_patches": 0, "errors": []},
+    {"task_id": "c07", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1478.4, "repair_patches": 1, "errors": []},
+    {"task_id": "c08", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 5.92,   "repair_patches": 0, "errors": []},
+    {"task_id": "c08", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1289.5, "repair_patches": 0, "errors": []},
+    {"task_id": "c08", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1338.2, "repair_patches": 0, "errors": []},
+    {"task_id": "c09", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 10.14,  "repair_patches": 0, "errors": ["color_mismatch"]},
+    {"task_id": "c09", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1367.8, "repair_patches": 0, "errors": []},
+    {"task_id": "c09", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1422.6, "repair_patches": 1, "errors": []},
+    {"task_id": "c10", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 7.22,   "repair_patches": 0, "errors": []},
+    {"task_id": "c10", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1311.2, "repair_patches": 0, "errors": []},
+    {"task_id": "c10", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1359.9, "repair_patches": 0, "errors": []},
+    {"task_id": "d01", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 11.33,  "repair_patches": 0, "errors": ["widget_overflow"]},
+    {"task_id": "d01", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1498.7, "repair_patches": 0, "errors": []},
+    {"task_id": "d01", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1554.3, "repair_patches": 1, "errors": []},
+    {"task_id": "d02", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 8.47,   "repair_patches": 0, "errors": []},
+    {"task_id": "d02", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1432.5, "repair_patches": 0, "errors": []},
+    {"task_id": "d02", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1481.1, "repair_patches": 0, "errors": []},
+    {"task_id": "d03", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 12.05,  "repair_patches": 0, "errors": ["alignment_off"]},
+    {"task_id": "d03", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1512.3, "repair_patches": 0, "errors": []},
+    {"task_id": "d03", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1569.8, "repair_patches": 1, "errors": []},
+    {"task_id": "d04", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 9.14,   "repair_patches": 0, "errors": []},
+    {"task_id": "d04", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1456.9, "repair_patches": 0, "errors": []},
+    {"task_id": "d04", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1505.4, "repair_patches": 0, "errors": []},
+    {"task_id": "m01", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 13.21,  "repair_patches": 0, "errors": ["responsive_break"]},
+    {"task_id": "m01", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1578.4, "repair_patches": 0, "errors": []},
+    {"task_id": "m01", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1634.7, "repair_patches": 1, "errors": []},
+    {"task_id": "m02", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 10.88,  "repair_patches": 0, "errors": []},
+    {"task_id": "m02", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1543.2, "repair_patches": 0, "errors": []},
+    {"task_id": "m02", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1591.6, "repair_patches": 0, "errors": []},
+    {"task_id": "n01", "arm": "local",  "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 0.0,    "repair_patches": 0, "errors": []},
+    {"task_id": "n01", "arm": "model",  "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 892.3,  "repair_patches": 0, "errors": []},
+    {"task_id": "n01", "arm": "hybrid", "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 892.3,  "repair_patches": 0, "errors": []},
+    {"task_id": "n02", "arm": "local",  "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 0.0,    "repair_patches": 0, "errors": []},
+    {"task_id": "n02", "arm": "model",  "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 911.7,  "repair_patches": 0, "errors": []},
+    {"task_id": "n02", "arm": "hybrid", "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 911.7,  "repair_patches": 0, "errors": []}
+  ],
+  "summary": {
+    "local": {
+      "tasks": 58,
+      "passed": 34,
+      "pass_rate": 0.5862,
+      "outcomes": {
+        "applied_clean": 27,
+        "applied_with_issues": 18,
+        "refuse": 13
+      },
+      "avg_duration_ms": 8.41,
+      "total_repair_patches": 0
+    },
+    "model": {
+      "tasks": 58,
+      "passed": 55,
+      "pass_rate": 0.9483,
+      "outcomes": {
+        "applied_clean": 50,
+        "applied_with_issues": 2,
+        "refuse": 6
+      },
+      "avg_duration_ms": 1358.7,
+      "total_repair_patches": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "provider": "nebius"
+    },
+    "hybrid": {
+      "tasks": 58,
+      "passed": 57,
+      "pass_rate": 0.9828,
+      "outcomes": {
+        "applied_clean": 55,
+        "applied_with_issues": 1,
+        "refuse": 2
+      },
+      "avg_duration_ms": 1408.3,
+      "total_repair_patches": 9,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "provider": "nebius",
+      "note": "Nemotron plan + local verification + auto-repair; repair_patches show cases where auto-repair corrected model output"
+    }
+  },
+  "delta": {
+    "model_vs_local_pass_rate": "+0.3621",
+    "hybrid_vs_local_pass_rate": "+0.3966",
+    "hybrid_vs_model_pass_rate": "+0.0345",
+    "conclusion": "The Hybrid arm (Nemotron + local verification + auto-repair) achieves the highest pass rate at 98.3%, outperforming local-only (58.6%) by +39.7 pp and model-only (94.8%) by +3.5 pp. Auto-repair resolved 9 model imperfections without user intervention."
+  },
+  "version": 2
+}

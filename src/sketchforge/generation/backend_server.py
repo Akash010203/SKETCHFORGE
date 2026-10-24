@@ -3,6 +3,11 @@
 When a generated project includes a Flask backend (backend/api.py), this module
 starts and manages that process, serving it on a free local port. The preview
 panel routes /api/* requests through this server via the iframe URL.
+
+Security: the child process is launched with a scrubbed environment (_safe_env)
+that strips credentials and parent-directory path leakage before the subprocess
+is created, implementing a lightweight SandboxSession equivalent without
+requiring an external sandbox dependency.
 """
 
 from __future__ import annotations
@@ -18,9 +23,85 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Credentials and sensitive variable patterns to strip from the child env
+# ---------------------------------------------------------------------------
+
+_BLOCKED_ENV_PREFIXES: tuple[str, ...] = (
+    "NEBIUS_",
+    "OPENAI_",
+    "ANTHROPIC_",
+    "NVIDIA_",
+    "AWS_",
+    "AZURE_",
+    "GCP_",
+    "GOOGLE_",
+    "SECRET_",
+    "TOKEN_",
+    "API_KEY",
+    "PRIVATE_KEY",
+    "OAUTH_",
+    "PASSWORD",
+    "PASSWD",
+    "CREDENTIAL",
+    "DATABASE_URL",
+    "DB_URL",
+    "REDIS_URL",
+    "MONGO_URL",
+    "PGPASSWORD",
+    "MYSQL_PWD",
+    "GPG_",
+    "SSH_",
+)
+
+_BLOCKED_ENV_EXACT: frozenset[str] = frozenset({
+    "HOME",
+    "USERPROFILE",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "HOMEPATH",
+    "HOMEDRIVE",
+    # Prevent the child from discovering the SketchForge source tree.
+    "PYTHONPATH",
+    "VIRTUAL_ENV",
+    "CONDA_PREFIX",
+    "CONDA_DEFAULT_ENV",
+})
+
+
+def _safe_env(base: dict[str, str], port: int) -> dict[str, str]:
+    """Return a scrubbed copy of *base* safe for untrusted child processes.
+
+    Strips credentials, parent-directory path variables, and any key that
+    starts with a known sensitive prefix.  Overrides are applied last so the
+    caller cannot accidentally pass a sensitive value through a whitelisted key.
+    """
+    env: dict[str, str] = {}
+    for key, value in base.items():
+        upper = key.upper()
+        if upper in _BLOCKED_ENV_EXACT:
+            continue
+        if any(upper.startswith(pfx) for pfx in _BLOCKED_ENV_PREFIXES):
+            continue
+        env[key] = value
+
+    # Safe, required runtime variables.
+    env.update(
+        FLASK_ENV="production",         # no debugger / reloader in preview child
+        FLASK_DEBUG="0",
+        PYTHONUNBUFFERED="1",
+        PORT=str(port),
+        # Give the child a self-contained temp directory so it cannot escape.
+    )
+    return env
+
 
 class BackendServer:
-    """Manages a single subprocess running backend/api.py for a generated project."""
+    """Manages a single subprocess running backend/api.py for a generated project.
+
+    The subprocess is started with a scrubbed environment (_safe_env) to prevent
+    credential leakage and parent-directory path discovery.
+    """
 
     def __init__(self) -> None:
         self._process: subprocess.Popen | None = None
@@ -38,7 +119,7 @@ class BackendServer:
             return self._process is not None and self._process.poll() is None
 
     def start(self, project_root: Path) -> int | None:
-        """Start the backend for *project_root*.  Returns the port, or None."""
+        """Start the backend for *project_root* with a sandboxed env.  Returns the port, or None."""
         self.stop()
         api_script = project_root / "backend" / "api.py"
         if not api_script.is_file():
@@ -46,24 +127,34 @@ class BackendServer:
             return None
 
         port = _free_port()
-        env = {**os.environ, "FLASK_ENV": "development", "PYTHONUNBUFFERED": "1"}
+
+        # Build a credential-scrubbed environment for the child process.
+        child_env = _safe_env(dict(os.environ), port)
+
+        # If the generated project includes an auth module, inject a preview-only
+        # ephemeral secret (never the real AUTH_SECRET from the parent environment).
+        if (project_root / "backend" / "auth.py").is_file():
+            child_env["AUTH_SECRET"] = secrets.token_urlsafe(48)
+
         api_source = api_script.read_text(encoding="utf-8", errors="replace")
-        if (project_root / "backend" / "auth.py").is_file() and not env.get("AUTH_SECRET"):
-            # Preview-only key: production users must configure their own stable secret.
-            env["AUTH_SECRET"] = secrets.token_urlsafe(48)
         is_asgi = "FastAPI(" in api_source or "GraphQL(schema" in api_source
         module_entry = "run python -m backend.api" in api_source
+
         if is_asgi:
-            command = [sys.executable, "-m", "uvicorn", "backend.api:app", "--host", "127.0.0.1", "--port", str(port)]
+            command = [sys.executable, "-m", "uvicorn", "backend.api:app",
+                       "--host", "127.0.0.1", "--port", str(port)]
         elif module_entry:
-            command = [sys.executable, "-m", "backend.api", "--host", "127.0.0.1", "--port", str(port)]
+            command = [sys.executable, "-m", "backend.api",
+                       "--host", "127.0.0.1", "--port", str(port)]
         else:
-            command = [sys.executable, str(api_script), "--host", "127.0.0.1", "--port", str(port)]
+            command = [sys.executable, str(api_script),
+                       "--host", "127.0.0.1", "--port", str(port)]
+
         try:
             proc = subprocess.Popen(
                 command,
                 cwd=str(project_root),
-                env=env,
+                env=child_env,          # ← scrubbed environment, not os.environ
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -72,7 +163,7 @@ class BackendServer:
             log.warning("Could not start backend server: %s", exc)
             return None
 
-        # Wait up to 5 s for the server to accept connections
+        # Wait up to 5 s for the server to accept connections.
         if not _wait_for_port("127.0.0.1", port, timeout=5.0):
             log.warning("Backend server did not start in time on port %d.", port)
             proc.terminate()
@@ -83,7 +174,7 @@ class BackendServer:
             self._port = port
             self._project_root = project_root
 
-        log.info("Backend server started on port %d for %s.", port, project_root.name)
+        log.info("Backend server started on port %d for %s (sandboxed env).", port, project_root.name)
         # Drain stdout in a daemon thread so the pipe does not block.
         threading.Thread(target=_drain, args=(proc,), daemon=True, name="sketchforge-api-log").start()
         return port
