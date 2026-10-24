@@ -1,121 +1,2577 @@
 {
-  "meta": {
-    "benchmark": "three_arm_visual_edit",
-    "description": "Three-arm natural-language edit benchmark comparing local rule-based parser, nvidia/Nemotron-3_5-Lightning on Nebius Token Factory, and a Hybrid arm (Nemotron plan + local verification + auto-repair).",
-    "generated_at": "2026-10-24T07:50:00Z",
-    "model": "nvidia/Nemotron-3_5-Lightning",
-    "provider": "nebius",
-    "endpoint": "https://api.tokenfactory.nebius.com/v1/",
-    "sketchforge_version": "0.9.0",
-    "task_file": "tests/evaluation/edit_tasks.json",
-    "seed": 42,
-    "layouts": ["login_page", "dashboard", "mobile_form"],
-    "total_tasks": 58
+  "fixture": {
+    "condition": "clean",
+    "layouts": [
+      "login_page",
+      "dashboard",
+      "mobile_form"
+    ],
+    "seed": 11
   },
   "rows": [
-    {"task_id": "c01", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 6.88,   "repair_patches": 0, "errors": []},
-    {"task_id": "c01", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1243.5, "repair_patches": 0, "errors": []},
-    {"task_id": "c01", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1291.2, "repair_patches": 0, "errors": []},
-    {"task_id": "c02", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 5.70,   "repair_patches": 0, "errors": []},
-    {"task_id": "c02", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1189.3, "repair_patches": 0, "errors": []},
-    {"task_id": "c02", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1238.7, "repair_patches": 0, "errors": []},
-    {"task_id": "c03", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 8.12,   "repair_patches": 0, "errors": ["layout_overlap"]},
-    {"task_id": "c03", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1310.8, "repair_patches": 0, "errors": []},
-    {"task_id": "c03", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1399.1, "repair_patches": 1, "errors": []},
-    {"task_id": "c04", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 7.45,   "repair_patches": 0, "errors": []},
-    {"task_id": "c04", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1267.4, "repair_patches": 0, "errors": []},
-    {"task_id": "c04", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1315.9, "repair_patches": 0, "errors": []},
-    {"task_id": "c05", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 9.03,   "repair_patches": 0, "errors": ["missing_style"]},
-    {"task_id": "c05", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1354.2, "repair_patches": 0, "errors": []},
-    {"task_id": "c05", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1411.7, "repair_patches": 1, "errors": []},
-    {"task_id": "c06", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 6.55,   "repair_patches": 0, "errors": []},
-    {"task_id": "c06", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1198.6, "repair_patches": 0, "errors": []},
-    {"task_id": "c06", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1247.3, "repair_patches": 0, "errors": []},
-    {"task_id": "c07", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 8.81,   "repair_patches": 0, "errors": ["truncated_text"]},
-    {"task_id": "c07", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1423.1, "repair_patches": 0, "errors": []},
-    {"task_id": "c07", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1478.4, "repair_patches": 1, "errors": []},
-    {"task_id": "c08", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 5.92,   "repair_patches": 0, "errors": []},
-    {"task_id": "c08", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1289.5, "repair_patches": 0, "errors": []},
-    {"task_id": "c08", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1338.2, "repair_patches": 0, "errors": []},
-    {"task_id": "c09", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 10.14,  "repair_patches": 0, "errors": ["color_mismatch"]},
-    {"task_id": "c09", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1367.8, "repair_patches": 0, "errors": []},
-    {"task_id": "c09", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1422.6, "repair_patches": 1, "errors": []},
-    {"task_id": "c10", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 7.22,   "repair_patches": 0, "errors": []},
-    {"task_id": "c10", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1311.2, "repair_patches": 0, "errors": []},
-    {"task_id": "c10", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1359.9, "repair_patches": 0, "errors": []},
-    {"task_id": "d01", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 11.33,  "repair_patches": 0, "errors": ["widget_overflow"]},
-    {"task_id": "d01", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1498.7, "repair_patches": 0, "errors": []},
-    {"task_id": "d01", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1554.3, "repair_patches": 1, "errors": []},
-    {"task_id": "d02", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 8.47,   "repair_patches": 0, "errors": []},
-    {"task_id": "d02", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1432.5, "repair_patches": 0, "errors": []},
-    {"task_id": "d02", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1481.1, "repair_patches": 0, "errors": []},
-    {"task_id": "d03", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 12.05,  "repair_patches": 0, "errors": ["alignment_off"]},
-    {"task_id": "d03", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1512.3, "repair_patches": 0, "errors": []},
-    {"task_id": "d03", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1569.8, "repair_patches": 1, "errors": []},
-    {"task_id": "d04", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 9.14,   "repair_patches": 0, "errors": []},
-    {"task_id": "d04", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1456.9, "repair_patches": 0, "errors": []},
-    {"task_id": "d04", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1505.4, "repair_patches": 0, "errors": []},
-    {"task_id": "m01", "arm": "local",  "expected": "edit", "actual": "applied_with_issues", "passed": false, "duration_ms": 13.21,  "repair_patches": 0, "errors": ["responsive_break"]},
-    {"task_id": "m01", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1578.4, "repair_patches": 0, "errors": []},
-    {"task_id": "m01", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1634.7, "repair_patches": 1, "errors": []},
-    {"task_id": "m02", "arm": "local",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 10.88,  "repair_patches": 0, "errors": []},
-    {"task_id": "m02", "arm": "model",  "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1543.2, "repair_patches": 0, "errors": []},
-    {"task_id": "m02", "arm": "hybrid", "expected": "edit", "actual": "applied_clean",       "passed": true,  "duration_ms": 1591.6, "repair_patches": 0, "errors": []},
-    {"task_id": "n01", "arm": "local",  "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 0.0,    "repair_patches": 0, "errors": []},
-    {"task_id": "n01", "arm": "model",  "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 892.3,  "repair_patches": 0, "errors": []},
-    {"task_id": "n01", "arm": "hybrid", "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 892.3,  "repair_patches": 0, "errors": []},
-    {"task_id": "n02", "arm": "local",  "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 0.0,    "repair_patches": 0, "errors": []},
-    {"task_id": "n02", "arm": "model",  "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 911.7,  "repair_patches": 0, "errors": []},
-    {"task_id": "n02", "arm": "hybrid", "expected": "refuse", "actual": "refuse",            "passed": true,  "duration_ms": 911.7,  "repair_patches": 0, "errors": []}
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.98,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "c01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 8.91,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "c01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 6.91,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "c02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 8.14,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "c02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 9.4,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "c03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 10.16,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "c03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 8.82,
+      "errors": [
+        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "c04"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "c04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 157.06,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "c04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 7.24,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c05"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "c05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 8.55,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "c05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 9.35,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c06"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "c06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 10.93,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "c06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 8.02,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c07"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "c07",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 11.2,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "c07",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.49,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "c08"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "c08",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 8.03,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "c08",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 7.31,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "t01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "t01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 8.4,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "t01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.59,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "t02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "t02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 8.08,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "t02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 12.74,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "t03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "t03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 10.47,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "t03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 8.62,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "t04"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "t04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 9.17,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "t04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.48,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "t05"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "t05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 9.2,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "t05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 8.33,
+      "errors": [
+        "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "t06"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "t06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 350.18,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "t06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.98,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "m01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "m01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 7.69,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "m01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 14.14,
+      "errors": [
+        "new or worsened evaluator issues: ['MISALIGNED:sidebar-1:center_y']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "m02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "m02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "hybrid",
+      "duration_ms": 377.48,
+      "errors": [
+        "new or worsened evaluator issues: ['MISALIGNED:sidebar-1:center_y']"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "m02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 6.81,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "m03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "m03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 6.81,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "m03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 7.69,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "m04"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "m04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 9.94,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "m04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 8.49,
+      "errors": [
+        "new or worsened evaluator issues: ['MISALIGNED:button-1:right']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "m05"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "m05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 380.75,
+      "errors": [
+        "button-1.x: expected 300, got 312.016"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "m05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 5.76,
+      "errors": [
+        "new or worsened evaluator issues: ['MISALIGNED:checkbox-1:left']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "m06"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "m06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 360.25,
+      "errors": [
+        "checkbox-1.dx: expected -6, got None"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "m06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 8.23,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "r01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "r01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 331.87,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "r01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 7.85,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "r02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 10.73,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "r02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 8.91,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "r03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 9.83,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "r03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 6.16,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r04"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "r04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 8.82,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "r04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.6,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r05"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "r05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 7.9,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "r05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 8.88,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PAGE:button-1:right']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "r06"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "r06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 136.47,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "r06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 8.48,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "r07"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "r07",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 11.73,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "r07",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 6.23,
+      "errors": [
+        "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "f01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "f01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 323.89,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "f01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 8.56,
+      "errors": [
+        "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-2:', 'TEXT_OVERFLOW:heading-2:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "f02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "f02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 527.3,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 2,
+      "task_id": "f02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 7.74,
+      "errors": [
+        "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:', 'TEXT_OVERFLOW:heading-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "f03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "f03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 204.05,
+      "errors": [
+        "heading-1.font_size: expected 26, got 21.5"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 2,
+      "task_id": "f03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 5.49,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "k01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "k01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 7.59,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "k01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 9.3,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "k02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "k02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 11.18,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "k02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "task_id": "k03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "k03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "k03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 7.42,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "x01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "x01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 8.65,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "x01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 9.19,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "x02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "x02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 10.65,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "x02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 7.35,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "x03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "x03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 6.64,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "x03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "task_id": "x04"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "x04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "x04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 10.52,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "x05"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "x05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 11.2,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "x05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 5.94,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "x06"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "x06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 362.67,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "x06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "task_id": "p01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "task_id": "p02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "local",
+      "duration_ms": 13.17,
+      "errors": [],
+      "expected": "edit",
+      "passed": true,
+      "repair_patches": 0,
+      "task_id": "p03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_clean",
+      "arm": "hybrid",
+      "duration_ms": 11.12,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "p03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 8.03,
+      "errors": [
+        "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:', 'TEXT_OVERFLOW:heading-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "p04"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 209.27,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 2,
+      "task_id": "p04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "task_id": "p05"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "task_id": "p06"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "p06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 7.15,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "l01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "l01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 361.35,
+      "errors": [],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "l01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 6.18,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:bottom']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "l02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "l02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "hybrid",
+      "duration_ms": 148.22,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:bottom']"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "l02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 6.21,
+      "errors": [
+        "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:', 'TEXT_OVERFLOW:heading-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "l03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "l03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_repaired",
+      "arm": "hybrid",
+      "duration_ms": 367.14,
+      "errors": [
+        "heading-1.font_size: expected '>', got 10.0"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 1,
+      "task_id": "l03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 13.81,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERLAP:button-1,sidebar-1:', 'OVERLAP:card-1,sidebar-1:', 'OVERLAP:image-2,sidebar-1:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "l04"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "l04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "hybrid",
+      "duration_ms": 395.71,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERLAP:button-1,sidebar-1:', 'OVERLAP:card-1,sidebar-1:', 'OVERLAP:image-2,sidebar-1:']"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "l04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 9.69,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PAGE:heading-1:top']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "l05"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "l05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "hybrid",
+      "duration_ms": 68.31,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PAGE:heading-1:top']"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "l05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "local",
+      "duration_ms": 7.33,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PAGE:card-1:bottom', 'OVERLAP:card-1,text-4:']"
+      ],
+      "expected": "edit",
+      "passed": false,
+      "repair_patches": 0,
+      "task_id": "l06"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [
+        "planner refused an edit task"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "l06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "applied_with_issues",
+      "arm": "hybrid",
+      "duration_ms": 1018.96,
+      "errors": [
+        "new or worsened evaluator issues: ['OVERFLOW_PAGE:card-1:bottom', 'OVERLAP:card-1,text-4:']"
+      ],
+      "expected": "edit",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": false,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "repair_patches": 0,
+      "task_id": "l06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "passed": true,
+      "task_id": "n01"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n01",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "passed": true,
+      "task_id": "n02"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n02",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "passed": true,
+      "task_id": "n03"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n03",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "passed": true,
+      "task_id": "n04"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n04",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "passed": true,
+      "task_id": "n05"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n05",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "passed": true,
+      "task_id": "n06"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n06",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "local",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "passed": true,
+      "task_id": "n07"
+    },
+    {
+      "actual": "refuse",
+      "arm": "model",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "model_unavailable",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n07",
+      "total_tokens": 0
+    },
+    {
+      "actual": "refuse",
+      "arm": "hybrid",
+      "duration_ms": 0.0,
+      "errors": [],
+      "expected": "refuse",
+      "model": null,
+      "model_latency_ms": 0,
+      "passed": true,
+      "planner": "local_fallback",
+      "planner_outcome": "provider_error",
+      "planner_reason": "could not reach the service (Connection error.)",
+      "task_id": "n07",
+      "total_tokens": 0
+    }
   ],
   "summary": {
+    "hybrid": {
+      "outcomes": {
+        "applied_clean": 27,
+        "applied_repaired": 13,
+        "applied_with_issues": 5,
+        "refuse": 13
+      },
+      "pass_rate": 0.7414,
+      "passed": 43,
+      "tasks": 58
+    },
     "local": {
-      "tasks": 58,
-      "passed": 34,
-      "pass_rate": 0.5862,
       "outcomes": {
         "applied_clean": 27,
         "applied_with_issues": 18,
         "refuse": 13
       },
-      "avg_duration_ms": 8.41,
-      "total_repair_patches": 0
+      "pass_rate": 0.5862,
+      "passed": 34,
+      "tasks": 58
     },
     "model": {
-      "tasks": 58,
-      "passed": 55,
-      "pass_rate": 0.9483,
       "outcomes": {
-        "applied_clean": 50,
-        "applied_with_issues": 2,
-        "refuse": 6
+        "refuse": 58
       },
-      "avg_duration_ms": 1358.7,
-      "total_repair_patches": 0,
-      "model": "nvidia/Nemotron-3_5-Lightning",
-      "provider": "nebius"
-    },
-    "hybrid": {
-      "tasks": 58,
-      "passed": 57,
-      "pass_rate": 0.9828,
-      "outcomes": {
-        "applied_clean": 55,
-        "applied_with_issues": 1,
-        "refuse": 2
-      },
-      "avg_duration_ms": 1408.3,
-      "total_repair_patches": 9,
-      "model": "nvidia/Nemotron-3_5-Lightning",
-      "provider": "nebius",
-      "note": "Nemotron plan + local verification + auto-repair; repair_patches show cases where auto-repair corrected model output"
+      "pass_rate": 0.1207,
+      "passed": 7,
+      "tasks": 58
     }
   },
-  "delta": {
-    "model_vs_local_pass_rate": "+0.3621",
-    "hybrid_vs_local_pass_rate": "+0.3966",
-    "hybrid_vs_model_pass_rate": "+0.0345",
-    "conclusion": "The Hybrid arm (Nemotron + local verification + auto-repair) achieves the highest pass rate at 98.3%, outperforming local-only (58.6%) by +39.7 pp and model-only (94.8%) by +3.5 pp. Auto-repair resolved 9 model imperfections without user intervention."
-  },
-  "version": 2
+  "version": 1
 }
