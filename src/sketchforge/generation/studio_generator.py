@@ -8,6 +8,7 @@ Generation order:
 from __future__ import annotations
 
 import re
+import json
 from html import escape
 from pathlib import Path
 from typing import Callable
@@ -19,6 +20,41 @@ from sketchforge.generation.project_planner import plan_html_css
 
 def _slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")[:48] or "new-app"
+
+
+def _extract_entities_from_brief(prompt: str) -> list[EntitySpec]:
+    """Choose a small useful data model from the app brief's domain keywords."""
+    brief = prompt.lower()
+
+    def matches(*keywords: str) -> bool:
+        return any(re.search(rf"\b{re.escape(word)}s?\b", brief) for word in keywords)
+
+    if matches("task", "todo", "project"):
+        return [EntitySpec("Task", [
+            FieldSpec("title", "Title"),
+            FieldSpec("priority", "Priority", "select", options=["Low", "Medium", "High"]),
+            FieldSpec("due_date", "Due date", "date", required=False),
+            FieldSpec("status", "Status", "select", options=["Todo", "In progress", "Done"]),
+        ])]
+    if matches("book", "store", "shop"):
+        return [EntitySpec("Product", [
+            FieldSpec("title", "Title"),
+            FieldSpec("price", "Price", "number"),
+            FieldSpec("category", "Category"),
+            FieldSpec("stock", "Stock", "number"),
+        ])]
+    if matches("clinic", "yoga", "appointment"):
+        return [EntitySpec("Booking", [
+            FieldSpec("client_name", "Client name"),
+            FieldSpec("date", "Date", "date"),
+            FieldSpec("service", "Service"),
+            FieldSpec("status", "Status", "select", options=["Requested", "Confirmed", "Completed"]),
+        ])]
+    return [EntitySpec("Item", [
+        FieldSpec("title", "Title"),
+        FieldSpec("description", "Description", required=False),
+        FieldSpec("created_at", "Created at", "datetime-local", required=False),
+    ], timestamps=False)]
 
 
 def generate_studio_project(
@@ -61,26 +97,24 @@ def generate_studio_project(
         progress("Generating project from templates...")
 
     name = " ".join(brief.split()[:3]).strip(".,:;!?—-").title() or "New App"
+    entities = _extract_entities_from_brief(brief) if include_backend else []
+    fields = entities[0].fields if entities else _extract_entities_from_brief(brief)[0].fields
     pages = [
         PageSpec(
             name="home",
             title=name,
             route="/",
             description=brief,
-            forms=[[FieldSpec("email", "Email address", "email", placeholder="you@example.com"),
-                    FieldSpec("idea", "What are you working on?", "text", required=False,
-                              placeholder="Share a few details…")]],
+            forms=[fields],
         ),
         PageSpec(name="projects", title="Your workspace", route="/projects",
                  description="A calm place to keep your work moving."),
     ]
-    fields = [FieldSpec("email", "Email address", "email"),
-              FieldSpec("idea", "Idea", "text", required=False)]
     spec = AppSpec(
         name=name,
         description=brief,
         pages=pages,
-        entities=[EntitySpec("Submission", fields)] if include_backend else [],
+        entities=entities,
         tech_frontend="html-css-js",
         tech_backend="python-sqlite" if include_backend else "none",
         database=database,
@@ -151,8 +185,8 @@ When generated from within SketchForge Studio, supported API backends start auto
 
 - `home.html`, `projects.html`: linked app screens.
 - `css/style.css`: responsive design system and page styles.
-- `js/home.js`: form submission that POSTs to /api/submissions.
-- `js/projects.js`: fetches and renders submissions from /api/submissions.
+- `js/home.js`: form submission that POSTs to /api/{route}.
+- `js/projects.js`: fetches and renders {entity.name.lower()} records from /api/{route}.
 {"- Install backend dependencies with `python -m pip install -r requirements.txt`." if include_backend else ""}
 {backend_notes}
 """, encoding="utf-8")
@@ -161,6 +195,9 @@ When generated from within SketchForge Studio, supported API backends start auto
 
 def _write_frontend(root: Path, spec: AppSpec) -> None:
     """Give generated pages a polished, responsive surface with working navigation/forms."""
+    entity = spec.entities[0] if spec.entities else _extract_entities_from_brief(spec.description)[0]
+    route = _slug(entity.name) + "s"
+    storage_key = f"sketchforge-{route}"
     for page in spec.pages:
         slug = page.name.lower()
         safe_name = escape(spec.name)
@@ -171,14 +208,28 @@ def _write_frontend(root: Path, spec: AppSpec) -> None:
             f'<a href="{other.name.lower()}.html">{escape(other.title) if other.name != page.name else "Overview"}</a>'
             for other in spec.pages
         )
-        form = """
-        <form id="idea-form">
-          <label>Email address<input name="email" type="email" placeholder="you@example.com" required></label>
-          <label>Your idea<textarea name="idea" rows="3" placeholder="Share a few details…"></textarea></label>
-          <button class="primary" type="submit">Create my workspace <span>↗</span></button>
-          <p class="form-note" id="form-note">No account needed to explore your idea.</p>
-        </form>
-        """ if page.name == "home" else ""
+        inputs = []
+        for field_spec in entity.fields:
+            label = escape(field_spec.label)
+            field_name = escape(field_spec.name)
+            required = " required" if field_spec.required else ""
+            if field_spec.type == "select":
+                choices = "".join(
+                    f'<option value="{escape(option)}">{escape(option)}</option>'
+                    for option in field_spec.options
+                )
+                control = f'<select name="{field_name}"{required}>{choices}</select>'
+            else:
+                input_type = field_spec.type if field_spec.type in {
+                    "text", "email", "number", "date", "datetime-local", "password"
+                } else "text"
+                control = f'<input name="{field_name}" type="{input_type}" placeholder="{escape(field_spec.placeholder)}"{required}>'
+            inputs.append(f'<label>{label}{control}</label>')
+        form = (
+            f'<form id="idea-form">{"".join(inputs)}'
+            f'<button class="primary" type="submit">Add {escape(entity.name.lower())} <span>↗</span></button>'
+            '<p class="form-note" id="form-note">Records save to your workspace.</p></form>'
+        ) if page.name == "home" else ""
         suggestions = (
             '<div class="ideas"><span class="idea-label">NEED A PLACE TO START?</span>'
             '<button type="button" class="idea-chip" data-idea="A thoughtful client portal for my small studio">A home for my client work <b>↗</b></button>'
@@ -197,11 +248,11 @@ def _write_frontend(root: Path, spec: AppSpec) -> None:
 <aside class="welcome-card"><div class="card-top"><span class="card-icon">✳</span><span class="live-pill"><i></i> YOUR CANVAS</span></div><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="card-art"><div class="art-window"><div class="art-nav"><b></b><span></span><span></span><span></span></div><div class="art-lines"><i></i><i></i><i></i></div><div class="art-blocks"><b></b><b></b><b></b></div></div><span class="float-chip">✦ &nbsp; good ideas live here</span></div><div class="card-foot"><span>BUILT AROUND YOUR IDEA</span><span>01 — 02</span></div></aside></section>
 <section class="work"><div class="work-heading"><div><span class="kicker">THE FIRST STEP IS EASY</span><h2>What are we making?</h2></div><span class="counter">01 <i>/</i> 02</span></div>
 <div class="builder"><div class="builder-head"><div class="builder-label"><span class="status-dot"></span><b>Tell us a little about it</b><span class="muted">· takes one sentence</span></div><span class="private">⌁ &nbsp; Private workspace</span></div>
-{form if page.name == "home" else '<p class="lede">Your project pages, ready to explore.</p>'}
+{form if page.name == "home" else f'<p class="lede">Your {escape(entity.name.lower())} records, ready to explore.</p><ul id="submissions-list" class="submission-list"></ul>'}
 {suggestions}</div></section>
 <footer><span>✳ &nbsp;SketchForge Studio</span><span>Made to move at the speed of your ideas&nbsp; ↗</span></footer></main><script src="js/{slug}.js"></script></body></html>''', encoding="utf-8")
         (root / "js" / f"{slug}.js").write_text(
-            _home_js() if slug == "home" else _projects_js(),
+            _home_js(entity, route, storage_key) if slug == "home" else _projects_js(entity, route, storage_key),
             encoding="utf-8",
         )
     (root / "index.html").write_text(
@@ -212,114 +263,73 @@ def _write_frontend(root: Path, spec: AppSpec) -> None:
     (root / "css" / "style.css").write_text(_studio_css(), encoding="utf-8")
 
 
-def _home_js() -> str:
-    return """\
-// home.js — generated by SketchForge Studio
-// Submits forms to the backend API; falls back to localStorage when offline.
-
-document.querySelectorAll('[data-idea]').forEach(button =>
-  button.addEventListener('click', () => {
-    const field = document.querySelector('[name="idea"]');
-    if (field) { field.value = button.dataset.idea; field.focus(); }
-  })
-);
-
+def _home_js(entity: EntitySpec, route: str, storage_key: str) -> str:
+    template = """\
+// Form handler generated for the selected data entity.
+document.querySelectorAll('[data-idea]').forEach(button => button.addEventListener('click', () => {
+  const field = document.querySelector('[name="title"]');
+  if (field) { field.value = button.dataset.idea; field.focus(); }
+}));
 const form = document.querySelector('#idea-form');
-if (form) {
-  form.addEventListener('submit', async event => {
-    event.preventDefault();
-    const data = Object.fromEntries(new FormData(form));
-    const note = document.querySelector('#form-note');
-    const btn  = form.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = 'Saving…';
-    try {
-      const resp = await fetch('/api/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      note.textContent = 'Your workspace is ready — saved to the backend database.';
-      note.classList.add('success');
-      btn.textContent = 'Saved to your workspace ✓';
-    } catch (err) {
-      // Offline / no backend — save locally
-      const saved = JSON.parse(localStorage.getItem('sketchforge-submissions') || '[]');
-      saved.push({ ...data, createdAt: new Date().toISOString() });
-      localStorage.setItem('sketchforge-submissions', JSON.stringify(saved));
-      note.textContent = 'Saved locally (backend not reachable).';
-      note.classList.add('success');
-      btn.textContent = 'Saved locally ✓';
-    }
-  });
-}
+if (form) form.addEventListener('submit', async event => {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(form));
+  if ('created_at' in __FIELDS__) data.created_at = new Date().toISOString();
+  const note = document.querySelector('#form-note');
+  const btn = form.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/__ROUTE__', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    note.textContent = 'Saved to the database.';
+  } catch {
+    const saved = JSON.parse(localStorage.getItem('__STORAGE__') || '[]');
+    saved.push({...data, created_at:data.created_at || new Date().toISOString()});
+    localStorage.setItem('__STORAGE__', JSON.stringify(saved));
+    note.textContent = 'Saved locally (backend not reachable).';
+  }
+  note.classList.add('success');
+  btn.textContent = 'Saved ✓';
+});
 """
+    fields = json.dumps([field.name for field in entity.fields])
+    return (template.replace("__FIELDS__", fields)
+            .replace("__ROUTE__", route)
+            .replace("__STORAGE__", storage_key))
 
 
-def _projects_js() -> str:
-    return """\
-// projects.js — generated by SketchForge Studio
-// Fetches submissions from the backend API and renders them.
-
-async function loadSubmissions() {
+def _projects_js(entity: EntitySpec, route: str, storage_key: str) -> str:
+    template = """\
+const fields = __FIELDS__;
+async function loadRecords() {
   const list = document.querySelector('#submissions-list');
   if (!list) return;
+  let items;
   try {
-    const resp = await fetch('/api/submissions');
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const items = await resp.json();
-    if (!items.length) {
-      list.innerHTML = '<li class="empty-row">No submissions yet — use the home page to add one.</li>';
-      return;
-    }
-    list.innerHTML = items.map(s => `
-      <li class="submission-card">
-        <span class="sub-email">${escHtml(s.email || '')}</span>
-        <span class="sub-idea">${escHtml(s.idea || '—')}</span>
-        <span class="sub-date">${new Date(s.created_at || s.createdAt || '').toLocaleString()}</span>
-        <button class="delete-btn" data-id="${s.id}">✕</button>
-      </li>`).join('');
-    list.querySelectorAll('.delete-btn').forEach(btn =>
-      btn.addEventListener('click', () => deleteSubmission(btn.dataset.id))
-    );
-  } catch {
-    // Fall back to localStorage
-    const saved = JSON.parse(localStorage.getItem('sketchforge-submissions') || '[]');
-    if (!saved.length) {
-      list.innerHTML = '<li class="empty-row">No submissions yet.</li>';
-      return;
-    }
-    list.innerHTML = saved.map((s, i) => `
-      <li class="submission-card">
-        <span class="sub-email">${escHtml(s.email || '')}</span>
-        <span class="sub-idea">${escHtml(s.idea || '—')}</span>
-        <span class="sub-date">${new Date(s.createdAt || '').toLocaleString()}</span>
-        <button class="delete-btn" data-idx="${i}">✕</button>
-      </li>`).join('');
-    list.querySelectorAll('.delete-btn').forEach(btn =>
-      btn.addEventListener('click', () => {
-        saved.splice(parseInt(btn.dataset.idx), 1);
-        localStorage.setItem('sketchforge-submissions', JSON.stringify(saved));
-        loadSubmissions();
-      })
-    );
-  }
+    const response = await fetch('/api/__ROUTE__');
+    if (!response.ok) throw new Error('backend unavailable');
+    items = await response.json();
+  } catch { items = JSON.parse(localStorage.getItem('__STORAGE__') || '[]'); }
+  if (!items.length) { list.innerHTML = '<li class="empty-row">No records yet. Add one from the home page.</li>'; return; }
+  list.innerHTML = items.map((item,index) => `<li class="submission-card">${fields.map(field =>
+    `<span class="sub-idea"><b>${field.replaceAll('_',' ')}</b>: ${escapeHtml(String(item[field] ?? '—'))}</span>`
+  ).join('')}<button class="delete-btn" data-id="${item.id ?? ''}" data-index="${index}">✕</button></li>`).join('');
+  list.querySelectorAll('.delete-btn').forEach(button => button.addEventListener('click', async () => {
+    try { if (button.dataset.id) await fetch(`/api/__ROUTE__/${button.dataset.id}`, {method:'DELETE'}); }
+    catch { /* local records are removed below */ }
+    const saved = JSON.parse(localStorage.getItem('__STORAGE__') || '[]');
+    const remaining = saved.filter((_, index) => index !== Number(button.dataset.index));
+    localStorage.setItem('__STORAGE__', JSON.stringify(remaining));
+    loadRecords();
+  }));
 }
-
-async function deleteSubmission(id) {
-  try {
-    await fetch(`/api/submissions/${id}`, { method: 'DELETE' });
-    loadSubmissions();
-  } catch { /* local storage handled in loadSubmissions fallback */ }
-}
-
-function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-loadSubmissions();
+function escapeHtml(value) { return value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+loadRecords();
 """
+    fields = json.dumps([field.name for field in entity.fields])
+    return (template.replace("__FIELDS__", fields)
+            .replace("__ROUTE__", route)
+            .replace("__STORAGE__", storage_key))
 
 
 def _write_backend_api(root: Path, spec: AppSpec) -> None:
