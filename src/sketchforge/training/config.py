@@ -32,7 +32,7 @@ class TrainingConfig:
     label_smoothing: float = 0.05
 
     # ---- early stopping ------------------------------------------------------
-    patience: int = 8             # epochs without val improvement
+    patience: int = 50            # epochs without val improvement; allows default 50-epoch run
     min_delta: float = 1e-4
 
     # ---- output --------------------------------------------------------------

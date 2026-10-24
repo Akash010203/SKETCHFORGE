@@ -15,6 +15,19 @@ from sketchforge.vision.contour_detection import Box, ShapeObservation, detect_s
 from sketchforge.vision.line_detection import LineObservation, detect_lines
 from sketchforge.vision.text_regions import TextRegion, find_text_regions
 
+# --------------------------------------------------------------------------- #
+# Grid-paper false-positive suppression constants
+# --------------------------------------------------------------------------- #
+# Maximum side length (px) of a candidate "micro-square" that might be confused
+# with a grid cell rather than a drawn UI checkbox.
+_GRID_MAX_SIDE_PX: int = 30
+# A genuine grid lattice must have > this many near-identical squares to be
+# suppressed.  A real checkbox group rarely exceeds ~8 items.
+_GRID_MIN_COUNT: int = 20
+# If the coefficient of variation of the square side lengths is below this
+# threshold, the cluster is uniform enough to be a ruled grid.
+_GRID_SIDE_CV_MAX: float = 0.08
+
 
 @dataclass
 class PageFrame:
@@ -31,6 +44,72 @@ class RegionProposals:
     texts: list[TextRegion]
     stroke_width: float
     notes: list[str] = field(default_factory=list)
+
+
+def filter_grid_lattice_false_positives(
+    shapes: list[ShapeObservation],
+    texts: list[TextRegion],
+) -> tuple[list[ShapeObservation], str | None]:
+    """Suppress clusters of tiny uniform squares produced by graph-paper grid intersections.
+
+    A cluster is suppressed when **all three** criteria hold:
+
+    1. **Size**: every square in the cluster has *both* sides ≤ ``_GRID_MAX_SIDE_PX`` px.
+    2. **Count**: the cluster contains more than ``_GRID_MIN_COUNT`` squares.  UI controls
+       rarely cluster beyond ~8; grid paper easily reaches 50–200 cells per A4 sheet.
+    3. **Uniformity**: the coefficient of variation (std / mean) of the square side-lengths
+       inside the cluster is below ``_GRID_SIDE_CV_MAX`` (8 %).  Drawn UI checkboxes in
+       a real form can vary by 20-40 % because they are hand-drawn.
+    4. **No drawn border or text**: none of the candidate shapes contain a TextRegion whose
+       centre lies inside the shape's bounding box.  Grid cells are always empty; real
+       checkbox groups nearly always have labels.
+
+    The function never modifies the input lists; it returns a (possibly shorter) copy of
+    ``shapes`` together with an optional human-readable suppression note.
+    """
+    if not shapes:
+        return shapes, None
+
+    # Index text centres for a fast containment test.
+    text_centres: list[tuple[float, float]] = [
+        (t.bbox[0] + t.bbox[2] / 2, t.bbox[1] + t.bbox[3] / 2) for t in texts
+    ]
+
+    def _has_text_inside(bbox: Box) -> bool:
+        x, y, w, h = bbox
+        return any(x <= cx <= x + w and y <= cy <= y + h for cx, cy in text_centres)
+
+    # Collect candidate tiny squares (rect / rounded_rect, both sides ≤ threshold).
+    tiny_squares: list[ShapeObservation] = [
+        s for s in shapes
+        if s.kind in ("rect", "rounded_rect")
+        and s.bbox[2] <= _GRID_MAX_SIDE_PX
+        and s.bbox[3] <= _GRID_MAX_SIDE_PX
+        and not _has_text_inside(s.bbox)
+    ]
+
+    if len(tiny_squares) <= _GRID_MIN_COUNT:
+        return shapes, None  # not enough tiny squares to form a grid
+
+    # Check side-length uniformity: use the average of w and h as the "side".
+    sides = np.array([(s.bbox[2] + s.bbox[3]) / 2.0 for s in tiny_squares])
+    mean_side = float(sides.mean())
+    if mean_side <= 0:
+        return shapes, None
+    cv = float(sides.std()) / mean_side
+
+    if cv >= _GRID_SIDE_CV_MAX:
+        # High variation → these are hand-drawn checkboxes, not grid cells.
+        return shapes, None
+
+    # All criteria met: suppress the entire tiny-square cluster.
+    suppressed_uids = {s.uid for s in tiny_squares}
+    kept = [s for s in shapes if s.uid not in suppressed_uids]
+    note = (
+        f"suppressed {len(tiny_squares)} grid-lattice micro-squares "
+        f"(side ≤{_GRID_MAX_SIDE_PX} px, CV={cv:.3f}, n={len(tiny_squares)})"
+    )
+    return kept, note
 
 
 def _edges(box: Box) -> dict[str, float]:
@@ -129,4 +208,12 @@ def build_proposals(ink: np.ndarray, stroke_width: float, min_side: int = 10) ->
     ]
     for i, t in enumerate(texts):
         t.uid = i
+
+    # --- grid-paper false-positive filter --------------------------------------------------
+    # Must run after text detection so the filter can check whether a tiny square
+    # already contains a text label (if so, it is a real checkbox, not a grid cell).
+    shapes, grid_note = filter_grid_lattice_false_positives(shapes, texts)
+    if grid_note:
+        notes.append(grid_note)
+
     return RegionProposals(frame, shapes, dividers, texts, stroke_width, notes)

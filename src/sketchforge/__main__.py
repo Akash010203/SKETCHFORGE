@@ -1,10 +1,13 @@
 """Command line entry point: ``python -m sketchforge <command>`` (or ``sketchforge <command>``).
 
-    demo   run the full sketch -> design -> measure -> inject -> repair -> report workflow headless
-    gui    open the desktop workbench
-    info   print the environment and versions
+    demo        run the full sketch -> design -> measure -> inject -> repair -> report workflow headless
+    gui         open the desktop workbench
+    studio      run the local browser-based app generator studio
+    info        print the environment and versions
+    cloud       offload sketch processing to the SketchForge AWS Lambda endpoint (--cloud-aws)
 
-Everything runs in this process; no command starts a server or makes a network request.
+Pass ``--cloud-aws`` to the ``demo`` command or use the standalone ``cloud`` subcommand to
+forward a sketch image to the deployed AWS API Gateway endpoint and receive the Design IR.
 """
 
 from __future__ import annotations
@@ -90,6 +93,59 @@ def cmd_info(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_cloud(args: argparse.Namespace) -> int:
+    """Offload sketch processing to the SketchForge AWS Lambda endpoint.
+
+    Reads ``--image``, sends it to the competition Lambda endpoint, and writes the
+    returned Design IR to ``--out``.
+    """
+    import json as _json
+
+    from sketchforge.cloud.aws_client import AWSClientError, AWSSketchClient
+
+    image = Path(args.image) if args.image else _default_image()
+    if not image.is_file():
+        print(f"error: sketch not found: {image}", file=sys.stderr)
+        return 2
+
+    endpoint = args.endpoint or None  # None triggers env-var / CFN auto-discovery
+    try:
+        client = AWSSketchClient(endpoint=endpoint)
+    except AWSClientError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"SketchForge cloud (AWS Lambda): {image.name}")
+    print(f"  endpoint : {client._endpoint}")
+    print(f"  health   : ", end="", flush=True)
+    ok = client.health_check()
+    print("ok" if ok else "UNREACHABLE (proceeding anyway)")
+
+    try:
+        result = client.process_image_file(image)
+    except AWSClientError as exc:
+        print(f"\nerror: {exc}", file=sys.stderr)
+        return 1
+
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    ir_path = out / f"{image.stem}_design_ir.json"
+    ir_path.write_text(
+        _json.dumps(result.design_document.model_dump(mode="json"), indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    print(f"\n  round-trip : {result.latency_ms:.0f} ms")
+    print(f"  pipeline   : {result.pipeline_version}")
+    print(f"  components : {len(result.design_document.components)}")
+    if result.notes:
+        print("  notes:")
+        for note in result.notes:
+            print(f"    • {note}")
+    print(f"\nDesign IR saved to {ir_path}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="sketchforge", description=__doc__.split("\n\n")[0])
     p.add_argument("--version", action="version", version=f"sketchforge {__version__}")
@@ -116,6 +172,38 @@ def build_parser() -> argparse.ArgumentParser:
 
     i = sub.add_parser("info", help="print versions and bundled samples")
     i.set_defaults(func=cmd_info)
+
+    # ------------------------------------------------------------------
+    # cloud (--cloud-aws flag)
+    # ------------------------------------------------------------------
+    cl = sub.add_parser(
+        "cloud",
+        help="offload sketch processing to the AWS Lambda endpoint (--cloud-aws)",
+        description=(
+            "Send a sketch photo to the SketchForge AWS Lambda endpoint and receive the "
+            "Design IR JSON.  Activate with: sketchforge cloud --image sketch.jpg "
+            "--endpoint https://<api-id>.execute-api.<region>.amazonaws.com/production"
+        ),
+    )
+    cl.add_argument("--image", help="sketch photo to process (default: built-in sample)")
+    cl.add_argument(
+        "--endpoint",
+        metavar="URL",
+        help=(
+            "AWS API Gateway base URL. Overrides the SKETCHFORGE_AWS_ENDPOINT env var. "
+            "If omitted, auto-discovered from the SKETCHFORGE_AWS_STACK_NAME CloudFormation stack."
+        ),
+    )
+    cl.add_argument("--out", default="output/cloud", help="output directory (default: output/cloud)")
+    # Canonical alias: --cloud-aws mirrors the competition spec language.
+    cl.add_argument(
+        "--cloud-aws",
+        action="store_true",
+        default=True,
+        help="(default: True) Use AWS Lambda for processing. Alias kept for competition spec compatibility.",
+    )
+    cl.set_defaults(func=cmd_cloud)
+
     return p
 
 

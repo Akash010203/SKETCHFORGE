@@ -154,10 +154,11 @@ def main() -> int:
         print(f"  Test anchor acc: {tr.get('accuracy', 0):.4f}")
         print(f"  Test loss:     {tr.get('loss', 0):.4f}")
         print(f"  Test IoU:      {tr.get('mean_iou', 0):.4f}")
-        print(f"  Test mAP@0.5:  {tr.get('mAP', 0):.4f}")
+        print(f"  Test mAP (avg @0.25/0.35/0.50): {tr.get('mAP', 0):.4f}")
+        print(f"  Test mAP@0.50: {tr.get('mAP@0.50', 0):.4f}")
 
     print(f"  Best checkpoint epoch: {report.best_epoch}")
-    print(f"  Best val mAP@0.5:      {report.best_val_map:.4f}")
+    print(f"  Best val mAP@0.25:     {report.best_val_map:.4f}")
     print()
 
     # Save report

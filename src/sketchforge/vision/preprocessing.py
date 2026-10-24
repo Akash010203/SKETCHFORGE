@@ -3,6 +3,10 @@
 Several thresholding variants are tried and scored; the best-scoring one is used. The score is a
 transparent heuristic (plausible ink coverage, little speckle), recorded in the result so the
 choice can be inspected and ablated.
+
+Real smartphone photos introduce per-region illumination shifts (shadows, vignetting, paper grain)
+that global Otsu thresholding cannot handle. ``flatten_local_illumination`` cancels these effects
+before any variant runs, using morphological dilation to estimate the local background brightness.
 """
 
 from __future__ import annotations
@@ -24,6 +28,11 @@ from sketchforge.vision.normalization import NormalizedImage
 from sketchforge.vision.thresholding import VARIANTS
 
 TARGET_INK_RATIO = 0.025  # typical share of a page covered by pen strokes in a wireframe
+
+# Size of the rectangular dilation kernel used to estimate local background brightness.
+# Must be large enough to bridge over the widest expected ink stroke (~10-15 px on a 1024 px image)
+# but not so large that it smears shadow boundaries.  40 px is a well-tested value.
+_BG_KERNEL_SIZE: int = 40
 
 
 @dataclass
@@ -259,6 +268,47 @@ def suppress_grid_paper(
     return filtered, note
 
 
+def flatten_local_illumination(gray: np.ndarray) -> np.ndarray:
+    """Cancel shadows, vignetting, and paper-grain brightness shifts from a smartphone photo.
+
+    Unlike the :func:`~sketchforge.vision.normalization.flatten_illumination` routine, which uses
+    MORPH_CLOSE (and therefore requires the kernel to be *smaller* than any genuine stroke gap),
+    this variant uses MORPH_DILATE with a large rectangular kernel.  Dilation propagates the
+    *brightest* neighbouring pixel in every direction, so it naturally fills over dark ink strokes
+    and produces a smooth estimate of the locally varying paper brightness, even for thick pen
+    strokes or dense hatching.
+
+    Algorithm
+    ---------
+    1. Dilate the grayscale image with a ``_BG_KERNEL_SIZE × _BG_KERNEL_SIZE`` rectangle to
+       produce a background estimate ``bg`` in which all ink strokes have been erased by the
+       surrounding paper brightness.
+    2. Divide the original image by ``bg`` pixel-wise (``cv2.divide`` with scale=255) so that
+       dark ink becomes a consistent fraction of the local background regardless of global
+       lighting conditions.
+    3. Clip to [0, 255] and return as uint8.
+
+    Parameters
+    ----------
+    gray:
+        Uint8 grayscale image (BGR-to-gray conversion already applied).
+
+    Returns
+    -------
+    Uint8 grayscale image in which the paper background is approximately uniform (~255) and
+    ink strokes are consistently dark, suitable for any of the VARIANTS threshold functions.
+    """
+    k = _BG_KERNEL_SIZE
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (k, k))
+    # MORPH_DILATE erases ink (dark) by expanding bright neighbours → local paper estimate.
+    bg = cv2.morphologyEx(gray, cv2.MORPH_DILATE, kernel)
+    # Guard against pathologically dark images (all-black patch → bg could be 0).
+    bg = np.maximum(bg, 1)
+    # Divide out illumination: bright paper → ~255, dark ink → small fraction of paper.
+    flat = cv2.divide(gray, bg, scale=255)
+    return flat
+
+
 def preprocess(
     norm: NormalizedImage,
     force_variant: str | None = None,
@@ -266,7 +316,13 @@ def preprocess(
 ) -> PreprocessResult:
     if force_variant is not None and force_variant not in VARIANTS:
         raise PreprocessingError(f"unknown threshold variant {force_variant!r}")
-    candidates = {name: fn(norm.gray) for name, fn in VARIANTS.items()}
+    # --- Local illumination flattening (mobile-photo robustness) --------------------------------
+    # Apply a dilation-based local background cancellation on top of the already-normalized gray
+    # channel.  This second pass specifically targets shadows and phone vignetting that survive
+    # the MORPH_CLOSE-based flatten_illumination() in normalization.normalize().
+    # The result is passed to every threshold variant, making all of them robust to real photos.
+    locally_flat = flatten_local_illumination(norm.gray)
+    candidates = {name: fn(locally_flat) for name, fn in VARIANTS.items()}
     scores = {name: round(score_variant(mask), 4) for name, mask in candidates.items()}
     chosen = force_variant or max(scores, key=lambda k: scores[k])
     raw = candidates[chosen]
