@@ -202,7 +202,10 @@ class StudioHandler(BaseHTTPRequestHandler):
         suffix = api_path or self.path
         body = self.rfile.read(int(self.headers.get("Content-Length", 0))) if method in {"POST", "PUT", "PATCH"} else None
         request = Request(f"http://127.0.0.1:{backend.port}{suffix}", data=body, method=method,
-                          headers={"Content-Type": self.headers.get("Content-Type", "application/json")})
+                          headers={
+                              "Content-Type": self.headers.get("Content-Type", "application/json"),
+                              "X-Studio-Token": backend.session_token or "",
+                          })
         try:
             with urlopen(request, timeout=10) as response:
                 payload, status = response.read(), response.status
@@ -315,7 +318,10 @@ def _start_project_preview(slug: str, root: Path) -> str:
                     return
                 body = self.rfile.read(int(self.headers.get("Content-Length", 0))) if self.command in {"POST", "PUT", "PATCH"} else None
                 req = Request(f"http://127.0.0.1:{backend_port}{self.path}", data=body, method=self.command,
-                              headers={"Content-Type": self.headers.get("Content-Type", "application/json")})
+                              headers={
+                                  "Content-Type": self.headers.get("Content-Type", "application/json"),
+                                  "X-Studio-Token": backend.session_token or "",
+                              })
                 try:
                     with urlopen(req, timeout=10) as resp:
                         payload, status = resp.read(), resp.status

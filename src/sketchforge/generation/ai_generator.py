@@ -24,10 +24,15 @@ from typing import Callable
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Model selection
+# Model selection: candidate priority order
 # ---------------------------------------------------------------------------
 
-_NEMOTRON_MODEL = "nvidia/Nemotron-3_5-Lightning"
+_CANDIDATE_MODELS = (
+    "nvidia/nemotron-3-super-120b-a12b",
+    "nvidia/Nemotron-3_5-Lightning",
+    "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+)
+_NEMOTRON_MODEL = _CANDIDATE_MODELS[0]
 
 # ---------------------------------------------------------------------------
 # Stage-1 prompt: AppSpec plan
@@ -166,8 +171,7 @@ def ai_generate_project(
     # ------------------------------------------------------------------
     # Stage 1 — AppSpec plan
     # ------------------------------------------------------------------
-    _emit("Stage 1 — requesting AppSpec plan from Nemotron…")
-    spec = _stage1_plan(client, prompt, include_backend, _emit)
+    spec, active_model = _stage1_plan(client, prompt, include_backend, _emit)
     if spec is None:
         return None
 
@@ -187,7 +191,7 @@ def ai_generate_project(
     written = 0
     for path_hint, description in manifest:
         _emit(f"  Generating {path_hint}…")
-        content = _stage2_file(client, spec_str, path_hint, description, _emit)
+        content = _stage2_file(client, spec_str, path_hint, description, _emit, model=active_model or _NEMOTRON_MODEL)
         if content is None:
             log.warning("Skipping %s — model returned no content.", path_hint)
             continue
@@ -314,40 +318,42 @@ def _stage1_plan(
     prompt: str,
     include_backend: bool,
     emit: Callable[[str], None],
-) -> dict | None:
-    """Stage 1: request a compact AppSpec JSON from the model (~500 tokens)."""
+) -> tuple[dict | None, str | None]:
+    """Stage 1: request a compact AppSpec JSON from an available NVIDIA Nemotron model."""
     from sketchforge.integrations.provider_interface import ChatMessage, CompletionRequest
 
     user_msg = _PLAN_USER.format(
         brief=prompt.strip(),
         backend="yes" if include_backend else "no",
     )
-    request = CompletionRequest(
-        messages=(
-            ChatMessage(role="system", content=_PLAN_SYSTEM),
-            ChatMessage(role="user", content=user_msg),
-        ),
-        purpose="studio_plan",
-        max_tokens=512,
-        temperature=0.3,
-        model=_NEMOTRON_MODEL,
-    )
-    try:
-        result = client.complete(request)
-    except Exception as exc:  # noqa: BLE001
-        emit(f"Stage 1 failed ({exc}); using template generator.")
-        return None
 
-    try:
-        spec = _parse_response(result.text)
-    except ValueError as exc:
-        emit(f"Could not parse Stage 1 plan ({exc}); using template generator.")
-        return None
+    last_exc = None
+    for model in _CANDIDATE_MODELS:
+        emit(f"Stage 1 — requesting AppSpec plan from {model}…")
+        request = CompletionRequest(
+            messages=(
+                ChatMessage(role="system", content=_PLAN_SYSTEM),
+                ChatMessage(role="user", content=user_msg),
+            ),
+            purpose="studio_plan",
+            max_tokens=1536,
+            temperature=0.2,
+            model=model,
+        )
+        try:
+            result = client.complete(request)
+            spec = _parse_response(result.text)
+            emit(f"Stage 1 complete ({model}) — app: '{spec.get('name', '?')}', "
+                 f"{len(spec.get('pages', []))} page(s), "
+                 f"{len(spec.get('entities', []))} entity/entities.")
+            return spec, model
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            log.warning("Stage 1 attempt with %s failed: %s", model, exc)
+            emit(f"Stage 1 with {model} unavailable ({exc}); trying candidate model…")
 
-    emit(f"Stage 1 complete — app: '{spec.get('name', '?')}', "
-         f"{len(spec.get('pages', []))} page(s), "
-         f"{len(spec.get('entities', []))} entity/entities.")
-    return spec
+    emit(f"All AI candidate models unavailable ({last_exc}); using template generator.")
+    return None, None
 
 
 def _stage2_file(
@@ -356,6 +362,7 @@ def _stage2_file(
     path_hint: str,
     description: str,
     emit: Callable[[str], None],
+    model: str = _NEMOTRON_MODEL,
 ) -> str | None:
     """Stage 2: generate ONE file and return its content string, or None on failure."""
     from sketchforge.integrations.provider_interface import ChatMessage, CompletionRequest
@@ -371,9 +378,9 @@ def _stage2_file(
             ChatMessage(role="user", content=user_msg),
         ),
         purpose="studio_file",
-        max_tokens=2048,
-        temperature=0.4,
-        model=_NEMOTRON_MODEL,
+        max_tokens=4096,
+        temperature=0.2,
+        model=model,
     )
     try:
         result = client.complete(request)
@@ -381,16 +388,7 @@ def _stage2_file(
         log.warning("Stage 2 request for %s failed: %s", path_hint, exc)
         return None
 
-    try:
-        data = _parse_response(result.text)
-    except ValueError:
-        # Might be raw content rather than a JSON envelope — accept as-is
-        raw = result.text.strip()
-        if raw:
-            return raw
-        return None
-
-    return data.get("content") or None
+    return _parse_file_content(result.text, path_hint)
 
 
 # ---------------------------------------------------------------------------
@@ -404,23 +402,53 @@ def _make_client():
     from sketchforge.integrations.nebius.configuration import load_nebius_config
     from sketchforge.integrations.nebius.request_policy import ConsentGate
 
-    config = load_nebius_config(overrides={"enabled": True, "timeout_s": 90.0, "max_retries": 1})
+    config = load_nebius_config(overrides={"enabled": True, "timeout_s": 35.0, "max_retries": 1})
     consent = ConsentGate(consented=True)
     return NebiusClient(config, consent)
+
+
+def _parse_file_content(text: str, path_hint: str) -> str | None:
+    """Extract file content whether formatted as a JSON envelope, markdown fence, or raw code."""
+    if not text or not text.strip():
+        return None
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    cleaned = re.sub(r"<reasoning>.*?</reasoning>", "", cleaned, flags=re.DOTALL).strip()
+
+    # 1. Try parsing JSON envelope {"path": "...", "content": "..."}
+    try:
+        data = _parse_response(cleaned)
+        content = data.get("content")
+        if content and isinstance(content, str):
+            return content
+    except Exception:
+        pass
+
+    # 2. Try markdown code fences
+    fences = re.findall(r"```(?:[a-zA-Z0-9_\-]+)?\s*\n(.*?)\n```", cleaned, re.DOTALL)
+    if fences:
+        return max(fences, key=len).strip()
+
+    # 3. Direct raw code content
+    if not (cleaned.startswith("{") and cleaned.endswith("}")):
+        return cleaned
+
+    return None
 
 
 def _parse_response(text: str) -> dict:
     """Extract and parse the first JSON object from the model's response text."""
     text = text.strip()
-    fence_match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL)
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    cleaned = re.sub(r"<reasoning>.*?</reasoning>", "", cleaned, flags=re.DOTALL).strip()
+    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned, re.DOTALL)
     if fence_match:
-        text = fence_match.group(1)
-    start = text.find("{")
-    end = text.rfind("}") + 1
+        cleaned = fence_match.group(1).strip()
+    start = cleaned.find("{")
+    end = cleaned.rfind("}") + 1
     if start == -1 or end == 0:
         raise ValueError("No JSON object found in model response")
     try:
-        return json.loads(text[start:end])
+        return json.loads(cleaned[start:end])
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid JSON: {exc}") from exc
 

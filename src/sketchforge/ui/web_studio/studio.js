@@ -214,13 +214,17 @@
       );
       const payload = await start.json();
       if (!start.ok) throw Error(payload.error);
+      let lastLoggedMessage = null;
       pollTimer = setInterval(async () => {
         try {
           const res = await fetch('/api/jobs/' + payload.id);
           const job = await res.json();
           const p = $('#progress');
           if (p) p.textContent = job.progress || 'Generating…';
-          if (job.progress) addLog(job.progress);
+          if (job.progress && job.progress !== lastLoggedMessage) {
+            addLog(job.progress);
+            lastLoggedMessage = job.progress;
+          }
           if (job.status === 'complete') {
             clearInterval(pollTimer);
             $('#empty').hidden = true;

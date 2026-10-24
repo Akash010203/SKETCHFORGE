@@ -1,255 +1,46 @@
 {
   "summary": {
-    "images": 5,
-    "synthetic": true,
-    "mean_f1": 0.9867,
-    "mean_type_accuracy": 0.9875,
-    "mean_iou": 0.8347
+    "images": 1,
+    "synthetic": false,
+    "mean_f1": 0.0333,
+    "mean_type_accuracy": 0.0,
+    "mean_iou": 0.6716
   },
   "cases": [
     {
-      "image": "synthetic-dashboard-clean-1825",
+      "image": "../evaluation/rough_mobile_ux.jpg",
       "scores": {
-        "n_pred": 20,
-        "n_gt": 20,
-        "n_matched": 20,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
-        "type_accuracy": 1.0,
-        "mean_iou": 0.8340545806489625,
-        "mean_center_error_px": 3.0187484800714857,
+        "n_pred": 39,
+        "n_gt": 21,
+        "n_matched": 1,
+        "precision": 0.02564102564102564,
+        "recall": 0.047619047619047616,
+        "f1": 0.03333333333333333,
+        "type_accuracy": 0.0,
+        "mean_iou": 0.6716317060228931,
+        "mean_center_error_px": 11.898120245528371,
         "confusion": {
-          "card": {
-            "card": 3
-          },
-          "sidebar": {
-            "sidebar": 1
-          },
           "image": {
-            "image": 2
-          },
-          "button": {
-            "button": 1
-          },
-          "header": {
-            "header": 1
-          },
-          "divider": {
-            "divider": 1
-          },
-          "text": {
-            "text": 8
-          },
-          "heading": {
-            "heading": 3
-          }
-        },
-        "missed_types": {},
-        "extra_types": {}
-      },
-      "perspective_corrected": true,
-      "notes": [
-        "perspective corrected: 1240\u00d7900 \u2192 1132\u00d7811 (area fraction 0.82)",
-        "ignored the leftover 'page body' region (not drawn as its own box)",
-        "card #5 is not inside any other container",
-        "card #6 is not inside any other container",
-        "card #7 is not inside any other container",
-        "local component model returned no detections (component_detector, cuda); using CV"
-      ]
-    },
-    {
-      "image": "synthetic-landing_page-shadow-410",
-      "scores": {
-        "n_pred": 23,
-        "n_gt": 23,
-        "n_matched": 23,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
-        "type_accuracy": 1.0,
-        "mean_iou": 0.8271180514326718,
-        "mean_center_error_px": 3.0445923768114054,
-        "confusion": {
-          "card": {
-            "card": 3
-          },
-          "image": {
-            "image": 4
-          },
-          "button": {
-            "button": 1
-          },
-          "header": {
-            "header": 1
-          },
-          "text": {
-            "text": 12
-          },
-          "divider": {
-            "divider": 1
-          },
-          "heading": {
-            "heading": 1
-          }
-        },
-        "missed_types": {},
-        "extra_types": {}
-      },
-      "perspective_corrected": false,
-      "notes": [
-        "axis-aligned page border near image edges; perspective correction skipped",
-        "ignored the leftover 'page body' region (not drawn as its own box)",
-        "card #11 is not inside any other container",
-        "card #12 is not inside any other container",
-        "card #13 is not inside any other container",
-        "local component model returned no detections (component_detector, cuda); using CV"
-      ]
-    },
-    {
-      "image": "synthetic-login_page-noisy-4507",
-      "scores": {
-        "n_pred": 15,
-        "n_gt": 15,
-        "n_matched": 14,
-        "precision": 0.9333333333333333,
-        "recall": 0.9333333333333333,
-        "f1": 0.9333333333333333,
-        "type_accuracy": 1.0,
-        "mean_iou": 0.8482354854227766,
-        "mean_center_error_px": 2.5298820447816506,
-        "confusion": {
-          "card": {
-            "card": 1
-          },
-          "header": {
-            "header": 1
-          },
-          "input": {
-            "input": 2
-          },
-          "button": {
-            "button": 1
-          },
-          "image": {
-            "image": 1
-          },
-          "checkbox": {
-            "checkbox": 1
-          },
-          "divider": {
-            "divider": 1
-          },
-          "text": {
-            "text": 5
-          },
-          "heading": {
             "heading": 1
           }
         },
         "missed_types": {
-          "text": 1
+          "container": 1,
+          "image": 11,
+          "text": 4,
+          "button": 4
         },
         "extra_types": {
-          "text": 1
+          "heading": 14,
+          "unknown": 6,
+          "text": 18
         }
       },
       "perspective_corrected": true,
       "notes": [
-        "perspective corrected: 1240\u00d7900 \u2192 1134\u00d7811 (area fraction 0.82)",
-        "ignored the leftover 'page body' region (not drawn as its own box)",
-        "card #5 is not inside any other container",
-        "local component model returned no detections (component_detector, cuda); using CV"
-      ]
-    },
-    {
-      "image": "synthetic-mobile_form-blur-4013",
-      "scores": {
-        "n_pred": 14,
-        "n_gt": 14,
-        "n_matched": 14,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
-        "type_accuracy": 1.0,
-        "mean_iou": 0.8391403342046584,
-        "mean_center_error_px": 2.3163490651819005,
-        "confusion": {
-          "image": {
-            "image": 2
-          },
-          "input": {
-            "input": 3
-          },
-          "button": {
-            "button": 1
-          },
-          "header": {
-            "header": 1
-          },
-          "radio": {
-            "radio": 2
-          },
-          "text": {
-            "text": 4
-          },
-          "heading": {
-            "heading": 1
-          }
-        },
-        "missed_types": {},
-        "extra_types": {}
-      },
-      "perspective_corrected": true,
-      "notes": [
-        "perspective corrected: 700\u00d71100 \u2192 633\u00d71033 (area fraction 0.84)",
-        "ignored the leftover 'page body' region (not drawn as its own box)",
-        "local component model returned no detections (component_detector, cuda); using CV"
-      ]
-    },
-    {
-      "image": "synthetic-settings_page-thin-3658",
-      "scores": {
-        "n_pred": 16,
-        "n_gt": 16,
-        "n_matched": 16,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
-        "type_accuracy": 0.9375,
-        "mean_iou": 0.8248920839077514,
-        "mean_center_error_px": 2.812740388892275,
-        "confusion": {
-          "card": {
-            "container": 1
-          },
-          "input": {
-            "input": 4
-          },
-          "button": {
-            "button": 1
-          },
-          "header": {
-            "header": 1
-          },
-          "checkbox": {
-            "checkbox": 2
-          },
-          "text": {
-            "text": 6
-          },
-          "heading": {
-            "heading": 1
-          }
-        },
-        "missed_types": {},
-        "extra_types": {}
-      },
-      "perspective_corrected": true,
-      "notes": [
-        "perspective corrected: 1160\u00d7900 \u2192 1011\u00d7795 (area fraction 0.76)",
-        "ignored the leftover 'page body' region (not drawn as its own box)",
-        "container #2 is not inside any other container",
+        "perspective corrected: 3072\u00d74096 \u2192 2752\u00d73502 (area fraction 0.73)",
+        "no page outline found; page area taken from the extent of the drawing",
+        "suppressed 588 grid-lattice micro-squares (side \u226445 px, CV=0.079, n=588)",
         "local component model returned no detections (component_detector, cuda); using CV"
       ]
     }
