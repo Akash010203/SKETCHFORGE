@@ -23,7 +23,7 @@ def _slug(value: str) -> str:
 
 
 def _extract_entities_from_brief(prompt: str) -> list[EntitySpec]:
-    """Choose a small useful data model from the app brief's domain keywords."""
+    """Choose a useful data model from known domains or a custom prompt noun."""
     brief = prompt.lower()
 
     def matches(*keywords: str) -> bool:
@@ -80,6 +80,34 @@ def _extract_entities_from_brief(prompt: str) -> list[EntitySpec]:
             FieldSpec("content", "Content"),
             FieldSpec("category", "Category", required=False),
         ])]
+
+    # For domains without a specialized schema, infer the record noun from common
+    # app briefs: "recipe organizer", "track supplies", or "manage equipment".
+    ignored = {"app", "apps", "website", "websites", "platform", "system", "tool", "tools", "workspace"}
+    noun = None
+    patterns = (
+        r"\b(?:track|manage|organize|organise|catalog|log|review|plan)\s+(?:my|our|the|all|your)\s+([a-z][a-z-]*)\b",
+        r"\b(?:a|an)\s+(?:[a-z][a-z-]*\s+){0,2}([a-z][a-z-]*)\s+(?:organizer|organiser|manager|tracker|planner|catalog|directory|library|log)\b",
+        r"\b(?:for|to)\s+(?:tracking|managing|organizing|organising|cataloging|cataloguing)\s+([a-z][a-z-]*)\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, brief)
+        if match and match.group(1) not in ignored:
+            noun = match.group(1)
+            break
+    if noun:
+        if noun.endswith("ies") and len(noun) > 4:
+            noun = noun[:-3] + "y"
+        elif noun.endswith("s") and not noun.endswith(("ss", "us", "is")) and len(noun) > 3:
+            noun = noun[:-1]
+        entity_name = noun.replace("-", " ").title().replace(" ", "")
+        return [EntitySpec(entity_name, [
+            FieldSpec("title", f"{noun.replace('-', ' ').title()} name"),
+            FieldSpec("description", "Description", required=False),
+            FieldSpec("category", "Category", required=False),
+            FieldSpec("created_at", "Created at", "datetime-local", required=False),
+        ], timestamps=False)]
+
     return [EntitySpec("Item", [
         FieldSpec("title", "Title"),
         FieldSpec("description", "Description", required=False),
