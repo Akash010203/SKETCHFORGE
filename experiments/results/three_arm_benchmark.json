@@ -12,7 +12,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.98,
+      "duration_ms": 9.71,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -32,14 +32,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "c01",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 8.91,
+      "duration_ms": 9.41,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -47,7 +47,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "c01",
       "total_tokens": 0
@@ -55,7 +55,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.91,
+      "duration_ms": 9.08,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -75,14 +75,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "c02",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 8.14,
+      "duration_ms": 10.01,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -90,7 +90,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "c02",
       "total_tokens": 0
@@ -98,7 +98,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 9.4,
+      "duration_ms": 13.33,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -118,14 +118,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "c03",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 10.16,
+      "duration_ms": 7.52,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -133,7 +133,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "c03",
       "total_tokens": 0
@@ -141,7 +141,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 8.82,
+      "duration_ms": 6.03,
       "errors": [
         "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
       ],
@@ -163,14 +163,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the answer was cut off (max_tokens reached); it would not be valid JSON",
       "task_id": "c04",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 157.06,
+      "duration_ms": 162.5,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -178,7 +178,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "c04",
       "total_tokens": 0
@@ -186,7 +186,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 7.24,
+      "duration_ms": 4.88,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -206,30 +206,30 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "c05",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 8.55,
+      "duration_ms": 5.26,
       "errors": [],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 8196.68,
       "passed": true,
-      "planner": "local_fallback",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner": "model",
+      "planner_outcome": "ok",
+      "planner_reason": null,
       "repair_patches": 0,
       "task_id": "c05",
-      "total_tokens": 0
+      "total_tokens": 2058
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 9.35,
+      "duration_ms": 6.96,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -249,14 +249,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "c06",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 10.93,
+      "duration_ms": 8.68,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -264,7 +264,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "c06",
       "total_tokens": 0
@@ -272,7 +272,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 8.02,
+      "duration_ms": 6.04,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -292,14 +292,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "c07",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 11.2,
+      "duration_ms": 9.03,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -307,7 +307,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "c07",
       "total_tokens": 0
@@ -315,7 +315,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.49,
+      "duration_ms": 5.95,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -335,14 +335,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "c08",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 8.03,
+      "duration_ms": 5.35,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -350,7 +350,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "c08",
       "total_tokens": 0
@@ -358,7 +358,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 7.31,
+      "duration_ms": 4.59,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -366,42 +366,41 @@
       "task_id": "t01"
     },
     {
-      "actual": "refuse",
+      "actual": "applied_clean",
       "arm": "model",
-      "duration_ms": 0.0,
-      "errors": [
-        "planner refused an edit task"
-      ],
+      "duration_ms": 5.7,
+      "errors": [],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
-      "passed": false,
-      "planner": "model_unavailable",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 7907.47,
+      "passed": true,
+      "planner": "model",
+      "planner_outcome": "ok",
+      "planner_reason": null,
+      "repair_patches": 0,
       "task_id": "t01",
-      "total_tokens": 0
+      "total_tokens": 2055
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 8.4,
+      "duration_ms": 5.57,
       "errors": [],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 10681.22,
       "passed": true,
-      "planner": "local_fallback",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner": "model",
+      "planner_outcome": "ok",
+      "planner_reason": null,
       "repair_patches": 0,
       "task_id": "t01",
-      "total_tokens": 0
+      "total_tokens": 2026
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.59,
+      "duration_ms": 4.51,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -416,35 +415,35 @@
         "planner refused an edit task"
       ],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 8555.74,
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "t02",
-      "total_tokens": 0
+      "total_tokens": 2118
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 8.08,
+      "duration_ms": 7.32,
       "errors": [],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 8611.86,
       "passed": true,
-      "planner": "local_fallback",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner": "model",
+      "planner_outcome": "ok",
+      "planner_reason": null,
       "repair_patches": 0,
       "task_id": "t02",
-      "total_tokens": 0
+      "total_tokens": 2118
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 12.74,
+      "duration_ms": 7.14,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -464,30 +463,30 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "t03",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 10.47,
+      "duration_ms": 7.36,
       "errors": [],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 3397.49,
       "passed": true,
-      "planner": "local_fallback",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner": "model",
+      "planner_outcome": "ok",
+      "planner_reason": null,
       "repair_patches": 0,
       "task_id": "t03",
-      "total_tokens": 0
+      "total_tokens": 2424
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 8.62,
+      "duration_ms": 7.57,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -507,14 +506,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "t04",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 9.17,
+      "duration_ms": 6.98,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -522,7 +521,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "t04",
       "total_tokens": 0
@@ -530,7 +529,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.48,
+      "duration_ms": 5.1,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -550,30 +549,30 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "t05",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 9.2,
+      "duration_ms": 11.43,
       "errors": [],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 4026.21,
       "passed": true,
-      "planner": "local_fallback",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner": "model",
+      "planner_outcome": "ok",
+      "planner_reason": null,
       "repair_patches": 0,
       "task_id": "t05",
-      "total_tokens": 0
+      "total_tokens": 1982
     },
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 8.33,
+      "duration_ms": 13.55,
       "errors": [
         "new or worsened evaluator issues: ['LOW_CONTRAST:button-1:']"
       ],
@@ -595,14 +594,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "t06",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 350.18,
+      "duration_ms": 577.43,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -610,7 +609,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "t06",
       "total_tokens": 0
@@ -618,7 +617,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.98,
+      "duration_ms": 9.46,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -626,42 +625,41 @@
       "task_id": "m01"
     },
     {
-      "actual": "refuse",
+      "actual": "applied_clean",
       "arm": "model",
-      "duration_ms": 0.0,
-      "errors": [
-        "planner refused an edit task"
-      ],
+      "duration_ms": 5.18,
+      "errors": [],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
-      "passed": false,
-      "planner": "model_unavailable",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 8042.22,
+      "passed": true,
+      "planner": "model",
+      "planner_outcome": "ok",
+      "planner_reason": null,
+      "repair_patches": 0,
       "task_id": "m01",
-      "total_tokens": 0
+      "total_tokens": 2080
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 7.69,
+      "duration_ms": 5.15,
       "errors": [],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 8448.68,
       "passed": true,
-      "planner": "local_fallback",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner": "model",
+      "planner_outcome": "ok",
+      "planner_reason": null,
       "repair_patches": 0,
       "task_id": "m01",
-      "total_tokens": 0
+      "total_tokens": 2106
     },
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 14.14,
+      "duration_ms": 6.88,
       "errors": [
         "new or worsened evaluator issues: ['MISALIGNED:sidebar-1:center_y']"
       ],
@@ -683,14 +681,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the answer was cut off (max_tokens reached); it would not be valid JSON",
       "task_id": "m02",
       "total_tokens": 0
     },
     {
       "actual": "applied_with_issues",
       "arm": "hybrid",
-      "duration_ms": 377.48,
+      "duration_ms": 341.27,
       "errors": [
         "new or worsened evaluator issues: ['MISALIGNED:sidebar-1:center_y']"
       ],
@@ -700,7 +698,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "m02",
       "total_tokens": 0
@@ -708,7 +706,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.81,
+      "duration_ms": 6.15,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -728,14 +726,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "m03",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 6.81,
+      "duration_ms": 6.82,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -743,7 +741,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "m03",
       "total_tokens": 0
@@ -751,7 +749,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 7.69,
+      "duration_ms": 6.16,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -771,14 +769,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "m04",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 9.94,
+      "duration_ms": 7.49,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -786,7 +784,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "m04",
       "total_tokens": 0
@@ -794,7 +792,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 8.49,
+      "duration_ms": 8.12,
       "errors": [
         "new or worsened evaluator issues: ['MISALIGNED:button-1:right']"
       ],
@@ -816,14 +814,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "m05",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 380.75,
+      "duration_ms": 345.17,
       "errors": [
         "button-1.x: expected 300, got 312.016"
       ],
@@ -833,7 +831,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "m05",
       "total_tokens": 0
@@ -841,7 +839,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 5.76,
+      "duration_ms": 4.68,
       "errors": [
         "new or worsened evaluator issues: ['MISALIGNED:checkbox-1:left']"
       ],
@@ -863,14 +861,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "m06",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 360.25,
+      "duration_ms": 338.22,
       "errors": [
         "checkbox-1.dx: expected -6, got None"
       ],
@@ -880,7 +878,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "m06",
       "total_tokens": 0
@@ -888,7 +886,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 8.23,
+      "duration_ms": 5.11,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
       ],
@@ -910,14 +908,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "r01",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 331.87,
+      "duration_ms": 336.95,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -925,7 +923,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "r01",
       "total_tokens": 0
@@ -933,7 +931,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 7.85,
+      "duration_ms": 8.47,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -953,14 +951,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "r02",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 10.73,
+      "duration_ms": 6.87,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -968,7 +966,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "r02",
       "total_tokens": 0
@@ -976,7 +974,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 8.91,
+      "duration_ms": 8.36,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -996,14 +994,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the answer was cut off (max_tokens reached); it would not be valid JSON",
       "task_id": "r03",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 9.83,
+      "duration_ms": 10.93,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1011,7 +1009,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "r03",
       "total_tokens": 0
@@ -1019,7 +1017,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 6.16,
+      "duration_ms": 6.97,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1039,14 +1037,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "r04",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 8.82,
+      "duration_ms": 5.41,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1054,7 +1052,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "r04",
       "total_tokens": 0
@@ -1062,7 +1060,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.6,
+      "duration_ms": 4.66,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1082,30 +1080,30 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "r05",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 7.9,
+      "duration_ms": 6.22,
       "errors": [],
       "expected": "edit",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 4002.59,
       "passed": true,
-      "planner": "local_fallback",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner": "model",
+      "planner_outcome": "ok",
+      "planner_reason": null,
       "repair_patches": 0,
       "task_id": "r05",
-      "total_tokens": 0
+      "total_tokens": 2167
     },
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 8.88,
+      "duration_ms": 6.59,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PAGE:button-1:right']"
       ],
@@ -1127,14 +1125,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "r06",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 136.47,
+      "duration_ms": 144.47,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1142,7 +1140,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "r06",
       "total_tokens": 0
@@ -1150,7 +1148,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 8.48,
+      "duration_ms": 7.11,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1170,14 +1168,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "r07",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 11.73,
+      "duration_ms": 8.39,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1185,7 +1183,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "r07",
       "total_tokens": 0
@@ -1193,7 +1191,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 6.23,
+      "duration_ms": 4.66,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:']"
       ],
@@ -1215,14 +1213,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "f01",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 323.89,
+      "duration_ms": 381.59,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1230,7 +1228,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "f01",
       "total_tokens": 0
@@ -1238,7 +1236,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 8.56,
+      "duration_ms": 7.64,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-2:', 'TEXT_OVERFLOW:heading-2:']"
       ],
@@ -1260,14 +1258,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "f02",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 527.3,
+      "duration_ms": 572.38,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1275,7 +1273,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 2,
       "task_id": "f02",
       "total_tokens": 0
@@ -1283,7 +1281,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 7.74,
+      "duration_ms": 6.53,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:', 'TEXT_OVERFLOW:heading-1:']"
       ],
@@ -1305,14 +1303,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "f03",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 204.05,
+      "duration_ms": 196.04,
       "errors": [
         "heading-1.font_size: expected 26, got 21.5"
       ],
@@ -1322,7 +1320,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 2,
       "task_id": "f03",
       "total_tokens": 0
@@ -1330,7 +1328,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 5.49,
+      "duration_ms": 4.86,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1350,14 +1348,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "k01",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 7.59,
+      "duration_ms": 5.63,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1365,7 +1363,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "k01",
       "total_tokens": 0
@@ -1373,7 +1371,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 9.3,
+      "duration_ms": 6.98,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1393,14 +1391,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "k02",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 11.18,
+      "duration_ms": 8.22,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1408,7 +1406,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "k02",
       "total_tokens": 0
@@ -1437,7 +1435,7 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "k03",
       "total_tokens": 0
     },
@@ -1454,14 +1452,14 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "k03",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 7.42,
+      "duration_ms": 4.89,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1481,14 +1479,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "x01",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 8.65,
+      "duration_ms": 6.78,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1496,7 +1494,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "x01",
       "total_tokens": 0
@@ -1504,7 +1502,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 9.19,
+      "duration_ms": 7.18,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1524,14 +1522,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "x02",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 10.65,
+      "duration_ms": 7.99,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1539,7 +1537,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "x02",
       "total_tokens": 0
@@ -1547,7 +1545,7 @@
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 7.35,
+      "duration_ms": 5.09,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1567,14 +1565,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "x03",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 6.64,
+      "duration_ms": 5.61,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1582,7 +1580,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "x03",
       "total_tokens": 0
@@ -1611,7 +1609,7 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "x04",
       "total_tokens": 0
     },
@@ -1628,14 +1626,14 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "x04",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 10.52,
+      "duration_ms": 7.72,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1655,14 +1653,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "x05",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 11.2,
+      "duration_ms": 7.98,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1670,7 +1668,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "x05",
       "total_tokens": 0
@@ -1678,7 +1676,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 5.94,
+      "duration_ms": 4.9,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
       ],
@@ -1700,14 +1698,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "x06",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 362.67,
+      "duration_ms": 325.27,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1715,7 +1713,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "x06",
       "total_tokens": 0
@@ -1744,7 +1742,7 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p01",
       "total_tokens": 0
     },
@@ -1761,7 +1759,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p01",
       "total_tokens": 0
     },
@@ -1789,7 +1787,7 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p02",
       "total_tokens": 0
     },
@@ -1806,14 +1804,14 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p02",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "local",
-      "duration_ms": 13.17,
+      "duration_ms": 8.48,
       "errors": [],
       "expected": "edit",
       "passed": true,
@@ -1833,14 +1831,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p03",
       "total_tokens": 0
     },
     {
       "actual": "applied_clean",
       "arm": "hybrid",
-      "duration_ms": 11.12,
+      "duration_ms": 7.98,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1848,7 +1846,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "p03",
       "total_tokens": 0
@@ -1856,7 +1854,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 8.03,
+      "duration_ms": 6.2,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:', 'TEXT_OVERFLOW:heading-1:']"
       ],
@@ -1878,14 +1876,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p04",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 209.27,
+      "duration_ms": 195.49,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -1893,7 +1891,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 2,
       "task_id": "p04",
       "total_tokens": 0
@@ -1922,7 +1920,7 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p05",
       "total_tokens": 0
     },
@@ -1939,7 +1937,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p05",
       "total_tokens": 0
     },
@@ -1967,7 +1965,7 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p06",
       "total_tokens": 0
     },
@@ -1984,14 +1982,14 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "p06",
       "total_tokens": 0
     },
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 7.15,
+      "duration_ms": 5.21,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:right']"
       ],
@@ -2013,14 +2011,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "l01",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 361.35,
+      "duration_ms": 325.31,
       "errors": [],
       "expected": "edit",
       "model": null,
@@ -2028,7 +2026,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "l01",
       "total_tokens": 0
@@ -2036,7 +2034,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 6.18,
+      "duration_ms": 4.8,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:bottom']"
       ],
@@ -2058,14 +2056,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "l02",
       "total_tokens": 0
     },
     {
       "actual": "applied_with_issues",
       "arm": "hybrid",
-      "duration_ms": 148.22,
+      "duration_ms": 130.27,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PARENT:button-1:bottom']"
       ],
@@ -2075,7 +2073,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "l02",
       "total_tokens": 0
@@ -2083,7 +2081,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 6.21,
+      "duration_ms": 5.46,
       "errors": [
         "new or worsened evaluator issues: ['TEXT_CLIPPED:heading-1:', 'TEXT_OVERFLOW:heading-1:']"
       ],
@@ -2105,14 +2103,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "l03",
       "total_tokens": 0
     },
     {
       "actual": "applied_repaired",
       "arm": "hybrid",
-      "duration_ms": 367.14,
+      "duration_ms": 323.55,
       "errors": [
         "heading-1.font_size: expected '>', got 10.0"
       ],
@@ -2122,7 +2120,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 1,
       "task_id": "l03",
       "total_tokens": 0
@@ -2130,7 +2128,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 13.81,
+      "duration_ms": 7.72,
       "errors": [
         "new or worsened evaluator issues: ['OVERLAP:button-1,sidebar-1:', 'OVERLAP:card-1,sidebar-1:', 'OVERLAP:image-2,sidebar-1:']"
       ],
@@ -2152,14 +2150,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "l04",
       "total_tokens": 0
     },
     {
       "actual": "applied_with_issues",
       "arm": "hybrid",
-      "duration_ms": 395.71,
+      "duration_ms": 337.9,
       "errors": [
         "new or worsened evaluator issues: ['OVERLAP:button-1,sidebar-1:', 'OVERLAP:card-1,sidebar-1:', 'OVERLAP:image-2,sidebar-1:']"
       ],
@@ -2169,7 +2167,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "l04",
       "total_tokens": 0
@@ -2177,7 +2175,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 9.69,
+      "duration_ms": 6.4,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PAGE:heading-1:top']"
       ],
@@ -2199,14 +2197,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "l05",
       "total_tokens": 0
     },
     {
       "actual": "applied_with_issues",
       "arm": "hybrid",
-      "duration_ms": 68.31,
+      "duration_ms": 59.22,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PAGE:heading-1:top']"
       ],
@@ -2216,7 +2214,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "l05",
       "total_tokens": 0
@@ -2224,7 +2222,7 @@
     {
       "actual": "applied_with_issues",
       "arm": "local",
-      "duration_ms": 7.33,
+      "duration_ms": 4.87,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PAGE:card-1:bottom', 'OVERLAP:card-1,text-4:']"
       ],
@@ -2246,14 +2244,14 @@
       "passed": false,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "l06",
       "total_tokens": 0
     },
     {
       "actual": "applied_with_issues",
       "arm": "hybrid",
-      "duration_ms": 1018.96,
+      "duration_ms": 919.28,
       "errors": [
         "new or worsened evaluator issues: ['OVERFLOW_PAGE:card-1:bottom', 'OVERLAP:card-1,text-4:']"
       ],
@@ -2263,7 +2261,7 @@
       "passed": false,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "repair_patches": 0,
       "task_id": "l06",
       "total_tokens": 0
@@ -2288,7 +2286,7 @@
       "passed": true,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n01",
       "total_tokens": 0
     },
@@ -2303,7 +2301,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n01",
       "total_tokens": 0
     },
@@ -2327,7 +2325,7 @@
       "passed": true,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n02",
       "total_tokens": 0
     },
@@ -2342,7 +2340,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n02",
       "total_tokens": 0
     },
@@ -2361,14 +2359,14 @@
       "duration_ms": 0.0,
       "errors": [],
       "expected": "refuse",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 8494.35,
       "passed": true,
       "planner": "model_unavailable",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_outcome": "refused",
+      "planner_reason": "The available operations do not include a delete or remove function for components.",
       "task_id": "n03",
-      "total_tokens": 0
+      "total_tokens": 2087
     },
     {
       "actual": "refuse",
@@ -2381,7 +2379,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n03",
       "total_tokens": 0
     },
@@ -2405,7 +2403,7 @@
       "passed": true,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n04",
       "total_tokens": 0
     },
@@ -2420,7 +2418,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n04",
       "total_tokens": 0
     },
@@ -2439,14 +2437,14 @@
       "duration_ms": 0.0,
       "errors": [],
       "expected": "refuse",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 3343.13,
       "passed": true,
       "planner": "model_unavailable",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_outcome": "refused",
+      "planner_reason": "The instruction 'make it bigger' is ambiguous about which component to resize and in what way.",
       "task_id": "n05",
-      "total_tokens": 0
+      "total_tokens": 2023
     },
     {
       "actual": "refuse",
@@ -2454,14 +2452,14 @@
       "duration_ms": 0.0,
       "errors": [],
       "expected": "refuse",
-      "model": null,
-      "model_latency_ms": 0,
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "model_latency_ms": 3549.65,
       "passed": true,
       "planner": "local_fallback",
-      "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_outcome": "refused",
+      "planner_reason": "The instruction 'make it bigger' is ambiguous and does not specify which component should be enlarged.",
       "task_id": "n05",
-      "total_tokens": 0
+      "total_tokens": 2056
     },
     {
       "actual": "refuse",
@@ -2483,7 +2481,7 @@
       "passed": true,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n06",
       "total_tokens": 0
     },
@@ -2498,7 +2496,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n06",
       "total_tokens": 0
     },
@@ -2522,7 +2520,7 @@
       "passed": true,
       "planner": "model_unavailable",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n07",
       "total_tokens": 0
     },
@@ -2537,7 +2535,7 @@
       "passed": true,
       "planner": "local_fallback",
       "planner_outcome": "provider_error",
-      "planner_reason": "could not reach the service (Connection error.)",
+      "planner_reason": "the service returned an empty answer",
       "task_id": "n07",
       "total_tokens": 0
     }
@@ -2566,10 +2564,11 @@
     },
     "model": {
       "outcomes": {
-        "refuse": 58
+        "applied_clean": 2,
+        "refuse": 56
       },
-      "pass_rate": 0.1207,
-      "passed": 7,
+      "pass_rate": 0.1552,
+      "passed": 9,
       "tasks": 58
     }
   },
