@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import logging
 import mimetypes
+import io
 import threading
 import uuid
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -43,6 +45,25 @@ class StudioHandler(BaseHTTPRequestHandler):
             with _LOCK:
                 projects = [{"name": p.name, "slug": slug} for slug, p in _PROJECTS.items()]
             self._json(200, projects)
+        elif parsed.path.startswith("/api/export/"):
+            slug = unquote(parsed.path.removeprefix("/api/export/"))
+            with _LOCK:
+                root = _PROJECTS.get(slug)
+            if root is None or not root.is_dir():
+                self._json(404, {"error": "Project not found."})
+                return
+            archive = io.BytesIO()
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+                for file in sorted(root.rglob("*")):
+                    if file.is_file() and not any(part.startswith(".") for part in file.relative_to(root).parts):
+                        bundle.write(file, file.relative_to(root).as_posix())
+            payload = archive.getvalue()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Disposition", f'attachment; filename="{root.name}.zip"')
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
         elif parsed.path.startswith("/api/jobs/"):
             job_id = parsed.path.rsplit("/", 1)[-1]
             with _LOCK:

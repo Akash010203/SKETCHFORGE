@@ -32,6 +32,7 @@
     $('#popout').onclick = () => window.open(frame.src, '_blank', 'noopener');
     $('#status').textContent = `${project.name} · Live preview`;
     $('#copy-link').disabled = false;
+    $('#export-project').disabled = false;
     refreshProjects();
     // Push a snapshot into the undo history whenever we show a project.
     _historyPush(currentUrl);
@@ -83,6 +84,10 @@
       _historyUpdateButtons();
       addLog('Redo: preview state traversed forward.');
     }
+  };
+
+  $('#export-project').onclick = () => {
+    if (currentSlug) window.location.href = '/api/export/' + encodeURIComponent(currentSlug);
   };
 
   // Initialise button states.
