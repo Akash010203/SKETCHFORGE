@@ -4,6 +4,8 @@
 **Execution Environment:** Windows 11 AMD64 | Python 3.11.9 | OpenCV 5.0.0 | PySide6 6.12.0 | PyTorch 2.6.0+cu124  
 **Runner:** `pytest -v`  
 
+> The 357-test run below predates the Web Studio changes recorded in the October 24 follow-up section at the end of this report.
+
 ---
 
 ## 1. Test Suite Summary
@@ -60,3 +62,22 @@ TOTAL: 357 PASSED / 0 FAILED / 0 SKIPPED (100% Pass Rate in 325.01s)
 - **Live Inference Verification:** Executed via `scripts/verify_nebius.py --enable --accept-egress`. Verified live connectivity to `nvidia/nemotron-3-super-120b-a12b` (HTTP 200, 720 ms) and `nvidia/Nemotron-3_5-Lightning` (HTTP 200, 5,448 ms).
 - **Synthetic CV Benchmark:** `python scripts/benchmark_photographs.py --synthetic 5` passed with mean F1 of 0.9867 and mean IoU of 0.8347.
 - **Real Photo CV Benchmark:** `python scripts/benchmark_photographs.py datasets/manifests/photo_bench.json` passed with grid suppression active (39 predictions vs 627 original false positives).
+
+---
+
+## 4. October 24 Follow-up Verification
+
+These focused checks were run after the follow-up Web Studio changes:
+
+| Check | Result |
+|---|---|
+| `python -m pytest tests/test_generation_pipeline.py tests/end_to_end/test_generated_project.py -q` | **46 passed** in 1.08s |
+| `node --check src/sketchforge/ui/web_studio/studio.js` | **Passed** |
+| In-process `/api/export/<slug>` handler check | **Passed**; ZIP contained project files and excluded hidden files |
+| In-process `/api/sketch-analysis` handler check with `login_page_synthetic.png` | **Passed**; 1240×900, 15 detected regions |
+| In-process `_proxy_api` token forwarding check | **Passed**; forwarded configured `X-Studio-Token` |
+| Template entity inference checks | **Passed** for `recipe organizer`, `track supplies`, and built-in `yoga booking` prompt |
+| Live HTTP/browser smoke test | **Not run**; loopback socket access is denied in this environment (`WinError 10013`) |
+| PyInstaller fresh build | **Not completed**; PyInstaller progressed through analysis but stalled; attempt was interrupted. Existing `dist/standalone/SketchForge.exe` timestamp predates this run. |
+
+`git diff --check` passed after the follow-up edits. The original 357-test result remains historical and was not rerun in full.

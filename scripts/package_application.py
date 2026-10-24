@@ -67,7 +67,7 @@ def _build_wheel(out: Path) -> int:
     return 0
 
 
-def _build_pyinstaller(out: Path) -> int:
+def _build_pyinstaller(out: Path, *, console: bool = False) -> int:
     """Bundle into a standalone executable using PyInstaller."""
     if sys.platform != "win32":
         print("ERROR: the .exe must be built on Windows; PyInstaller is platform-specific.")
@@ -99,13 +99,12 @@ def _build_pyinstaller(out: Path) -> int:
         "--specpath", str(ROOT / "build"),
         "--paths", str(SRC),
         "--onefile",                       # one-click executable; PyInstaller extracts bundled data at launch
-        "--windowed",                      # no console window on Windows
+        "--console" if console else "--windowed",
         "--noconfirm",                     # overwrite without prompting
         # Hidden imports needed for PySide6 and optional modules
         "--hidden-import", "PySide6.QtSvg",
         "--hidden-import", "PySide6.QtPrintSupport",
         "--hidden-import", "sketchforge",
-        "--collect-all", "PySide6",
         # The desktop app uses PyTorch, Transformers, and dataset readers only as
         # optional accelerators/training tools. PyInstaller otherwise bundles the
         # full local ML environment, including multi-gigabyte CUDA libraries, into
@@ -126,13 +125,13 @@ def _build_pyinstaller(out: Path) -> int:
         str(ROOT / "scripts" / "desktop_entry.py"),
     ]
 
-    print("Building standalone executable with PyInstaller …")
+    print("Building standalone executable with PyInstaller …", flush=True)
     print(f"  Output: {out / (APP_NAME + '.exe')}")
-    result = subprocess.run(spec_args, cwd=str(ROOT), capture_output=True, text=True)
+    # Stream PyInstaller's progress: a one-file Qt bundle can take several minutes,
+    # and buffering all output makes the build look stuck until it exits.
+    result = subprocess.run(spec_args, cwd=str(ROOT))
     if result.returncode != 0:
-        print("  PyInstaller FAILED:")
-        print(result.stdout[-3000:])
-        print(result.stderr[-3000:])
+        print(f"  PyInstaller failed with exit code {result.returncode}.")
         return result.returncode
 
     exe = out / (APP_NAME + (".exe" if sys.platform == "win32" else ""))
@@ -149,6 +148,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--pyinstaller", action="store_true",
                     help="Build a standalone executable (requires PyInstaller)")
+    ap.add_argument("--console", action="store_true",
+                    help="Keep a console window for standalone build diagnostics")
     ap.add_argument("--wheel", action="store_true",
                     help="Build a Python wheel (default if --pyinstaller is not given)")
     ap.add_argument("--out", default="dist",
@@ -168,7 +169,7 @@ def main() -> int:
             return rc
 
     if args.pyinstaller:
-        rc = _build_pyinstaller(out / "standalone")
+        rc = _build_pyinstaller(out / ("diagnostic" if args.console else "standalone"), console=args.console)
         if rc != 0:
             return rc
 

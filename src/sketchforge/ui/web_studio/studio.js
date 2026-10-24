@@ -25,6 +25,7 @@
     frame.onload = () => {
       $('#frame-state').textContent = 'Ready';
       frame.contentWindow.postMessage({ type: 'sf-edit-mode', enabled: true }, '*');
+      if (previewTheme !== 'light') frame.contentWindow.postMessage({ type: 'sf-theme', theme: previewTheme }, '*');
       if (window.pendingPreviewState) {
         frame.contentWindow.postMessage({ type: 'sf-restore', state: window.pendingPreviewState }, '*');
         window.pendingPreviewState = null;
@@ -98,6 +99,27 @@
   // Canvas selection and direct editing
   // ---------------------------------------------------------------------------
   const toolButtons = document.querySelectorAll('.canvas-tools button');
+  let previewTheme = 'light';
+  const frameButton = toolButtons[1];
+  if (frameButton) {
+    frameButton.setAttribute('aria-pressed', 'true');
+    frameButton.onclick = () => {
+      const board = document.querySelector('.artboard');
+      if (!board) return;
+      const hidden = board.classList.toggle('frame-outline-hidden');
+      frameButton.setAttribute('aria-pressed', String(!hidden));
+      addLog(hidden ? 'Preview frame outline hidden.' : 'Preview frame outline shown.');
+    };
+  }
+  const themeButton = toolButtons[5];
+  if (themeButton) {
+    themeButton.onclick = () => {
+      previewTheme = previewTheme === 'light' ? 'dark' : 'light';
+      themeButton.setAttribute('aria-pressed', String(previewTheme === 'dark'));
+      $('#preview')?.contentWindow.postMessage({ type: 'sf-theme', theme: previewTheme }, '*');
+      addLog(`Preview theme: ${previewTheme}.`);
+    };
+  }
   function setEditMode(enabled) {
     const frame = $('#preview');
     if (frame) frame.contentWindow.postMessage({ type: 'sf-edit-mode', enabled }, '*');
@@ -115,6 +137,8 @@
         }
         setEditMode(enabled);
       };
+    } else if (i === 1 || i === 5) {
+      // Frame and theme tools are wired above.
     } else if (i === 4) {
       btn.onclick = () => $('#image-input').click();
     } else if (i === 6) {

@@ -44,3 +44,14 @@
 ## Known Regressions or Limitations
 - **External Framework Requirements:** React + TypeScript (Vite) target requires Node.js/npm on the host machine to build and run.
 - **Hosted Model Availability:** Nebius Token Factory endpoints experience occasional load spikes; candidate model fallback mitigates single-model outages.
+
+## October 24 Follow-up Changes
+
+- **Studio polling log:** repeated identical job progress strings are now logged once per generation. `node --check` passed; an interactive browser check remains outstanding.
+- **Preview API security:** both Web Studio proxy paths now send the child backend session token. The shared `_proxy_api` path was checked with an in-process request mock; loopback integration was unavailable in the sandbox.
+- **Project export:** added `GET /api/export/<slug>` and an Export ZIP topbar button. An in-process handler check confirmed a valid archive containing the project's non-hidden files.
+- **Pre-generation sketch analysis:** added `POST /api/sketch-analysis`, which validates and runs the existing OpenCV pipeline before a project exists. The synthetic login sketch produced 15 regions at 1240×900; the UI appends the extracted positions to the next generation prompt.
+- **Template fallback schema:** unknown domains can infer a record noun from common prompt forms, including “recipe organizer” and “track supplies.” In-process assertions passed.
+- **Canvas tools:** Frame toggles the artboard outline and Theme sends a light/dark override to the preview; image insertion was already connected. JavaScript syntax passed; visual browser verification remains outstanding.
+- **Packaging:** `scripts/package_application.py` now streams PyInstaller progress. A fresh build progressed through analysis but stalled and was interrupted; the existing executable was not refreshed or launch-verified.
+- **Verification scope:** the two focused pytest files passed 46 tests. The prior full 357-test result predates these changes and was not rerun.

@@ -48,7 +48,11 @@ Our deep code inspection and live runtime probe revealed **four intersecting roo
 |---|---|---|
 | **OpenCV 5 Core Vision** | Illumination flattening, contour hierarchy, and synthetic F1 (0.982) working; grid-paper suppression active | **Ready for clean/white paper; grid paper guarded** |
 | **Desktop Workbench (PySide6)** | 9/9 UI smoke tests passing offscreen; interactive canvas & undo stack verified | **Production Ready** |
-| **Web Studio Control Plane** | Local HTTP server at port 8000; device previews (Desktop/Tablet/Mobile) working | **Ready with token proxy fix** |
+| **Web Studio Control Plane** | Progress log deduplication, ZIP export, pre-generation OpenCV sketch analysis, proxy token forwarding, and canvas Theme/Frame tools implemented | **Focused checks pass; live browser smoke remains open** |
 | **Nebius AI Integration** | Token Factory client functional; verified with `nvidia/nemotron-3-super-120b-a12b` (HTTP 200) | **Ready with candidate model fallback** |
 | **Full-Stack App Generation** | Emits HTML5, CSS3, ES6 JS, Python Flask, SQLite schema, CRUD endpoints, and tests | **Verified Working (passes pytest in sandbox)** |
-| **Automated Test Suite** | 357 passed / 0 failed / 0 skipped | **100% Pass Rate** |
+| **Automated Test Suite** | Historical full run: 357 passed; follow-up focused run: 46 passed | **Follow-up full suite not rerun** |
+
+## 3. October 24 Follow-up Verification
+
+After the original audit run, the Web Studio gained pre-generation sketch analysis, project ZIP export, progress-log deduplication, preview token forwarding, and Theme/Frame controls. Template fallback now infers custom record nouns. Focused verification passed 46 generation tests, JavaScript syntax validation, in-process checks for ZIP contents, sketch analysis (15 detections on the synthetic login sketch), proxy token forwarding, and entity inference. The live browser check could not run because loopback socket access is denied in the environment. A fresh PyInstaller build progressed through analysis but stalled and was interrupted; the pre-existing executable was not refreshed or launch-verified. See `reports/TEST_RESULTS.md` and `reports/PRIORITIZED_FIX_PLAN.md` for exact scope.
