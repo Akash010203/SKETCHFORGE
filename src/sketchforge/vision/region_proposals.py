@@ -20,10 +20,10 @@ from sketchforge.vision.text_regions import TextRegion, find_text_regions
 # --------------------------------------------------------------------------- #
 # Maximum side length (px) of a candidate "micro-square" that might be confused
 # with a grid cell rather than a drawn UI checkbox.
-_GRID_MAX_SIDE_PX: int = 30
+_GRID_MAX_SIDE_PX: int = 45
 # A genuine grid lattice must have > this many near-identical squares to be
 # suppressed.  A real checkbox group rarely exceeds ~8 items.
-_GRID_MIN_COUNT: int = 20
+_GRID_MIN_COUNT: int = 15
 # If the coefficient of variation of the square side lengths is below this
 # threshold, the cluster is uniform enough to be a ruled grid.
 _GRID_SIDE_CV_MAX: float = 0.08
@@ -79,12 +79,13 @@ def filter_grid_lattice_false_positives(
         x, y, w, h = bbox
         return any(x <= cx <= x + w and y <= cy <= y + h for cx, cy in text_centres)
 
-    # Collect candidate tiny squares (rect / rounded_rect, both sides ≤ threshold).
+    # Working images are resized before contour detection, so notebook cells can be
+    # larger than their source-image 15 px appearance.
     tiny_squares: list[ShapeObservation] = [
         s for s in shapes
         if s.kind in ("rect", "rounded_rect")
-        and s.bbox[2] <= _GRID_MAX_SIDE_PX
-        and s.bbox[3] <= _GRID_MAX_SIDE_PX
+        and 8 <= s.bbox[2] <= _GRID_MAX_SIDE_PX
+        and 8 <= s.bbox[3] <= _GRID_MAX_SIDE_PX
         and not _has_text_inside(s.bbox)
     ]
 
@@ -100,6 +101,36 @@ def filter_grid_lattice_false_positives(
 
     if cv >= _GRID_SIDE_CV_MAX:
         # High variation → these are hand-drawn checkboxes, not grid cells.
+        return shapes, None
+
+    # Perspective and contour jitter shift a cell's x position slightly between rows.
+    # Measure horizontal pitch within each row, then vertical pitch between row centers.
+    rows: list[list[ShapeObservation]] = []
+    for shape in sorted(tiny_squares, key=lambda s: s.bbox[1] + s.bbox[3] / 2):
+        cy = shape.bbox[1] + shape.bbox[3] / 2
+        if not rows or cy - np.mean([s.bbox[1] + s.bbox[3] / 2 for s in rows[-1]]) > 10:
+            rows.append([shape])
+        else:
+            rows[-1].append(shape)
+
+    row_pitch: list[float] = []
+    row_centers: list[float] = []
+    for row in rows:
+        if len(row) < 8:
+            continue
+        xs = np.sort([s.bbox[0] + s.bbox[2] / 2 for s in row])
+        gaps = np.diff(xs)
+        pitch = float(np.median(gaps))
+        if 12 <= pitch <= 80 and float(np.median(np.abs(gaps - pitch))) / pitch <= 0.12:
+            row_pitch.append(pitch)
+            row_centers.append(float(np.median([s.bbox[1] + s.bbox[3] / 2 for s in row])))
+
+    if len(row_pitch) < 8 or float(np.std(row_pitch)) / float(np.mean(row_pitch)) > 0.15:
+        return shapes, None
+    vertical_gaps = np.diff(sorted(row_centers))
+    vertical_pitch = float(np.median(vertical_gaps))
+    if (vertical_pitch < 12 or vertical_pitch > 80
+            or float(np.median(np.abs(vertical_gaps - vertical_pitch))) / vertical_pitch > 0.20):
         return shapes, None
 
     # All criteria met: suppress the entire tiny-square cluster.

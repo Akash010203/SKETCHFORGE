@@ -309,6 +309,54 @@ def flatten_local_illumination(gray: np.ndarray) -> np.ndarray:
     return flat
 
 
+def suppress_grid_background(gray: np.ndarray, stroke_px: float) -> np.ndarray:
+    """Remove a thin, regularly spaced horizontal/vertical grid from grayscale paper.
+
+    Morphological openings isolate long thin lines. Their projected centers must form a
+    regular lattice in both directions before any pixels are removed, so ordinary UI
+    borders and isolated long strokes remain intact.
+    """
+    if gray.ndim != 2 or gray.size == 0:
+        return gray
+    line_len = max(3, int(stroke_px * 6))
+    h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (line_len, 1))
+    v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, line_len))
+    dark_ink = 255 - gray
+    h_lines = cv2.morphologyEx(dark_ink, cv2.MORPH_OPEN, h_kernel)
+    v_lines = cv2.morphologyEx(dark_ink, cv2.MORPH_OPEN, v_kernel)
+
+    def periodic_centers(profile: np.ndarray) -> tuple[np.ndarray, float] | None:
+        active = np.flatnonzero(profile >= max(2, int(0.45 * profile.max())))
+        if active.size < 8:
+            return None
+        groups = np.split(active, np.flatnonzero(np.diff(active) > 2) + 1)
+        centers = np.array([g.mean() for g in groups if g.size >= 1])
+        if centers.size < 8:
+            return None
+        gaps = np.diff(centers)
+        pitch = float(np.median(gaps))
+        if pitch < 4 or pitch > 100:
+            return None
+        if float(np.median(np.abs(gaps - pitch))) / pitch > 0.20:
+            return None
+        return centers, pitch
+
+    row_profile = (h_lines > 0).sum(axis=1)
+    col_profile = (v_lines > 0).sum(axis=0)
+    rows = periodic_centers(row_profile)
+    cols = periodic_centers(col_profile)
+    if rows is None or cols is None:
+        return gray
+    # Require both line families to cover most of their respective image axes.
+    if (rows[0][-1] - rows[0][0] < 0.5 * gray.shape[0]
+            or cols[0][-1] - cols[0][0] < 0.5 * gray.shape[1]):
+        return gray
+
+    grid = cv2.bitwise_or(h_lines, v_lines)
+    grid = cv2.dilate(grid, np.ones((3, 3), dtype=np.uint8))
+    return cv2.inpaint(gray, grid, max(1.0, float(stroke_px)), cv2.INPAINT_TELEA)
+
+
 def preprocess(
     norm: NormalizedImage,
     force_variant: str | None = None,
@@ -322,6 +370,7 @@ def preprocess(
     # the MORPH_CLOSE-based flatten_illumination() in normalization.normalize().
     # The result is passed to every threshold variant, making all of them robust to real photos.
     locally_flat = flatten_local_illumination(norm.gray)
+    locally_flat = suppress_grid_background(locally_flat, stroke_px=3.0)
     candidates = {name: fn(locally_flat) for name, fn in VARIANTS.items()}
     scores = {name: round(score_variant(mask), 4) for name, mask in candidates.items()}
     chosen = force_variant or max(scores, key=lambda k: scores[k])

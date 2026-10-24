@@ -43,10 +43,12 @@ def test_command_policy_rejects_unsupported_or_blocked_commands(command):
 def test_sandbox_runs_allowlisted_process_and_reports_exit_status(tmp_path):
     session = open_sandbox(tmp_path, env={"SF_TEST_VALUE": "passed"})
     try:
-        result = session.run(
-            ["python", "-c", "import os; print(os.environ['SF_TEST_VALUE'])"],
-            timeout=10,
+        script = session.root / "check_env.py"
+        script.write_text(
+            "import os\nprint(os.environ['SF_TEST_VALUE'])\n",
+            encoding="utf-8",
         )
+        result = session.run(["python", str(script)], timeout=10)
         assert isinstance(result, RunResult)
         assert result.ok
         assert result.returncode == 0
