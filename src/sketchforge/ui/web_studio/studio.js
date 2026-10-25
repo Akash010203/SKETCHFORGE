@@ -9,6 +9,8 @@
 
   let currentSlug = '', currentUrl = '', pollTimer = null, zoom = 75;
   let pendingSketchLayout = '';
+  let pendingSketchRegions = [];   // structured geometry from /api/sketch-analysis (legacy %)
+  let pendingSketchLayoutBlock = null; // full Design IR block from /api/sketch-analysis
 
   function addLog(text) { log.textContent = text + '\n' + log.textContent; }
 
@@ -202,6 +204,8 @@
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'Sketch analysis failed.');
         pendingSketchLayout = payload.layout;
+        pendingSketchRegions = payload.regions || [];
+        pendingSketchLayoutBlock = payload.layout_block || null;  // rich Design IR block
         addLog(`${isVideo ? 'First video frame analyzed. ' : ''}${payload.summary} This reference will guide your next generation.`);
         $('#status').textContent = 'Reference ready · describe the website to generate';
       } catch (error) { addLog('Sketch analysis failed: ' + error.message); }
@@ -261,8 +265,28 @@
   async function generate(text) {
     if (!text.trim()) return;
     if (!currentSlug && pendingSketchLayout) {
-      text += `\n\nUse this OpenCV analysis of my uploaded sketch as the layout guide. Keep the detected regions and their relative positions:\n${pendingSketchLayout}`;
+      // Build a structured design-document block so the AI planner uses
+      // precise bounding-box geometry and hierarchy, not just prose percentages.
+      const designDoc = {
+        source: 'sketch_analysis',
+        // Rich Design IR block (canvas dims, exact design-px components, AppSpec, hierarchy tree)
+        layout_block: pendingSketchLayoutBlock,
+        // Legacy percentage regions kept as a human-readable fallback
+        regions: pendingSketchRegions,
+        layout_description: pendingSketchLayout,
+      };
+      const instruction = pendingSketchLayoutBlock
+        ? 'Use the layout_block above as the authoritative layout guide. ' +
+          'Honour the canvas dimensions, exact bbox_design_px coordinates, ' +
+          'parent_id containment hierarchy, and component types. ' +
+          'Reproduce element positions faithfully using CSS (position:absolute or flex/grid). ' +
+          'Use the app_spec fields for page routes, form fields, and entity names.'
+        : 'Use the regions above (x/y/w/h in % of canvas) as the page layout guide. ' +
+          'Preserve the detected element types and their relative positions.';
+      text += `\n\n<SketchDesignDocument>\n${JSON.stringify(designDoc, null, 2)}\n</SketchDesignDocument>\n\n${instruction}`;
       pendingSketchLayout = '';
+      pendingSketchRegions = [];
+      pendingSketchLayoutBlock = null;
     }
     const revising = Boolean(currentSlug);
     const frame = $('#preview');

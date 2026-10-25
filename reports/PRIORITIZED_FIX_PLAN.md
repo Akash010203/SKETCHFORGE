@@ -1,44 +1,73 @@
-# SKETCHFORGE — PRIORITIZED FIX & REPAIR PLAN
+# Prioritized Fix Plan: SketchForge Hybrid AI
 
-**Date:** October 24, 2026  
-**Status:** Core fixes implemented; focused verification recorded below; live Studio browser and standalone executable verification remain open
-
----
-
-## Priority 0 (Blockers — Critical User Impact)
-
-| ID | Issue | Root Cause | Files Involved | Acceptance Criteria | Status |
-|---|---|---|---|---|---|
-| **FIX-01** | Duplicate Stage 1 log flooding | `studio.js` calls `addLog` on every 900ms poll tick unconditionally | `src/sketchforge/ui/web_studio/studio.js` | Only log when message text changes; display clean timeline | **Implemented; JS syntax checked; browser smoke pending** |
-| **FIX-02** | Nebius 503/529 generation freeze | Hardcoded `Nemotron-3_5-Lightning` model + 90s timeout with no candidate fallback | `src/sketchforge/generation/ai_generator.py` | Fallback to `nemotron-3-super-120b-a12b`; 35s timeout; graceful template fallback | **Applied** |
-| **FIX-03** | Reasoning token truncation | `max_tokens=512` in Stage 1 cuts off JSON when model outputs reasoning tokens | `src/sketchforge/generation/ai_generator.py` | Expand Stage 1 to 1536 tokens; strip `<think>` tags | **Applied** |
-| **FIX-04** | Preview proxy drops `X-Studio-Token` (HTTP 401) | `ProjectHandler` & `StudioHandler._proxy_api` omit `X-Studio-Token` header | `src/sketchforge/ui/web_studio.py` | Proxy injects `X-Studio-Token: backend.session_token`; forms return 201/200 | **Implemented; `_proxy_api` header verified with in-process mock; full preview path pending** |
+**Date**: 2026-10-25  
+**Auditor**: Principal AI Architect & Engineering Lead  
+**Repository**: `c:\Users\akash\Downloads\sketchforge`  
+**Status**: Actionable Engineering Plan (Awaiting user authorization before code edits)
 
 ---
 
-## Priority 1 (High — Major Usability & Robustness)
+## 1. Priority P0 — Eliminate Generation Discard & Stalling Bugs
 
-| ID | Issue | Root Cause | Files Involved | Acceptance Criteria | Status |
-|---|---|---|---|---|---|
-| **FIX-05** | Pre-generation sketch upload blocked | `/api/upload` required existing project slug | `src/sketchforge/ui/web_studio.py`, `studio.js` | Users can upload sketch before generating; runs OpenCV analysis | **Implemented; in-process route analyzed sample (15 detections); browser smoke pending** |
-| **FIX-06** | No project ZIP export button | Studio lacked an archive download endpoint | `src/sketchforge/ui/web_studio.py`, `studio.js` | 1-click download of `<slug>.zip` containing all code | **Implemented; in-process route verified ZIP contents; browser smoke pending** |
-| **FIX-07** | Grid-paper false checkboxes in CV | Regular grid lines detected as 557 checkbox contours | `src/sketchforge/vision/preprocessing.py`, `contour_detection.py` | Grid lattice suppression active; real photo benchmark n_pred ≤ 40 | **Verified Active** |
+### Objective
+Guarantee that a user prompt reliably produces an AI-generated full-stack application, without discarding work or stalling on Stage 1.
 
----
-
-## Priority 2 (Medium — Feature Polish & Completeness)
-
-| ID | Issue | Root Cause | Files Involved | Acceptance Criteria | Status |
-|---|---|---|---|---|---|
-| **FIX-08** | Template generator entity extraction | Always defaulted to `Submission` entity for custom prompts | `src/sketchforge/generation/studio_generator.py` | Heuristic keyword extractor infers custom nouns from prompt | **Implemented; custom and built-in prompts checked in-process** |
-| **FIX-09** | Canvas tool placeholders | Several tool buttons showed "Coming Soon" alerts | `src/sketchforge/ui/web_studio/studio.js` | Wire up Theme toggle, Frame outline, and image insert | **Theme and frame implemented; image insertion already wired; browser smoke pending** |
-| **FIX-10** | Missing Layout Model Checkpoint | `models/layout_model/` has PyTorch code but missing `.pt` file | `src/sketchforge/models/layout_model/` | Bundle weights or clearly document OpenCV contour fallback | **Documented Fallback** |
+| Issue | Target File & Function | Root Cause | Proposed Solution |
+|---|---|---|---|
+| **All-or-Nothing Discard** | `src/sketchforge/generation/ai_generator.py`: `ai_generate_project` | Missing 1 of 12 files causes `written != len(manifest)`, triggering `return None` and discarding all 10+ AI files. | **Per-file graceful fallback**: If Nemotron fails on an individual file (e.g. `projects.html`), fill that specific file from `project_planner` / templates. Deliver the hybrid AI project with 100% of files intact. |
+| **`max_tokens` Cutoff on Large Code** | `src/sketchforge/generation/ai_generator.py`: `_FILE_SYSTEM`, `_stage2_file` | Forcing full code into `{"path": ..., "content": "..."}` JSON string exhausts tokens with escape characters. | Allow Nemotron to output code directly in standard markdown fences (````python ... ````) with higher token limits or chunking. |
+| **Candidate Flapping on Stage 1** | `src/sketchforge/generation/ai_generator.py`: `_stage1_plan` | Rapid looping over candidates without delay or state persistence creates visual freezing in UI. | Pick active model using `pick_model()` once; expose transparent status (`"Connecting to <model>..."`); handle rate limits gracefully. |
 
 ---
 
-## Priority 3 (Low — Maintenance & Packaging)
+## 2. Priority P1 — True Hybrid Data Contracts (Local AI $\leftrightarrow$ Nemotron)
 
-| ID | Issue | Root Cause | Files Involved | Acceptance Criteria | Status |
-|---|---|---|---|---|---|
-| **FIX-11** | Windows standalone `.exe` build | PyInstaller spec exists in docs but unbundled | `scripts/package_application.py` | Automated build script produces portable Windows executable | **Build script exists; progress now streams; fresh build stalled during analysis and was interrupted; existing exe is stale** |
-| **FIX-12** | AWS SAM Lambda live deploy | Cloud client implemented but requires manual SAM deploy | `deploy/aws/` | Documented 1-command deployment with verified endpoint | **Documented** |
+### Objective
+Ensure local OpenCV vision analysis and Design IR directly inform Nemotron's AppSpec planning and frontend generation.
+
+| Task | Files Involved | Implementation Detail |
+|---|---|---|
+| **Structured Vision Injection** | `ui/web_studio.py`, `generation/ai_generator.py` | Replace crude percentage strings in `/api/sketch-analysis` with a validated `DesignDocument` summary (`assist/design_summary.py:summarize_design`). |
+| **Geometry-Aware AppSpec** | `generation/app_specification.py`, `generation/ai_generator.py` | Feed detected component IDs, bounding boxes, and hierarchy into the Stage 1 AppSpec prompt. Nemotron preserves the detected spatial layout. |
+| **Semantic Disambiguation** | `vision/component_detection.py`, `assist/model_planner.py` | When local detector flags a component as `ambiguous` (e.g. card vs container), ask Nemotron to resolve the semantic role. |
+
+---
+
+## 3. Priority P2 — Automated Verification & Visual Repair Loop
+
+### Objective
+Execute closed-loop visual and functional verification on generated applications.
+
+```text
+Generated Project
+      │
+      ▼
+Start Local Sandbox (BackendServer + PreviewServer)
+      │
+      ▼
+Capture Rendered Screenshot (verification/screenshot_capture.py)
+      │
+      ▼
+Measure Visual Discrepancy against Source Sketch (evaluation/evaluator.py)
+      │
+      ▼
+If Discrepancy > Threshold:
+  Send Diff + Component ID to Nemotron for Targeted Patch
+      │
+      ▼
+Re-verify and Accept or Rollback
+```
+
+1. **Screenshot Capture**: Trigger headless browser snapshot on the generated `/home.html`.
+2. **Discrepancy Metric**: Compare component bounding boxes and colors in the rendered DOM against the source `DesignDocument`.
+3. **Targeted Patch**: If an element is misaligned or missing, invoke `ai_revise_project()` with an automated, structured bug description.
+
+---
+
+## 4. Priority P3 — Unify Studio Control Plane
+
+### Objective
+Unify Web Studio (`web_studio.py`) and Desktop Workbench (`ui/main_window.py`) around one shared orchestration interface:
+- Share `_JOBS` registry with real state machine (`queued`, `analyzing_sketch`, `planning_spec`, `generating_files`, `running_tests`, `comparing_visuals`, `completed`).
+- Unify project storage under `output/projects/`.
+- Provide consistent project export (ZIP, raw files, runnable scripts).

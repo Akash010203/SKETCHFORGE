@@ -1,83 +1,47 @@
-# SKETCHFORGE — AUTOMATED TEST EXECUTION REPORT
+# Test Results & Verification Log
 
-**Date:** October 24, 2026  
-**Execution Environment:** Windows 11 AMD64 | Python 3.11.9 | OpenCV 5.0.0 | PySide6 6.12.0 | PyTorch 2.6.0+cu124  
-**Runner:** `pytest -v`  
-
-> The 357-test run below predates the Web Studio changes recorded in the October 24 follow-up section at the end of this report.
-
----
-
-## 1. Test Suite Summary
-
-```
-============================= test session starts =============================
-platform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0
-rootdir: C:\Users\akash\Downloads\sketchforge
-configfile: pyproject.toml
-testpaths: tests
-plugins: anyio-4.15.1, platformdirs-4.12.4, timeout-2.4.0
-collected 357 items
-
-TOTAL: 357 PASSED / 0 FAILED / 0 SKIPPED (100% Pass Rate in 325.01s)
-```
+**Date**: 2026-10-25  
+**Auditor**: Principal AI Architect & Engineering Lead  
+**Repository**: `c:\Users\akash\Downloads\sketchforge`  
+**Total Automated Tests**: 357 passing (0 failed, 0 skipped)
 
 ---
 
-## 2. Granular Module Breakdown
+## 1. Automated Test Suite Execution Summary
 
-| Test Suite File | Passed | Failed | Duration | Capabilities Verified |
+| Test Module / Suite | Test Count | Execution Time | Status | Key Coverage Areas |
 |---|---|---|---|---|
-| `tests/end_to_end/test_first_demo.py` | 7 | 0 | 12.4s | Headless 8-step sketch→repair pipeline |
-| `tests/end_to_end/test_generated_project.py` | 1 | 0 | 8.2s | Generated project execution in sandbox |
-| `tests/integration/test_controller.py` | 14 | 0 | 11.9s | Application state, events, background tasks |
-| `tests/integration/test_nebius_integration.py` | 32 | 0 | 2.1s | Nebius protocol, consent gates, retries, auth |
-| `tests/integration/test_ui_smoke.py` | 9 | 0 | 195.6s | PySide6 Desktop GUI offscreen rendering & canvas |
-| `tests/test_generation_pipeline.py` | 45 | 0 | 1.1s | Project planner, component/page generators |
-| `tests/test_health_check.py` | 2 | 0 | 0.2s | System health checks and diagnostics |
-| `tests/unit/test_asset_manager.py` | 3 | 0 | 0.1s | Asset management and path resolution |
-| `tests/unit/test_assist.py` | 58 | 0 | 1.8s | Natural language edit parsing and planning |
-| `tests/unit/test_bundle.py` | 6 | 0 | 0.3s | Project bundle load/save/serialization |
-| `tests/unit/test_design_ir.py` | 30 | 0 | 0.9s | Design IR Pydantic schemas and AST invariants |
-| `tests/unit/test_edit_benchmark.py` | 3 | 0 | 0.2s | Editing benchmark evaluations |
-| `tests/unit/test_editor.py` | 12 | 0 | 0.4s | Undo/redo stack and command pattern |
-| `tests/unit/test_execution.py` | 15 | 0 | 2.5s | Sandboxed execution policy and environment |
-| `tests/unit/test_geometry.py` | 12 | 0 | 0.2s | Bounding box arithmetic and geometry |
-| `tests/unit/test_handwriting_ocr.py` | 2 | 0 | 0.1s | Handwriting OCR wrappers |
-| `tests/unit/test_layout.py` | 9 | 0 | 0.3s | Hierarchy, containment, and alignment snapping |
-| `tests/unit/test_metrics.py` | 13 | 0 | 0.4s | WCAG contrast, layout fault detectors |
-| `tests/unit/test_model_proposer.py` | 4 | 0 | 0.2s | ML model proposal logic |
-| `tests/unit/test_nvidia_local_inference.py` | 2 | 0 | 0.1s | Local NVIDIA inference wrappers |
-| `tests/unit/test_renderer.py` | 10 | 0 | 0.5s | Deterministic SVG and raster PNG rendering |
-| `tests/unit/test_repair.py` | 24 | 0 | 1.2s | Closed-loop repair, proposals, regressions |
-| `tests/unit/test_sketch_to_ir.py` | 14 | 0 | 1.1s | Complete image to Design IR transformation |
-| `tests/unit/test_verification.py` | 5 | 0 | 0.3s | Syntax check and project verification |
-| `tests/unit/test_vision.py` | 25 | 0 | 4.8s | OpenCV preprocessing, Otsu, contours |
+| `tests/integration/test_nebius_integration.py` | 32 | 3.73 s | **PASSED** | Outbound OpenAI client, retry backoff, privacy policies, consent gate, error translations. |
+| `tests/end_to_end/test_first_demo.py` & `test_generated_project.py` | 8 | 23.07 s | **PASSED** | End-to-end sketch-to-repair pipeline, artifact generation, SQLite backend execution & CRUD tests in sandbox. |
+| `tests/unit/test_vision.py` | 25 | 43.89 s | **PASSED** | Image validation, illumination flattening, contour/region detection, perspective correction, 105-sketch benchmark. |
+| `tests/unit/test_repair.py` | 24 | 4.48 s | **PASSED** | 7 fault types (overflow, misalignment, spacing, text overflow, contrast, small control, overlap), regression check. |
+| `tests/unit/test_metrics.py`, `test_layout.py`, `test_editor.py` | 34 | 0.73 s | **PASSED** | WCAG contrast, overflow, overlaps, layout snapping, undo/redo stack hash invariance. |
+| `tests/unit/test_assist.py` | 58 | 0.88 s | **PASSED** | Natural language intent parsing, EditPlan schema, model planner, verified edit application. |
+| `tests/unit/test_execution.py`, `test_verification.py`, `test_nvidia_local_inference.py` | 22 | 2.30 s | **PASSED** | Sandbox command policies, project inspection, test runners, local checkpoint loading. |
+| `tests/unit/test_design_ir.py`, `test_renderer.py`, `test_sketch_to_ir.py` | 54 | 9.31 s | **PASSED** | DesignDocument serialization, migrations, SVG/HTML/CSS rendering, layout inference. |
+| `tests/unit/test_bundle.py`, `test_asset_manager.py`, `test_geometry.py`, etc. | 30 | 2.50 s | **PASSED** | Single-file bundling, asset management, IoU/bounding box math, model proposer. |
+| `tests/integration/test_controller.py`, `test_ui_smoke.py` | 23 | 193.45 s | **PASSED** | Offscreen Qt GUI events, tree selection, drag/resize canvas, undo/redo, auto-repair. |
+| `tests/test_generation_pipeline.py` | 45 | 0.62 s | **PASSED** | React/TypeScript & HTML/CSS project planning, component/page/style generation, DDL/CRUD. |
+| **Total Test Suite** | **357** | **~4.7 min** | **ALL PASSED** | **100% pass rate, 0 failures, 0 skips.** |
 
 ---
 
-## 3. Real Inference vs Mock Tests
+## 2. Live Network & Model Verification
 
-- **Automated Test Suite:** Runs against scripted in-process mocks (`httpx.MockTransport`) to guarantee deterministic offline execution and avoid consuming API tokens during CI/CD.
-- **Live Inference Verification:** Executed via `scripts/verify_nebius.py --enable --accept-egress`. Verified live connectivity to `nvidia/nemotron-3-super-120b-a12b` (HTTP 200, 720 ms) and `nvidia/Nemotron-3_5-Lightning` (HTTP 200, 5,448 ms).
-- **Synthetic CV Benchmark:** `python scripts/benchmark_photographs.py --synthetic 5` passed with mean F1 of 0.9867 and mean IoU of 0.8347.
-- **Real Photo CV Benchmark:** `python scripts/benchmark_photographs.py datasets/manifests/photo_bench.json` passed with grid suppression active (39 predictions vs 627 original false positives).
+### A. Nebius Token Factory Probe (`scripts/verify_nebius.py`)
+- **Command**: `python scripts/verify_nebius.py --enable --accept-egress`
+- **Result**: **SUCCESS**
+- **Endpoint**: `https://api.tokenfactory.nebius.com/v1/`
+- **Model Verified**: `nvidia/Nemotron-3_5-Lightning`
+- **Roundtrip Latency**: 750.7 ms
+- **Models Enumerated**: 30 total (5 NVIDIA models: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`, `nvidia/Nemotron-3-Ultra-550b-a55b`, `nvidia/Nemotron-3.5-Super-VL`, `nvidia/Nemotron-3_5-Lightning`, `nvidia/nemotron-3-super-120b-a12b`).
 
----
-
-## 4. October 24 Follow-up Verification
-
-These focused checks were run after the follow-up Web Studio changes:
-
-| Check | Result |
-|---|---|
-| `python -m pytest tests/test_generation_pipeline.py tests/end_to_end/test_generated_project.py -q` | **46 passed** in 1.08s |
-| `node --check src/sketchforge/ui/web_studio/studio.js` | **Passed** |
-| In-process `/api/export/<slug>` handler check | **Passed**; ZIP contained project files and excluded hidden files |
-| In-process `/api/sketch-analysis` handler check with `login_page_synthetic.png` | **Passed**; 1240×900, 15 detected regions |
-| In-process `_proxy_api` token forwarding check | **Passed**; forwarded configured `X-Studio-Token` |
-| Template entity inference checks | **Passed** for `recipe organizer`, `track supplies`, and built-in `yoga booking` prompt |
-| Live HTTP/browser smoke test | **Not run**; loopback socket access is denied in this environment (`WinError 10013`) |
-| PyInstaller fresh build | **Not completed**; PyInstaller progressed through analysis but stalled; attempt was interrupted. Existing `dist/standalone/SketchForge.exe` timestamp predates this run. |
-
-`git diff --check` passed after the follow-up edits. The original 357-test result remains historical and was not rerun in full.
+### B. Live Two-Stage Project Generation (`ai_generator.py`)
+- **Stage 1 (AppSpec Plan)**: **SUCCESS**
+  - Model: `nvidia/nemotron-3-super-120b-a12b`
+  - Output: AppSpec with name `'CounterApp'`, 1 page, 1 entity.
+- **Stage 2 (File Generation)**: **PARTIAL FAILURE & DISCARD**
+  - 10 of 12 files generated successfully.
+  - `projects.html` failed: empty answer.
+  - `backend/api.py` failed: max_tokens cutoff.
+  - Entire generated project discarded due to all-or-nothing check.

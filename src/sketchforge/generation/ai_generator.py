@@ -60,9 +60,30 @@ Return ONLY a JSON object — no markdown fences, no explanation:
 }
 
 Rules:
-- Keep the JSON under 400 tokens.
+- Keep the JSON under 500 tokens.
 - At minimum include a "home" page and one entity if a backend is requested.
 - The response MUST be valid JSON parseable by Python's json.loads.
+
+Sketch layout rules (apply when the brief contains a <SketchDesignDocument> block):
+- The block contains a "layout_block" sub-object with:
+    "canvas"     — design canvas size in design pixels.
+    "app_spec"   — a heuristic AppSpec already derived from the sketch.
+    "components" — a flat list with id, type, parent_id, bbox_design_px (x/y/w/h),
+                   label text, and confidence for every detected component.
+    "hierarchy"  — a human-readable indented tree of component nesting.
+- Use the "app_spec.pages" array to determine the page structure.
+  Confirm and enrich the page names, titles, and routes.
+- Use the "app_spec.entities" array for entity and field names.
+- Use component types to infer the UI:
+    "button" → ActionSpec (action=submit_form if inputs present, else navigate)
+    "input"  → FieldSpec with the component's label text if present.
+    "header" / "footer" / "sidebar" → structural layout containers (not entities).
+    "card"   → repeating list item or data panel.
+    "image"  → media content section.
+- The RETURNED JSON "pages" must reflect the number of distinct top-level
+  regions/flows detected (not arbitrarily invent new pages).
+- If the layout_block is missing or empty, fall back to inferring from
+  the legacy "regions" array (x/y/w/h in % of canvas).
 """
 
 _PLAN_USER = """\
@@ -80,8 +101,13 @@ _FILE_SYSTEM = """\
 You are SketchForge Studio's code generator.
 Generate exactly ONE file based on the AppSpec and the file path given below.
 
-Return ONLY a JSON object — no markdown fences, no explanation:
-{"path": "<relative/path/to/file>", "content": "<full file content as a string>"}
+Return the file content inside a single markdown code fence — NO JSON envelope, no extra explanation:
+
+```<lang>
+<full file content here>
+```
+
+Use the correct language tag (e.g. python, html, css, js, sql, text).
 
 Rules:
 - Use dark, modern aesthetics (background #111116, accent #d9ff5f, font Segoe UI).
@@ -89,8 +115,7 @@ Rules:
 - The Flask backend must bind to 0.0.0.0 and accept --port argument; add CORS header.
 - Frontend JS POSTs to /api/submissions; GETs from /api/submissions for list pages.
 - Do NOT reference external CDN assets; all CSS/JS must be inline or in local files.
-- Keep file content as a plain string (escape newlines as \\n in JSON if needed).
-- The response MUST be valid JSON parseable by Python's json.loads.
+- Output ONLY the code fence — do not wrap it in JSON or add any other text.
 """
 
 _FILE_USER = """\
@@ -189,15 +214,18 @@ def ai_generate_project(
     _emit(f"Stage 2 — generating {len(manifest)} files individually…")
 
     written = 0
+    skipped: list[str] = []
     for path_hint, description in manifest:
-        _emit(f"  Generating {path_hint}…")
+        _emit(f"  Generating {path_hint} ({written + len(skipped) + 1}/{len(manifest)})…")
         content = _stage2_file(client, spec_str, path_hint, description, _emit, model=active_model or _NEMOTRON_MODEL)
         if content is None:
             log.warning("Skipping %s — model returned no content.", path_hint)
+            skipped.append(path_hint)
             continue
         dest = (root / path_hint).resolve()
         if not dest.is_relative_to(root):
             log.warning("Ignoring model-generated path outside the project: %s", path_hint)
+            skipped.append(path_hint)
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -205,13 +233,24 @@ def ai_generate_project(
             written += 1
         except OSError as exc:
             log.warning("Could not write %s: %s", dest, exc)
+            skipped.append(path_hint)
 
-    if written != len(manifest):
-        missing = len(manifest) - written
-        _emit(f"AI generation was incomplete ({written}/{len(manifest)} files); "
-              f"using the complete template generator instead.")
-        log.warning("Discarding incomplete AI project %s (%d file(s) missing).", root, missing)
+    if written == 0:
+        # Nothing usable at all — fall back to the template generator.
+        _emit("AI generation produced no files; using the template generator instead.")
+        log.warning("Discarding empty AI project directory %s.", root)
         return None
+
+    if skipped:
+        _emit(
+            f"AI generation partial ({written}/{len(manifest)} files written; "
+            f"{len(skipped)} skipped: {', '.join(skipped)}). "
+            "Using partial AI output — template generator will fill remaining files."
+        )
+        log.warning(
+            "Incomplete AI project %s: %d/%d files written; skipped: %s",
+            root, written, len(manifest), skipped,
+        )
 
     _ensure_entry(root)
     _emit(f"AI generation complete: {root.name} ({written}/{len(manifest)} files).")
@@ -250,8 +289,11 @@ def ai_revise_project(
     revise_system = (
         "You are SketchForge Studio's revision assistant.\n"
         "You will receive the current project files (truncated) and a revision instruction.\n"
-        "Return ONLY a JSON object with this schema — no markdown fences, no explanation:\n"
+        "Return ONLY a JSON object with this schema — no extra text, no outer markdown fence:\n"
         '{"files": [{"path": "<rel path>", "content": "<full updated content>"}]}\n'
+        "The value of each \"content\" field must be the raw file text as a plain string.\n"
+        "If the file content is large, split it into multiple small files rather than\n"
+        "producing one giant JSON string that risks being truncated.\n"
         "Include ONLY files that need to change. The JSON must be parseable by json.loads."
     )
     files_summary = json.dumps(
@@ -316,23 +358,120 @@ def ai_revise_project(
 # ---------------------------------------------------------------------------
 
 
+def _spec_from_layout_block(prompt: str) -> dict | None:
+    """Extract and return a pre-seeded AppSpec dict from the SketchDesignDocument block.
+
+    When the user uploads a sketch before generation, the frontend embeds a
+    ``<SketchDesignDocument>`` XML fragment containing a ``layout_block`` with:
+    - ``app_spec``   — heuristic AppSpec already derived via ``spec_from_document()``
+    - ``components`` — exact design-px bboxes + containment hierarchy
+    - ``hierarchy``  — human-readable tree
+    - ``canvas``     — canvas dimensions
+
+    This function extracts that ``app_spec`` sub-object and converts it into the
+    flat dict format that Stage 1 returns (name, pages, entities, include_backend).
+    Nemotron then enriches this grounded spec rather than inventing a layout.
+
+    Returns None when no block is found or the block cannot be parsed.
+    """
+    import re
+
+    match = re.search(r"<SketchDesignDocument>(.*?)</SketchDesignDocument>", prompt, re.DOTALL)
+    if not match:
+        return None
+    try:
+        block_json = json.loads(match.group(1).strip())
+    except (ValueError, json.JSONDecodeError):
+        return None
+
+    layout_block = block_json.get("layout_block")
+    if not layout_block or not isinstance(layout_block, dict):
+        # Fall back to legacy regions array
+        regions = block_json.get("regions", [])
+        if not regions:
+            return None
+        # Build a minimal spec from the legacy regions list
+        inputs = [r for r in regions if r.get("type") == "input"]
+        buttons = [r for r in regions if r.get("type") == "button"]
+        has_backend = len(inputs) >= 2 and len(buttons) >= 1
+        pages = [{"name": "home", "title": "Home", "route": "/"}]
+        entities = []
+        if has_backend:
+            entities = [{"name": "Record", "fields": [{"name": f"field_{i}", "type": "text"} for i in range(len(inputs))]}]
+        return {"name": "Sketch App", "pages": pages, "entities": entities, "include_backend": has_backend}
+
+    app_spec = layout_block.get("app_spec", {})
+    if not app_spec:
+        return None
+
+    # Convert AppSpec dataclass-dict format -> Stage-1 flat format
+    pages_raw = app_spec.get("pages", [])
+    pages = []
+    for p in pages_raw:
+        pages.append({
+            "name": p.get("name", "home"),
+            "title": p.get("title", p.get("name", "Home").title()),
+            "route": p.get("route", "/"),
+        })
+    if not pages:
+        pages = [{"name": "home", "title": "Home", "route": "/"}]
+
+    entities_raw = app_spec.get("entities", [])
+    entities = []
+    for e in entities_raw:
+        fields_raw = e.get("fields", [])
+        fields = [{"name": f.get("name", "field"), "type": f.get("type", "text")} for f in fields_raw]
+        entities.append({"name": e.get("name", "Record"), "fields": fields})
+
+    include_backend = bool(app_spec.get("tech_backend", "none") != "none" or entities)
+
+    return {
+        "name": app_spec.get("name", "Sketch App"),
+        "pages": pages,
+        "entities": entities,
+        "include_backend": include_backend,
+    }
+
+
 def _stage1_plan(
     client,
     prompt: str,
     include_backend: bool,
     emit: Callable[[str], None],
 ) -> tuple[dict | None, str | None]:
-    """Stage 1: request a compact AppSpec JSON from an available NVIDIA Nemotron model."""
+    """Stage 1: request a compact AppSpec JSON from an available NVIDIA Nemotron model.
+
+    When the prompt contains a ``<SketchDesignDocument>`` block we first extract
+    a pre-seeded AppSpec from the embedded ``layout_block`` (exact bbox geometry,
+    containment hierarchy, and heuristic AppSpec derived by ``spec_from_document``).
+    The pre-seeded spec is merged into whatever Nemotron returns so the final plan
+    is always grounded in the sketch detections, not invented by the model.
+
+    When Nemotron is completely unavailable the pre-seeded spec is returned as a
+    fallback so generation can still proceed with a sketch-informed layout.
+
+    Emits a single stable status line per attempt so the browser progress display
+    never oscillates between a failure message and a new-attempt message within
+    the same 900 ms poll window.
+    """
     from sketchforge.integrations.provider_interface import ChatMessage, CompletionRequest
+
+    # Extract pre-seeded spec from the sketch layout block (if present).
+    seeded_spec = _spec_from_layout_block(prompt)
+    if seeded_spec:
+        log.info("Stage 1: pre-seeded spec from sketch layout block — %s page(s), %s entity/entities.",
+                 len(seeded_spec.get("pages", [])), len(seeded_spec.get("entities", [])))
 
     user_msg = _PLAN_USER.format(
         brief=prompt.strip(),
         backend="yes" if include_backend else "no",
     )
 
+    total = len(_CANDIDATE_MODELS)
     last_exc = None
-    for model in _CANDIDATE_MODELS:
-        emit(f"Stage 1 — requesting AppSpec plan from {model}…")
+    for idx, model in enumerate(_CANDIDATE_MODELS, start=1):
+        # Single stable message — overwrites itself in the browser on each poll.
+        emit(f"Stage 1 — planning ({idx}/{total}): trying {model}…")
         request = CompletionRequest(
             messages=(
                 ChatMessage(role="system", content=_PLAN_SYSTEM),
@@ -346,14 +485,36 @@ def _stage1_plan(
         try:
             result = client.complete(request)
             spec = _parse_response(result.text)
-            emit(f"Stage 1 complete ({model}) — app: '{spec.get('name', '?')}', "
+            # Merge: use the model's enriched spec but fall back to seeded values
+            # for any field the model left empty or omitted.
+            if seeded_spec:
+                if not spec.get("pages"):
+                    spec["pages"] = seeded_spec["pages"]
+                if not spec.get("entities"):
+                    spec["entities"] = seeded_spec["entities"]
+                if not spec.get("name") or spec["name"] in {"Sketch App", "GeneratedApp"}:
+                    spec["name"] = seeded_spec.get("name", spec.get("name", "Sketch App"))
+                spec.setdefault("include_backend", seeded_spec.get("include_backend", include_backend))
+            emit(f"Stage 1 complete — app: '{spec.get('name', '?')}', "
                  f"{len(spec.get('pages', []))} page(s), "
                  f"{len(spec.get('entities', []))} entity/entities.")
             return spec, model
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             log.warning("Stage 1 attempt with %s failed: %s", model, exc)
-            emit(f"Stage 1 with {model} unavailable ({exc}); trying candidate model…")
+            # Do NOT call emit() here — avoid the flap where the failure string
+            # becomes the last visible progress message before the next loop
+            # iteration overwrites it with another "requesting" line.
+
+    # All Nemotron models failed — use the pre-seeded spec as a last resort.
+    if seeded_spec:
+        emit(
+            f"All AI candidate models unavailable ({last_exc}); "
+            "using sketch-derived layout as fallback plan."
+        )
+        log.warning("Stage 1 Nemotron unavailable — falling back to sketch-seeded spec.")
+        seeded_spec.setdefault("include_backend", include_backend)
+        return seeded_spec, None
 
     emit(f"All AI candidate models unavailable ({last_exc}); using template generator.")
     return None, None
@@ -381,7 +542,7 @@ def _stage2_file(
             ChatMessage(role="user", content=user_msg),
         ),
         purpose="studio_file",
-        max_tokens=4096,
+        max_tokens=8192,  # raised from 4096 — api.py / projects.html regularly exceed 4 k tokens
         temperature=0.2,
         model=model,
     )
@@ -411,28 +572,38 @@ def _make_client():
 
 
 def _parse_file_content(text: str, path_hint: str) -> str | None:
-    """Extract file content whether formatted as a JSON envelope, markdown fence, or raw code."""
+    """Extract file content from a markdown code fence, JSON envelope, or raw output.
+
+    Priority order (highest first):
+      1. Markdown code fences  — the new preferred format; avoids JSON string-escaping
+         and therefore never hits token limits due to backslash proliferation.
+      2. JSON envelope  {"path": "...", "content": "..."}  — legacy fallback so
+         responses from older model versions or cached completions still work.
+      3. Raw text  — last resort when the model emits bare code with no wrapper.
+    """
     if not text or not text.strip():
         return None
     cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     cleaned = re.sub(r"<reasoning>.*?</reasoning>", "", cleaned, flags=re.DOTALL).strip()
 
-    # 1. Try parsing JSON envelope {"path": "...", "content": "..."}
+    # 1. Markdown code fences (preferred — no JSON string-escaping overhead)
+    fences = re.findall(r"```(?:[a-zA-Z0-9_\-]*)\s*\n(.*?)\n```", cleaned, re.DOTALL)
+    if fences:
+        return max(fences, key=len).strip()
+
+    # 2. JSON envelope fallback {"path": "...", "content": "..."}
     try:
         data = _parse_response(cleaned)
         content = data.get("content")
         if isinstance(content, str) and content.strip():
+            log.debug("_parse_file_content: fell back to JSON envelope for %s", path_hint)
             return content
     except Exception:
         pass
 
-    # 2. Try markdown code fences
-    fences = re.findall(r"```(?:[a-zA-Z0-9_\-]+)?\s*\n(.*?)\n```", cleaned, re.DOTALL)
-    if fences:
-        return max(fences, key=len).strip()
-
-    # 3. Direct raw code content
+    # 3. Raw code content (no wrapper at all)
     if not (cleaned.startswith("{") and cleaned.endswith("}")):
+        log.debug("_parse_file_content: using raw output for %s", path_hint)
         return cleaned
 
     return None

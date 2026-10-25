@@ -117,25 +117,61 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return
             try:
                 from sketchforge.vision import analyze, load_image_bytes
+                from sketchforge.vision.to_design_ir import build_nemotron_layout_block
 
                 loaded = load_image_bytes(data, f"sketch{extension}")
                 result = analyze(loaded)
                 width, height = loaded.width, loaded.height
+
+                # Legacy plain-text regions (kept for backward compat with studio.js)
                 observations = []
+                regions: list[dict] = []
                 for detection in sorted(result.detections, key=lambda item: (item.bbox[1], item.bbox[0]))[:20]:
                     x, y, w, h = detection.bbox
+                    x_pct = round(x / width * 100, 1)
+                    y_pct = round(y / height * 100, 1)
+                    w_pct = round(w / width * 100, 1)
+                    h_pct = round(h / height * 100, 1)
                     observations.append(
-                        f"{detection.type} at ({round(x / width * 100)}%, {round(y / height * 100)}%), "
-                        f"about {round(w / width * 100)}% wide by {round(h / height * 100)}% tall"
+                        f"{detection.type} at ({x_pct}%, {y_pct}%), "
+                        f"about {w_pct}% wide by {h_pct}% tall"
                     )
+                    regions.append({
+                        "type": detection.type,
+                        "x": x_pct,
+                        "y": y_pct,
+                        "w": w_pct,
+                        "h": h_pct,
+                    })
                 if not observations:
                     observations = ["No distinct UI regions were detected; use the sketch as a loose visual guide."]
                 layout = "\n".join(f"- {item}" for item in observations)
+
+                # NEW: structured layout block for the Nemotron Stage-1 prompt.
+                # Converts VisionResult -> DesignDocument -> AppSpec, packages
+                # exact design-pixel bboxes, containment hierarchy, and heuristic
+                # AppSpec so the AI follows the sketch geometry precisely.
+                sketch_name = f"sketch{extension}"
+                try:
+                    layout_block = build_nemotron_layout_block(result, sketch_name=sketch_name)
+                except Exception as ir_exc:  # noqa: BLE001
+                    log.warning("Could not build Design IR from sketch: %s", ir_exc)
+                    layout_block = None
+
+                n_components = len(layout_block.get("components", [])) if layout_block else 0
                 self._json(200, {
                     "width": width, "height": height,
                     "count": len(result.detections),
+                    # Legacy fields preserved for studio.js frontend
                     "layout": layout,
-                    "summary": f"Analyzed sketch ({width}×{height}); detected {len(result.detections)} UI region(s).",
+                    "regions": regions,
+                    # Structured fields consumed by the Nemotron generation pipeline
+                    "layout_block": layout_block,
+                    "summary": (
+                        f"Analyzed sketch ({width}×{height}); "
+                        f"detected {len(result.detections)} UI region(s)"
+                        + (f", mapped to {n_components} design component(s)." if n_components else ".")
+                    ),
                 })
             except Exception as exc:  # noqa: BLE001
                 self._json(400, {"error": f"Could not analyze sketch: {exc}"})

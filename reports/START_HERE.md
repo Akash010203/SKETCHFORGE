@@ -1,75 +1,49 @@
-# SKETCHFORGE — QUICK START & OPERATOR GUIDE
+# SketchForge: Quick Start & Execution Guide
 
-**Target System:** Windows 10/11 | Python 3.10+  
-**Access URL:** `http://127.0.0.1:8000/studio`  
+**Date**: 2026-10-25  
+**Auditor**: Principal AI Architect & Engineering Lead  
+**Repository**: `c:\Users\akash\Downloads\sketchforge`
 
 ---
 
-## 1. Environment Setup
+## 1. Environment & Prerequisites
 
-### 1.1 Requirements
-- Python 3.10, 3.11, or 3.12
-- Optional: Virtual environment activated
+- **OS**: Windows 11 (AMD64)
+- **Python**: 3.11+ (developed and verified on 3.11.9 / 3.13)
+- **Hardware Acceleration**: NVIDIA GeForce RTX 4050 Laptop GPU (CUDA 12.4 supported)
+- **Dependencies**: Installed in current environment (`pip list` confirms `opencv-python-headless`, `pyside6`, `openai`, `torch`, `flask`, `pytest`).
 
-### 1.2 Configuration (No Secrets in Code)
-Copy `.env.example` to `.env` in the repository root:
+---
 
+## 2. Startup Commands
+
+### A. Run Headless End-to-End Demo (1.5 seconds, no credentials needed)
 ```powershell
-Copy-Item .env.example .env
+python -m sketchforge demo
 ```
+*What it does*: Loads a synthetic sketch (`login_page_synthetic.png`), runs OpenCV detection, builds a Design IR, injects a misalignment fault, measures the fault, repairs it with the auto-repair engine, verifies the repair, and writes renders/reports to `output/demo/`.
 
-To enable live Nebius AI model inference, edit `.env` and set:
-```ini
-NEBIUS_API_KEY="your-nebius-token-factory-key"
-```
-*(Note: If `NEBIUS_API_KEY` is absent or the service is offline, SketchForge operates in local mode using the built-in full-stack template engine).*
-
----
-
-## 2. Launching SketchForge Studio (Single Startup Command)
-
-To launch the unified Studio control plane:
-
+### B. Run Desktop Workbench GUI (Local-first desktop application)
 ```powershell
-python -m sketchforge studio
+python -m sketchforge gui
 ```
+*What it does*: Opens the native PySide6 desktop workbench with visual canvas, component tree, property inspector, undo/redo stack, and auto-repair panel.
 
-Output:
+### C. Run Web Studio IDE (Browser-based full-stack generator)
+```powershell
+python -m sketchforge studio --port 8000
 ```
-SketchForge Studio is available at http://127.0.0.1:8000/studio
+*Access URL*: Open `http://127.0.0.1:8000/studio` in your browser.  
+*What it does*: Serves the web-based studio with live prompt input, artboard preview, and preview proxies for generated SQLite/Flask backends.
+
+### D. Verify Live Nebius Token Factory Connectivity
+```powershell
+python scripts/verify_nebius.py --enable --accept-egress
 ```
+*What it does*: Sends a lightweight 1-token connectivity probe to `https://api.tokenfactory.nebius.com/v1/` using the `NEBIUS_API_KEY` in `.env`, enumerating available NVIDIA Nemotron models.
 
-Open your browser to:
-👉 **[http://127.0.0.1:8000/studio](http://127.0.0.1:8000/studio)**
-
----
-
-## 3. How to Generate Your First Application
-
-1. **Option A — Quick Idea Pills:**
-   Click one of the prompt suggestions on the canvas (e.g., *"A gentle habit tracker with weekly progress and gentle reminders"*).
-2. **Option B — Custom Text Prompt:**
-   Type your brief into the bottom prompt bar (e.g., *"A modern booking app for a neighborhood yoga studio"*) and click the **↑** arrow (or press Enter).
-3. **Option C — Sketch to App:**
-   Click the **＋** button in the prompt bar to attach a sketch image (PNG or JPG). SketchForge will extract layout components and synthesize a matching full-stack app.
-
----
-
-## 4. Other Available Entry Points
-
-| Command | Purpose |
-|---|---|
-| `python -m sketchforge studio` | Starts the browser Web Studio (Port 8000) |
-| `python -m sketchforge gui` | Launches the native PySide6 Desktop Workbench |
-| `python -m sketchforge demo` | Headless 8-step image→design→repair demo |
-| `python -m sketchforge info` | Prints installed versions (OpenCV, PySide6, Python) |
-| `python scripts/verify_nebius.py --enable --accept-egress` | Runs the live Nebius API connectivity probe |
-| `pytest` | Executes the complete 357-test automated verification suite |
-
----
-
-## 5. Troubleshooting & Diagnostics
-
-- **Agent Log Toggle:** Click **🚀 Agent log** in the left sidebar to view live progress messages.
-- **Preview Frame Status:** Look at the top bar of the canvas. If the status says *"Ready"*, the postMessage bridge and backend are operational.
-- **Inspect Generated Code:** Generated code is written to `output/projects/<slug>/`. You can open `backend/api.py`, `home.html`, and `data/<slug>.db` directly in your code editor.
+### E. Run Full Test Suite
+```powershell
+pytest -ra
+```
+*What it does*: Executes all 357 unit, integration, and end-to-end tests across the entire repository.
