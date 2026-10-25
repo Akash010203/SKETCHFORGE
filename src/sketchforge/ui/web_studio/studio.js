@@ -159,30 +159,65 @@
   // Image upload
   // ---------------------------------------------------------------------------
   $('#attach').onclick = () => $('#image-input').click();
+  async function videoReferenceFrame(file) {
+    const video = document.createElement('video');
+    const source = URL.createObjectURL(file);
+    try {
+      video.muted = true;
+      video.preload = 'metadata';
+      video.src = source;
+      await new Promise((resolve, reject) => {
+        video.onloadeddata = resolve;
+        video.onerror = () => reject(new Error('This video format could not be opened. Try MP4 or WebM.'));
+      });
+      const scale = Math.min(1, 1600 / Math.max(video.videoWidth, video.videoHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+      if (!blob) throw new Error('Could not read a frame from this video.');
+      return new File([blob], file.name.replace(/\.[^.]+$/, '') + '-frame.jpg', { type: 'image/jpeg' });
+    } finally {
+      URL.revokeObjectURL(source);
+      video.removeAttribute('src');
+      video.load();
+    }
+  }
+
   async function uploadImage(file) {
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|ogv)$/i.test(file.name);
+    if (!file.type.startsWith('image/') && !isVideo) {
+      addLog('Choose an image or an MP4/WebM video.');
+      return;
+    }
     if (!currentSlug) {
       try {
+        const reference = isVideo ? await videoReferenceFrame(file) : file;
+        $('#status').textContent = isVideo ? 'Reading video frame…' : 'Analyzing reference image…';
         const response = await fetch('/api/sketch-analysis', {
-          method: 'POST', headers: { 'Content-Type': file.type }, body: file
+          method: 'POST', headers: { 'Content-Type': reference.type }, body: reference
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'Sketch analysis failed.');
         pendingSketchLayout = payload.layout;
-        addLog(`${payload.summary} The analysis will guide your next generation.`);
-        $('#status').textContent = 'Sketch analyzed · ready to generate';
+        addLog(`${isVideo ? 'First video frame analyzed. ' : ''}${payload.summary} This reference will guide your next generation.`);
+        $('#status').textContent = 'Reference ready · describe the website to generate';
       } catch (error) { addLog('Sketch analysis failed: ' + error.message); }
       return;
     }
     try {
+      $('#status').textContent = 'Uploading reference…';
       const response = await fetch('/api/upload/' + encodeURIComponent(currentSlug), {
         method: 'POST', headers: { 'Content-Type': file.type }, body: file
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Image upload failed.');
       const frame = $('#preview');
-      frame.contentWindow.postMessage({ type: 'sf-insert-image', url: new URL(payload.url, frame.src).href }, '*');
-      addLog('Added image: ' + file.name);
+      frame.contentWindow.postMessage({ type: 'sf-insert-media', kind: isVideo ? 'video' : 'image', url: new URL(payload.url, frame.src).href }, '*');
+      addLog(`Added ${isVideo ? 'video' : 'image'}: ${file.name}`);
+      $('#status').textContent = 'Reference added to the page';
     } catch (error) { addLog('Image upload failed: ' + error.message); }
   }
   $('#image-input').onchange = event => { uploadImage(event.target.files[0]); event.target.value = ''; };
@@ -192,7 +227,7 @@
   window.addEventListener('drop', event => {
     if ([...event.dataTransfer.types].includes('Files')) {
       event.preventDefault();
-      [...event.dataTransfer.files].filter(file => file.type.startsWith('image/')).forEach(uploadImage);
+      [...event.dataTransfer.files].filter(file => file.type.startsWith('image/') || file.type.startsWith('video/')).forEach(uploadImage);
     }
   });
   $('#mic').onclick   = () => addLog('ℹ️  Voice input — Coming Soon.');

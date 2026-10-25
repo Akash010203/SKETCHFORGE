@@ -59,7 +59,9 @@ def _run_model_inference(checkpoint_path: Path, layouts, conditions, seeds):
         import torch
         import cv2
         import numpy as np
-        from sketchforge.models.component_detector.inference import ComponentDetectorInference
+        from sketchforge.models.component_detector.component_detector_inference import (
+            ComponentDetectorInference,
+        )
     except ImportError as exc:
         print(f"  ERROR: {exc}")
         return None
@@ -133,7 +135,7 @@ def _run_model_inference(checkpoint_path: Path, layouts, conditions, seeds):
     precision = true_pos / max(true_pos + false_pos, 1)
     recall = true_pos / max(true_pos + false_neg, 1)
     f1 = 2 * precision * recall / max(precision + recall, 1e-9)
-    mean_iou, map50 = detection_metrics(ap_predictions, ap_targets, iou_threshold=0.5)
+    mean_iou, _map25, _map35, map50 = detection_metrics(ap_predictions, ap_targets)
     return {
         "f1": round(f1, 4),
         "precision": round(precision, 4),

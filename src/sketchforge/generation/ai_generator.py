@@ -206,8 +206,11 @@ def ai_generate_project(
         except OSError as exc:
             log.warning("Could not write %s: %s", dest, exc)
 
-    if written == 0:
-        _emit("Model returned no files; using template generator.")
+    if written != len(manifest):
+        missing = len(manifest) - written
+        _emit(f"AI generation was incomplete ({written}/{len(manifest)} files); "
+              f"using the complete template generator instead.")
+        log.warning("Discarding incomplete AI project %s (%d file(s) missing).", root, missing)
         return None
 
     _ensure_entry(root)
@@ -418,7 +421,7 @@ def _parse_file_content(text: str, path_hint: str) -> str | None:
     try:
         data = _parse_response(cleaned)
         content = data.get("content")
-        if content and isinstance(content, str):
+        if isinstance(content, str) and content.strip():
             return content
     except Exception:
         pass

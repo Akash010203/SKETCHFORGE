@@ -87,10 +87,14 @@ class StudioHandler(BaseHTTPRequestHandler):
                 self._json(404, {"error": "Generate or open a project before adding an image."})
                 return
             content_type = self.headers.get("Content-Type", "").split(";", 1)[0].lower()
-            extension = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif"}.get(content_type)
+            extension = {
+                "image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif",
+                "video/mp4": ".mp4", "video/webm": ".webm", "video/ogg": ".ogv",
+            }.get(content_type)
             length = int(self.headers.get("Content-Length", 0))
-            if extension is None or length < 1 or length > 10 * 1024 * 1024:
-                self._json(400, {"error": "Choose a PNG, JPEG, WebP, or GIF image under 10 MB."})
+            limit = 50 * 1024 * 1024 if extension in {".mp4", ".webm", ".ogv"} else 10 * 1024 * 1024
+            if extension is None or length < 1 or length > limit:
+                self._json(400, {"error": "Choose a PNG, JPEG, WebP, or GIF image under 10 MB, or MP4/WebM video under 50 MB."})
                 return
             data = self.rfile.read(length)
             if len(data) != length:
@@ -402,7 +406,7 @@ def _start_project_preview(slug: str, root: Path) -> str:
             if target.suffix.lower() == ".html":
                 monitor = (b"<script data-sketchforge-editor>(function(){function report(m,l){parent.postMessage({type:'sketchforge-error',message:String(m),line:l||'?'},'*')}"
                            b"addEventListener('error',e=>report(e.message,e.lineno));addEventListener('unhandledrejection',e=>report(e.reason));"
-                           b"['dragenter','dragover'].forEach(t=>addEventListener(t,e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();e.dataTransfer.dropEffect='copy'}}));addEventListener('drop',e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')).forEach(file=>parent.postMessage({type:'sf-file-drop',file},'*'))}});"
+                           b"['dragenter','dragover'].forEach(t=>addEventListener(t,e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();e.dataTransfer.dropEffect='copy'}}));addEventListener('drop',e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')||f.type.startsWith('video/')).forEach(file=>parent.postMessage({type:'sf-file-drop',file},'*'))}});"
                            b"let f=window.fetch.bind(window);window.fetch=(...a)=>f(...a).then(r=>{if(!r.ok)report('HTTP '+r.status+' '+a[0],'API');return r});"
                            b"function save(){let d=document.documentElement.cloneNode(true);d.querySelectorAll('[data-sketchforge-editor]').forEach(x=>x.remove());fetch('/__sketchforge/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({html:'<!doctype html>'+d.outerHTML})}).then(r=>{if(!r.ok)throw Error();parent.postMessage({type:'sf-edit-saved'},'*')}).catch(()=>parent.postMessage({type:'sf-edit-error'},'*'))}"
                            b"let active=null;document.addEventListener('click',e=>{if(!window.sfEditMode)return;if(e.target.closest('[data-sketchforge-editor]'))return;e.preventDefault();e.stopPropagation();if(active)active.style.outline='';active=e.target;active.style.outline='2px solid #7c65e8';parent.postMessage({type:'sf-element-selected',text:active.innerText||active.alt||active.tagName},'*')},true);"
@@ -410,7 +414,7 @@ def _start_project_preview(slug: str, root: Path) -> str:
                            b"addEventListener('message',e=>{if(e.source!==parent)return;if(e.data?.type==='sf-snapshot'){parent.postMessage({type:'sf-state',state:{url:location.href,scrollX,scrollY,fields:[...document.querySelectorAll('input,textarea,select')].map((x,i)=>({i,value:x.value,checked:x.checked}))}},'*')}"
                            b"if(e.data?.type==='sf-edit-mode'){window.sfEditMode=!!e.data.enabled;document.body.style.cursor=window.sfEditMode?'crosshair':'';parent.postMessage({type:'sf-edit-mode-ready'},'*')}"
                            b"if(e.data?.type==='sf-theme'){let s=document.getElementById('sf-theme-style');if(!s){s=document.createElement('style');s.id='sf-theme-style';document.head.appendChild(s)}s.textContent=e.data.theme==='dark'?'html,body{background:#17171b!important;color:#f2f0f7!important;color-scheme:dark}body header,body nav,body aside,body main,body section,body article,body form{background-color:#222127!important;color:#f2f0f7!important}body input,body textarea,body select,body button{background-color:#302e36!important;color:#f2f0f7!important;border-color:#55515f!important}':'html,body{background:#fff!important;color:#202027!important;color-scheme:light}body header,body nav,body aside,body main,body section,body article,body form{background-color:#f7f7fa!important;color:#202027!important}body input,body textarea,body select,body button{background-color:#fff!important;color:#202027!important;border-color:#c9c8d0!important}'}"
-                           b"if(e.data?.type==='sf-insert-image'){let img=document.createElement('img');img.src=e.data.url;img.alt='Uploaded image';img.style.cssText='max-width:320px;height:auto;display:block;margin:16px;border-radius:8px';if(active&&active.parentElement)active.insertAdjacentElement('afterend',img);else(document.querySelector('main')||document.body).appendChild(img);active=img;save()}"
+                           b"if(e.data?.type==='sf-insert-media'||e.data?.type==='sf-insert-image'){let el;if(e.data.kind==='video'){el=document.createElement('video');el.controls=true;el.playsInline=true}else{el=document.createElement('img');el.alt='Uploaded image'}el.src=e.data.url;el.style.cssText='max-width:min(100%,640px);height:auto;display:block;margin:16px;border-radius:8px';if(active&&active.parentElement)active.insertAdjacentElement('afterend',el);else(document.querySelector('main')||document.body).appendChild(el);active=el;save()}"
                            b"if(e.data?.type==='sf-add-text'){let el=document.createElement('h2');el.textContent='Add your text';el.contentEditable='true';el.style.cssText='padding:12px;border:1px dashed #7c65e8;min-height:44px';(document.querySelector('main')||document.body).appendChild(el);el.focus();active=el;el.addEventListener('blur',()=>{el.contentEditable='false';el.style.border='';save()},{once:true})}"
                            b"if(e.data?.type==='sf-restore'){let s=e.data.state||{};(s.fields||[]).forEach(x=>{let el=document.querySelectorAll('input,textarea,select')[x.i];if(el){el.value=x.value;el.checked=x.checked}});scrollTo(s.scrollX||0,s.scrollY||0)}})})()</script>")
                 payload = payload.replace(b"</head>", monitor + b"</head>", 1)
