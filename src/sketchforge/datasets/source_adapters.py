@@ -362,6 +362,67 @@ class TekliaIAMLineAdapter(BaseAdapter):
                 log.warning("TekliaIAMLineAdapter: error reading %s: %s", parquet_file.name, exc)
 
 
+# ---- Teklia IAM Forms (page-level) -----------------------------------------
+
+
+class TekliaIAMFormsAdapter(BaseAdapter):
+    """Teklia IAM forms-level handwriting dataset (Teklia/IAM).
+
+    Provides full page/form handwriting samples for document layout, handwriting
+    region detection, and multi-line transcription.
+
+    Expected layout::
+
+        datasets/raw/teklia-iam/
+            data/*.parquet or images/
+    """
+
+    dataset_id = "teklia-iam"
+
+    def __init__(self, data_dir: Path | str | None = None) -> None:
+        from sketchforge.utilities.paths import repo_root
+        self._dir = Path(data_dir) if data_dir else repo_root() / "datasets" / "raw" / "teklia-iam"
+
+    def is_available(self) -> bool:
+        return self._dir.is_dir() and (any(self._dir.rglob("*.parquet")) or any(self._dir.rglob("*.png")) or any(self._dir.rglob("*.jpg")))
+
+    def samples(self) -> Iterator[RawSample]:
+        # 1. Parquet format
+        parquets = sorted(self._dir.rglob("*.parquet"))
+        if parquets:
+            try:
+                import pyarrow.parquet as pq
+                for parquet_file in parquets:
+                    table = pq.read_table(str(parquet_file))
+                    df = table.to_pydict()
+                    text_col = df.get("text", df.get("transcription", []))
+                    image_col = df.get("image", [])
+                    for i in range(len(text_col)):
+                        text = text_col[i] if i < len(text_col) else None
+                        img_payload = image_col[i] if i < len(image_col) else None
+                        yield RawSample(
+                            sample_id=f"iamform-{parquet_file.stem}-{i:06d}",
+                            source_dataset=self.dataset_id,
+                            image_path=None,
+                            image_bytes=_image_bytes(img_payload),
+                            label=str(text) if text is not None else None,
+                            provenance={"split": parquet_file.stem, "row": i, "level": "form"},
+                        )
+                return
+            except Exception as exc:  # noqa: BLE001
+                log.warning("TekliaIAMFormsAdapter: error reading parquet: %s", exc)
+
+        # 2. Image directory format fallback
+        for img_path in sorted(self._dir.glob("*")):
+            if img_path.suffix.lower() in {".png", ".jpg", ".jpeg"}:
+                yield RawSample(
+                    sample_id=f"iamform-{img_path.stem}",
+                    source_dataset=self.dataset_id,
+                    image_path=img_path,
+                    provenance={"level": "form", "source_file": img_path.name},
+                )
+
+
 # ---- Sketch2Diagram Benchmark ----------------------------------------------
 
 
@@ -939,6 +1000,7 @@ _ADAPTERS: dict[str, type[BaseAdapter]] = {
     "salt-sketch2code": SaltSketch2CodeAdapter,
     "webcode2m": WebCode2MAdapter,
     "teklia-iam-line": TekliaIAMLineAdapter,
+    "teklia-iam": TekliaIAMFormsAdapter,
     "sketch2diagram": Sketch2DiagramAdapter,
     "imageclef-drawnui-2021": ImageCLEFAdapter,
     # Free / open datasets with real bbox annotations:

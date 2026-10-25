@@ -117,7 +117,7 @@ def cmd_cloud(args: argparse.Namespace) -> int:
 
     print(f"SketchForge cloud (AWS Lambda): {image.name}")
     print(f"  endpoint : {client._endpoint}")
-    print(f"  health   : ", end="", flush=True)
+    print("  health   : ", end="", flush=True)
     ok = client.health_check()
     print("ok" if ok else "UNREACHABLE (proceeding anyway)")
 
@@ -140,8 +140,10 @@ def cmd_cloud(args: argparse.Namespace) -> int:
     print(f"  components : {len(result.design_document.components)}")
     if result.notes:
         print("  notes:")
+        enc = sys.stdout.encoding or "utf-8"
         for note in result.notes:
-            print(f"    • {note}")
+            safe_note = note.encode(enc, errors="replace").decode(enc)
+            print(f"    * {safe_note}")
     print(f"\nDesign IR saved to {ir_path}")
     return 0
 
@@ -208,7 +210,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    args_list = list(sys.argv[1:] if argv is None else argv)
+    if "--cloud-aws" in args_list and not any(
+        cmd in args_list for cmd in ["demo", "gui", "studio", "info", "cloud"]
+    ):
+        args_list.insert(0, "cloud")
+    args = build_parser().parse_args(args_list)
     return int(args.func(args))
 
 

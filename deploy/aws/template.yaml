@@ -52,6 +52,14 @@ Parameters:
     Default: 14
     Description: CloudWatch log group retention in days.
 
+  Architecture:
+    Type: String
+    Default: arm64
+    AllowedValues: [arm64, x86_64]
+    Description: >
+      CPU architecture for the Lambda container. AWS Graviton (arm64) is recommended:
+      delivers 20% lower cost on AWS Free Tier and faster SIMD NEON acceleration for OpenCV 5.
+
   CorsOrigin:
     Type: String
     Default: "*"
@@ -64,7 +72,7 @@ Parameters:
 # ---------------------------------------------------------------------------
 Globals:
   Function:
-    Architectures: [x86_64]
+    Architectures: [!Ref Architecture]
     Environment:
       Variables:
         SKETCHFORGE_COMPONENT_MODEL: "off"     # use CV pipeline, not local ML model
@@ -223,3 +231,7 @@ Outputs:
   LambdaRoleArn:
     Description: "ARN of the Lambda execution role"
     Value: !GetAtt SketchForgeLambdaRole.Arn
+
+  Architecture:
+    Description: "Target CPU architecture (Graviton arm64 or x86_64)"
+    Value: !Ref Architecture

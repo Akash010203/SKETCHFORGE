@@ -9,19 +9,35 @@
 | `deploy/aws/Dockerfile` | Container image based on `public.ecr.aws/lambda/python:3.11` with `opencv-python-headless>=5.0` |
 | `deploy/aws/requirements-lambda.txt` | Minimal Python deps for the Lambda container |
 | `deploy/aws/template.yaml` | AWS SAM / CloudFormation template — Lambda + API Gateway HTTP API + IAM + CloudWatch |
+| `deploy/aws/deploy.py` | 1-Command cross-platform deployment & verification orchestrator |
+| `deploy/aws/deploy.ps1` | 1-Command PowerShell deployment script for Windows |
+| `deploy/aws/deploy.sh` | 1-Command Bash deployment script for Linux/macOS |
+| `deploy/aws/serve_cloud.py` | Standalone HTTP server emulator executing the exact Lambda handler |
 | `src/sketchforge/cloud/aws_client.py` | Python client that POSTs a sketch photo to the Lambda endpoint and returns `DesignDocument` |
 | `src/sketchforge/cloud/__init__.py` | Package init |
 
-## CV Fixes
+## 1-Command Deployment (Recommended)
 
-| File | Fix |
-|---|---|
-| `src/sketchforge/vision/preprocessing.py` | Added `flatten_local_illumination()` — MORPH_DILATE 40×40 px rectangular kernel cancels shadows/vignetting before any threshold variant fires. Expected F1 improvement: 0.003 → ~0.85+ on `rough_mobile_ux.jpg`. |
-| `src/sketchforge/vision/region_proposals.py` | Added `filter_grid_lattice_false_positives()` — suppresses clusters of >20 tiny uniform squares (CV < 8%) that are grid-paper intersections, not UI checkboxes. |
+### Using Python (Cross-platform)
+```bash
+python deploy/aws/deploy.py --region us-east-1 --architecture arm64
+```
+
+### Using Windows PowerShell
+```powershell
+.\deploy\aws\deploy.ps1 -Region us-east-1 -Architecture arm64
+```
+
+### Using Linux / macOS Bash
+```bash
+./deploy/aws/deploy.sh --region us-east-1 --architecture arm64
+```
+
+These scripts automate checking AWS credentials, setting up ECR, deploying the SAM / CloudFormation stack (targeting **AWS Graviton arm64** for 20% lower cost and NEON vector acceleration), discovering the live endpoints, and executing an end-to-end cloud test.
 
 ---
 
-## Step-by-step deployment
+## Manual Step-by-Step Deployment
 
 ### Prerequisites
 ```bash
@@ -29,7 +45,7 @@ pip install awscli aws-sam-cli
 aws configure   # set access key, secret, region
 ```
 
-### 1. Build & push the container image
+### 1. Build & push the container image (Graviton arm64)
 ```bash
 cd deploy/aws
 
@@ -41,8 +57,8 @@ aws ecr get-login-password --region us-east-1 \
   | docker login --username AWS \
     --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
 
-# Build from the project root (context includes src/ and pyproject.toml)
-docker build -t sketchforge-lambda -f deploy/aws/Dockerfile .
+# Build for Graviton arm64 (from project root)
+docker buildx build --platform linux/arm64 -t sketchforge-lambda -f deploy/aws/Dockerfile .
 
 # Tag & push
 docker tag sketchforge-lambda:latest \
@@ -59,6 +75,7 @@ sam deploy \
   --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
   --parameter-overrides \
     ImageUri=<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/sketchforge-lambda:latest \
+    Architecture=arm64 \
     Environment=production \
   --region us-east-1
 ```

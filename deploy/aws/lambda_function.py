@@ -104,7 +104,7 @@ def _extract_image_bytes(event: dict[str, Any]) -> bytes:
     return raw_bytes
 
 
-def _decode_image(image_bytes: bytes) -> "Any":  # returns np.ndarray BGR
+def _decode_image(image_bytes: bytes) -> Any:  # returns np.ndarray BGR
     """Decode compressed image bytes into an OpenCV BGR ndarray."""
     import numpy as np
     arr = np.frombuffer(image_bytes, dtype=np.uint8)
@@ -122,7 +122,7 @@ def _decode_image(image_bytes: bytes) -> "Any":  # returns np.ndarray BGR
 # Pipeline
 # ---------------------------------------------------------------------------
 
-def _run_pipeline(bgr: "Any") -> dict[str, Any]:
+def _run_pipeline(bgr: Any) -> dict[str, Any]:
     """Execute the full SketchForge vision pipeline and return serialisable result dict."""
     from sketchforge.design_ir.serialization import to_dict
     from sketchforge.vision.image_loader import from_array

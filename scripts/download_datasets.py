@@ -76,6 +76,30 @@ def download_teklia_iam_line(dest_dir: Path) -> int:
     return len(files)
 
 
+def download_teklia_iam_forms(dest_dir: Path) -> int:
+    """Download Teklia/IAM (forms level handwriting)."""
+    from huggingface_hub import hf_hub_download
+
+    dest_data_dir = dest_dir / "data"
+    dest_data_dir.mkdir(parents=True, exist_ok=True)
+    files = ["data/train.parquet", "data/validation.parquet", "data/test.parquet"]
+    log.info("Downloading Teklia/IAM forms (parquet splits)...")
+    count = 0
+    for fname in files:
+        try:
+            hf_hub_download(
+                repo_id="Teklia/IAM",
+                filename=fname,
+                repo_type="dataset",
+                local_dir=str(dest_dir),
+            )
+            count += 1
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not download %s: %s", fname, exc)
+    log.info("Teklia/IAM forms download complete in %s", dest_dir)
+    return count
+
+
 def download_sketch2diagram(dest_dir: Path) -> int:
     """Download DiagramAgent/Sketch2Diagram-Benchmark (~125 MB zip) and extract."""
     from huggingface_hub import hf_hub_download
@@ -287,6 +311,7 @@ def main() -> int:
             "websight",
             "webcode2m",
             "teklia-iam-line",
+            "teklia-iam",
             "sketch2diagram",
             "commitpackft",
             "the-stack-dedup",
@@ -350,6 +375,8 @@ def main() -> int:
         download_salt_sketch2code(raw_dir / "salt-sketch2code")
     elif ds == "teklia-iam-line":
         download_teklia_iam_line(raw_dir / "teklia-iam-line")
+    elif ds == "teklia-iam":
+        download_teklia_iam_forms(raw_dir / "teklia-iam")
     elif ds == "sketch2diagram":
         download_sketch2diagram(raw_dir / "sketch2diagram")
     elif ds == "commitpackft":

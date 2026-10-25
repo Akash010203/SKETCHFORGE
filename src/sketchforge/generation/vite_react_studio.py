@@ -56,7 +56,7 @@ def generate_vite_react_project(
     include_backend: bool = True,
     database: str = "sqlite",
     orm: str = "sqlalchemy",
-    api_target: str = "fastapi",
+    api_target: str = "flask",
     authentication: bool = False,
     progress: Callable[[str], None] | None = None,
 ) -> Path:

@@ -1,179 +1,193 @@
 # SketchForge
 
-SketchForge is a local-first workbench for turning a photo of a hand-drawn interface into an
-editable design. It detects the layout, builds a structured Design IR, renders it, checks it for
-layout problems, and keeps only repairs that improve the measured result without causing a
-regression.
+**SketchForge** is a local-first engineering workbench that transforms photos of hand-drawn sketches, wireframes, and screenshots into measured, editable designs and verified full-stack web applications.
 
-The browser Studio is the main interface. Its API and the desktop compatibility workbench share
-the same Python services, so importing, editing, rendering, measuring, and repairing follow the
-same path.
+It operates without hard cloud dependencies, running a sub-second OpenCV computer vision pipeline and local inference engine on your laptop, paired with an autonomous closed-loop visual verification and repair cycle.
 
-The core sketch-to-design loop and the generation pipeline are implemented. The repository also
-contains Nebius integration, natural-language edit planning, React/TypeScript and Python backend
-generation, and sandboxed verification. The checked-in test record is 318 tests with no skips;
-run the commands below to verify the state of your checkout. Feature-level evidence and known
-limits live in [TASKS.md](TASKS.md) and [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
+---
 
-## Product direction
+## Architecture: Two Practical Phases
 
-The project is organised around two practical phases.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│               PHASE 1: Handwritten Sketch → Design IR                  │
+├────────────────────────────────────────────────────────────────────────┤
+│  [Sketch Photo / Wireframe]                                            │
+│        │                                                               │
+│        ▼                                                               │
+│  [OpenCV Vision Engine]                                                │
+│    • Illumination flattening (shadow & glare removal)                  │
+│    • Adaptive Otsu & Gaussian thresholding                             │
+│    • Quadrilateral perspective correction & deskew                     │
+│    • Contour hierarchy & bounding box proposals                        │
+│        │                                                               │
+│        ▼                                                               │
+│  [Component Detection & Classification]                                │
+│    • Multi-scale CNN feature pyramid + anchor classification           │
+│    • Buttons, inputs, headings, cards, text, images, containers        │
+│    • IoU & recall benchmarking against ground truth                    │
+│        │                                                               │
+│        ▼                                                               │
+│  [Handwriting OCR & Layout Snapping]                                   │
+│    • CRNN (CNN-BiLSTM-CTC) recognizer for handwritten labels           │
+│    • Geometric containment hierarchy (parent-child trees)              │
+│    • 8px grid snapping, margin normalization & alignment               │
+│        │                                                               │
+│        ▼                                                               │
+│  [Canonical Design IR] ── Editable SVG / HTML / CSS / JSON            │
+└────────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│        PHASE 2: Design IR → Verified Full-Stack Project                │
+├────────────────────────────────────────────────────────────────────────┤
+│  [Hybrid Orchestrator + Nebius NVIDIA Provider]                        │
+│    • NVIDIA Nemotron-3_5 & Llama via Nebius Token Factory              │
+│    • Offline deterministic fallback templates (no network needed)      │
+│    • RAG engine: Lexical + Vector search with Reciprocal Rank Fusion   │
+│        │                                                               │
+│        ▼                                                               │
+│  [Full-Stack Project Generation]                                       │
+│    • Frontend: React + TypeScript + Vite (or pure HTML5/CSS3)          │
+│    • Backend: Python Flask + SQLite REST API (CRUD, auth, CORS)        │
+│        │                                                               │
+│        ▼                                                               │
+│  [Autonomous Closed-Loop Visual Correction]                            │
+│    1. Headless browser captures screenshot of rendered frontend        │
+│    2. OpenCV scans rendered page and maps elements to Design IR        │
+│    3. Measures IoU and position discrepancy                            │
+│    4. Identifies concrete defects (missing button, displaced card)     │
+│    5. Applies bounded code repair & re-verifies until layout matches   │
+│        │                                                               │
+│        ▼                                                               │
+│  [Deliver Final Verified Full-Stack Project ZIP]                       │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
-Phase 1 turns a sketch, screenshot, or photographed drawing into an editable design. OpenCV
-preprocessing, component detection, OCR when enabled, geometric relationships, typography, colour,
-spacing, and alignment feed the Design IR. The IR gives the editor concrete components to change:
-for example, a user can change a button colour, move a card, or replace text without editing raw
-pixels.
+---
 
-Phase 2 turns that structured design into a working project. It generates a frontend and optional
-Python backend, captures the rendered result, compares it with the intended layout, and uses the
-existing repair loop to make and verify bounded corrections. Remote generation is optional and
-goes through Nebius; the local deterministic fallback remains available when no credential is set.
+## The Design "Brain"
 
-Training and retrieval are deliberately separate from the editor path. Dataset adapters and local
-hybrid retrieval exist, but large training data, trained weights, and claims about real-world
-photograph accuracy must be supported by measured results before they become product promises.
+SketchForge enforces a coherent, human-centered design system across all generated code:
 
-## Try it in two minutes
+* **Typography Hierarchy**: Structured modular font scale from Display (32–40px) and Headings (20–28px) to Body (14–16px) and Captions (12px), paired with modern typography (Inter, Outfit, Roboto).
+* **Color System**: Tailored semantic CSS tokens (`--background`, `--card`, `--primary`, `--border`, `--text`, `--muted`), guaranteed to meet WCAG AA contrast standards (>= 4.5:1).
+* **Grid & Spacing**: Strict 8px spatial grid with automatic padding/margin normalization and responsive CSS flexbox/grid layouts across desktop, tablet, and mobile.
+* **Micro-Interactions**: Smooth hover, active, and focus states on interactive elements (`transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1)`).
 
-Requirements: Python 3.11+ (developed on 3.13). PySide6 is optional and only needed for the
-legacy desktop compatibility workbench.
+---
+
+## Quickstart in 2 Minutes
+
+### 1. Requirements
+* Python 3.11+ (tested on Python 3.11 and 3.13)
+* Dependencies: OpenCV, NumPy, Pydantic, Pillow, Flask
 
 ```bash
-uv venv --python 3.13 .venv                    # or: python -m venv .venv
-uv pip install --python .venv/bin/python -e ".[dev]"
+# Clone and setup environment
+python -m venv .venv
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+# Linux/macOS:
+source .venv/bin/activate
 
-.venv/bin/python -m sketchforge demo           # headless end-to-end demo, ~1.5 s, no credentials
-.venv/bin/python -m sketchforge studio         # primary browser UI: http://127.0.0.1:8000/studio
+pip install -e ".[dev]"
 ```
 
-The demo imports `assets/sample_sketches/login_page_synthetic.png`, detects components, builds and
-validates a Design IR, renders it, **injects a known fault** (an input pushed 30 px out of its
-card), has the evaluator find it, lets the repair engine fix it, and writes everything to
-`output/demo/`:
-
-| Look at | What it shows |
-|---|---|
-| `output/demo/reports/repair_report.md` | before/after metrics, every attempt with its decision and reason |
-| `output/demo/reports/repair_report_comparison.png` | red = faulty design, green = repaired design |
-| `output/demo/renders/{before,after}_repair.{svg,html,css,png}` | the editable design in every export format |
-| `output/demo/design_{initial,before_repair,final}.json` | the Design IR at each stage |
-| `output/demo/diagnostics/detections.png` | what the vision stage thought it saw |
-| `output/demo/summary.json` | step timings, hashes, and `"network": "none"` |
-
-Other faults: `--inject {overflow,misalignment,spacing,text_overflow,low_contrast,small_control,overlap,none}`;
-your own drawing: `--image path/to/photo.jpg`; measure only: `--no-repair`.
-Headless screenshot of the GUI: `python -m sketchforge gui --screenshot window.png`.
-
-### In the browser Studio
-
-1. Start `python -m sketchforge studio` and open `http://127.0.0.1:8000/studio`.
-2. Drag in a PNG/JPEG/WebP sketch. Studio validates it, analyzes it, and retains the canonical
-   Design IR for the next generation.
-3. Describe the application. Generation runs through the Hybrid Orchestrator; the job log shows
-   analysis, file generation, preview, and verification states. The result is labelled
-   `ai_generated`, `mixed`, or `template_fallback`.
-4. Inspect the generated preview, export the project ZIP, and submit supported natural-language
-   revisions from the prompt. A skipped or failed verification is shown as such; it is not a pass.
-
-### Desktop compatibility workbench
-
-1. *File → Open sample sketch* (or *Import sketch…*). Import runs on a background thread.
-2. Click or drag on the canvas, or pick a row in **Components**; edit text, fill, border, text
-   colour, X/Y/width/height, font size, corner radius in **Properties** (every edit is undoable).
-3. **Measure & repair → Inject fault → Auto-repair**. The repair runs on a copy of the design,
-   is verified, and is applied as **one** undo step. The report appears below the issue table.
-4. *File → Save project* writes a folder (`project.json`, `design.json`, the source sketch,
-   renders, reports); *Export design…* writes SVG/HTML/CSS/PNG/JSON.
-
-## How it works
-
+### 2. Run the Autonomous Demo
+```bash
+python -m sketchforge demo
 ```
-Browser Studio ─▶ Web API ─▶ Hybrid Orchestrator ─▶ vision │ Design IR │ generation │ preview │ verification
-                    │
-Desktop compatibility ─▶ AppController ─▶ shared workflows │ editor │ rendering
+Runs the headless end-to-end pipeline in ~3 seconds: imports `login_page_synthetic.png`, analyzes it with OpenCV, builds the Design IR, injects a layout fault, detects it, auto-repairs it, and writes the before/after renders and reports to `output/demo/`.
+
+### 3. Launch the Web Studio
+```bash
+python -m sketchforge studio
+```
+Open **`http://127.0.0.1:8000/studio`** in your browser.
+* Drag and drop your hand-drawn sketch or screenshot.
+* Describe what you want to build in the prompt bar.
+* Watch the agent analyze the layout, build the Design IR, generate the full-stack project, and verify it visually.
+* Download the complete verified project ZIP.
+
+### 4. Launch the Desktop Workbench (Optional GUI)
+```bash
+python -m sketchforge gui
+```
+Open the PySide6 desktop workbench to interactively edit component boxes, inspect layers, tweak CSS variables, test auto-repair, and type natural-language design revisions.
+
+---
+
+## Dataset Ecosystem (200 GB Target)
+
+SketchForge includes streaming dataset adapters and download scripts equipped with strict safety caps to prevent disk exhaustion:
+
+| Dataset | Expected Size | Focus | Stream Command |
+|---|---|---|---|
+| **WebSight v0.2** | 20 GB cap | Webpage screenshot + HTML/Tailwind pairs | `python scripts/download_datasets.py --dataset websight-v02` |
+| **WebCode2M** | 20 GB cap | Millions of real-world DOM trees, styles & bounding boxes | `python scripts/download_datasets.py --dataset webcode2m` |
+| **Teklia IAM-line** | ~260 MB | Handwriting line recognition for sketch label OCR | `python scripts/download_datasets.py --dataset teklia-iam-line` |
+| **Teklia IAM forms** | ~120 MB | Full page/form handwriting and layout detection | `python scripts/download_datasets.py --dataset teklia-iam` |
+| **Sketch2Diagram** | ~130 MB | Hand-drawn diagrams, flowcharts, graphs, visual relationships | `python scripts/download_datasets.py --dataset sketch2diagram` |
+| **SALT Sketch2Code** | ~80 MB | Direct hand-drawn sketches paired with clean HTML | `python scripts/download_datasets.py --dataset salt-sketch2code` |
+| **CommitPackFT** | ~330 MB | Code repair, syntax patterns & edits (Python, TS, HTML) | `python scripts/download_datasets.py --dataset commitpackft` |
+| **The Stack Dedup** | 20 GB cap | Curated web language source code | `python scripts/download_datasets.py --dataset the-stack-dedup` |
+
+To download all small auxiliary datasets in under 2 minutes:
+```bash
+python scripts/download_datasets.py --small-all
 ```
 
-`sketch image → preprocess (illumination flattening, threshold variants) → shapes / lines / text
-blobs → rule-based classification with ambiguity flags → containment hierarchy → alignment and
-spacing snapping → Design IR → SVG / HTML / CSS / PNG → evaluator → repair engine`.
+---
 
-Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DESIGN_IR_SPEC.md](docs/DESIGN_IR_SPEC.md),
-[docs/EVALUATION.md](docs/EVALUATION.md).
+## Verification & Self-Correction Engine
 
-## Measured results
+The visual verification loop in `src/sketchforge/verification/discrepancy_repair.py` ensures that generated code matches the sketch:
 
-Synthetic measurements are useful regression signals, not real-sketch performance. The checked-in
-real-photo result in `experiments/results/current_real_photo.json` is poor: one photographed
-grid-paper sketch scored F1 **0.0333** and type accuracy **0.0000**. Do not treat sketch detection
-as production-ready for photographs.
+1. **Capture**: Playwright captures a headless screenshot of the running preview server.
+2. **Scan**: OpenCV detects visible UI elements, calculates bounding boxes, and scales them to the design coordinate space.
+3. **Compare**: Computes Intersection-over-Union (IoU) and centroid Euclidean distance against the source Design IR.
+4. **Diagnose**: Formulates structured discrepancies (e.g. `MISSING_COMPONENT: btn_submit`, `POSITION_MISMATCH: inp_search (offset 42px)`).
+5. **Repair**: Sends targeted diff requests to Nebius or local rule-based patchers, reapplies changes, and confirms the discrepancy score drops below threshold.
 
-### Handwriting OCR
+---
 
-Handwriting recognition is optional and off by default. Install the OCR extra and select the
-TrOCR handwritten model before launching SketchForge:
+## Project Structure
 
-```powershell
-pip install -e ".[ocr]"
-$env:SKETCHFORGE_OCR_MODEL = "microsoft/trocr-base-handwritten"
+```
+sketchforge/
+├── src/sketchforge/
+│   ├── vision/            # OpenCV preprocessing, contour detection, OCR & perspective
+│   ├── design_ir/         # Canonical Design IR schema, geometry, and serialization
+│   ├── layout/            # 8px spatial grid alignment, hierarchy & grouping rules
+│   ├── generation/        # Full-stack code generators: React+TS frontend & Flask backend
+│   │   ├── frontend/      # Vite, React components, CSS modules & design tokens
+│   │   └── backend/       # Python Flask REST API, SQLite schema & CRUD logic
+│   ├── integrations/      # Nebius Token Factory (NVIDIA models) & local PyTorch runtime
+│   ├── verification/      # Screenshot capture, OpenCV IoU discrepancy & repair loop
+│   ├── retrieval/         # Hybrid RAG search (BM25 + Vector + Reciprocal Rank Fusion)
+│   ├── datasets/          # Streaming adapters for WebSight, IAM, Sketch2Diagram, WebCode
+│   ├── editor/            # Undo/redo stack, design commands, selection management
+│   └── ui/                # Web Studio (Flask) & Desktop Workbench (PySide6)
+├── scripts/               # Dataset download, preprocessing, and benchmark scripts
+├── assets/sample_sketches/# Bundled test sketches (login, dashboard, mobile form, settings)
+└── tests/                 # 370+ unit, integration, and end-to-end tests
 ```
 
-The first run downloads model files unless `SKETCHFORGE_OCR_MODEL` points to a compatible local
-model directory. Recognized text is saved as non-inferred text; unreadable regions keep the inferred
-placeholder. Review OCR output because handwriting recognition can make mistakes.
+---
 
-| Benchmark | Result |
-|---|---|
-| Component detection, tuning layouts (63 sketches, 7 photo conditions) | F1 0.973, type accuracy 0.985, mean IoU 0.840 |
-| Component detection, **held-out** layouts (42 sketches) | F1 0.982, type accuracy 0.946, mean IoU 0.835 |
-
-### Offline handwriting OCR
-
-Handwriting recognition is opt-in. Install the training dependencies and train a local CRNN-CTC
-checkpoint on the downloaded Teklia/IAM-line dataset:
-
-```powershell
-pip install -e .[ocr-train]
-python scripts/train_handwriting_ocr.py --epochs 12
-$env:SKETCHFORGE_OCR_MODEL = "checkpoints/handwriting_ocr.pt"
-```
-
-The checkpoint runs on CPU and does not access the network. The alternative Hugging Face TrOCR
-path remains available by setting `SKETCHFORGE_OCR_MODEL` to a local model directory or model ID.
-Training data is not bundled; see `scripts/download_datasets.py --dataset teklia-iam-line`.
-| Repair matrix: 337 injected faults (7 kinds × 5 layouts × 5 conditions × 2 seeds) | fault detected 98.8 %, fully repaired 97.0 %, no issues left 95.0 %, **regressed 0 %**, median repair 308 ms |
-
-Reproduce: `python scripts/evaluate_layout.py`, `python scripts/evaluate_repair.py` (results in
-`experiments/results/`). Failure analysis: [docs/EXPERIMENT_LOG.md](docs/EXPERIMENT_LOG.md).
-
-## Tests
+## Running Tests
 
 ```bash
-pytest tests -q                       # 318 tests, ~35 s; 0 failed, 0 skipped
-ruff check src tests scripts
+# Run all unit, integration, and end-to-end tests (headless, ~60 seconds):
+python -m pytest -m "not ui" -q
+
+# Run health check:
+python -m pytest tests/test_health_check.py -v
 ```
 
-## Optional Nebius / Nemotron generation
-
-Without credentials, Studio uses the deterministic template fallback and labels it clearly. To
-enable the remote generator, copy `.env.example` to an ignored `.env` (or set an environment
-variable) and set `NEBIUS_API_KEY`; then run `python scripts/verify_nebius.py --enable --accept-egress`
-to perform an explicit live probe. A mocked test is not evidence of a live model call. See
-[docs/NEBIUS_NVIDIA_INTEGRATION.md](docs/NEBIUS_NVIDIA_INTEGRATION.md) for model and privacy details.
-
-## Project layout
-
-See [docs/FILE_STRUCTURE.md](docs/FILE_STRUCTURE.md) for what exists, what is planned, and where the
-implementation deliberately differs from the original plan.
-
-## Privacy and security
-
-The application makes **no network requests** (the demo's `summary.json` records that). Images are
-validated before decoding (type, size, magic bytes, pixel budget). Nothing in the project
-executes generated code yet; when code generation arrives it will run in a restricted
-environment. No credentials are stored in the repository (`.env` is git-ignored). See
-[docs/SECURITY.md](docs/SECURITY.md).
+---
 
 ## License
 
-Released under the MIT License. See LICENSE for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

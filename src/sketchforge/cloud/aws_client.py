@@ -26,6 +26,7 @@ optional — the endpoint URL is always usable directly.
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import logging
 import os
@@ -239,10 +240,8 @@ class AWSSketchClient:
         except urllib.error.HTTPError as exc:
             latency_ms = (time.perf_counter() - t0) * 1000.0
             body_text = ""
-            try:
+            with contextlib.suppress(Exception):
                 body_text = exc.read().decode("utf-8", errors="replace")
-            except Exception:
-                pass
             self._raise_from_body(body_text, exc.code)
         except urllib.error.URLError as exc:
             raise AWSClientError(
@@ -308,10 +307,10 @@ class AWSSketchClient:
     def _raise_from_body(self, body_text: str, status_code: int) -> None:
         try:
             body = json.loads(body_text)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
             raise AWSClientError(
                 f"Lambda returned HTTP {status_code}: {body_text[:300]}", status_code=status_code
-            )
+            ) from exc
         self._raise_from_body_dict(body, status_code)
 
     @staticmethod
