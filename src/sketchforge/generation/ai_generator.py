@@ -163,8 +163,15 @@ Rules:
 - Use dark, modern aesthetics (background #111116, accent #d9ff5f, font Segoe UI).
 - Generated HTML must be responsive (mobile-first).
 - The Flask backend must bind to 0.0.0.0 and accept --port argument; add CORS header.
-- Frontend JS POSTs to /api/submissions; GETs from /api/submissions for list pages.
+- CRITICAL: The API route is derived from the FIRST entity in the AppSpec.
+  Derive it as: route = entity.name.lower().replace(' ', '_') + 's'
+  Example: entity 'Task' → route 'tasks' → endpoint '/api/tasks'.
+  Frontend JS must POST to /api/<route> and GET from /api/<route>.
+  The Flask backend must expose /api/<route>, /api/<route>/<id> for GET/POST/PUT/DELETE.
+  Use the SAME route in BOTH the frontend JS files AND the backend api.py.
+  NEVER use '/api/submissions' unless the entity is literally named 'Submission'.
 - Do NOT reference external CDN assets; all CSS/JS must be inline or in local files.
+- Include a /api/health GET route in the Flask backend.
 - Output ONLY the code fence — do not wrap it in JSON or add any other text.
 """
 
@@ -187,18 +194,18 @@ _STATIC_FILES = [
 ]
 
 _FRONTEND_FILES = [
-    ("home.html", "Main landing page using the app name and entities"),
-    ("projects.html", "List page that GETs /api/submissions and renders items"),
-    ("js/home.js", "Form submission logic — POSTs to /api/submissions"),
-    ("js/projects.js", "Fetch and render submissions from GET /api/submissions"),
+    ("home.html", "Main landing page using the app name and entities from the AppSpec"),
+    ("projects.html", "List page that GETs /api/<entity_route> (derived from AppSpec entity name) and renders items"),
+    ("js/home.js", "Form submission logic — POSTs to /api/<entity_route> derived from the AppSpec first entity name"),
+    ("js/projects.js", "Fetch and render records from GET /api/<entity_route> derived from the AppSpec first entity name"),
 ]
 
 _BACKEND_FILES = [
-    ("backend/schema.sql", "SQLite CREATE TABLE statements for every entity"),
+    ("backend/schema.sql", "SQLite CREATE TABLE statements for every entity (use entity name as table name)"),
     ("backend/models.py", "Python dataclass models for every entity"),
     ("backend/database.py", "SQLite connection helper with schema init on first run"),
-    ("backend/logic.py", "Business logic functions (CRUD) for every entity"),
-    ("backend/api.py", "Flask CRUD REST API, bound to 0.0.0.0 with --port arg and CORS"),
+    ("backend/logic.py", "Business logic functions (CRUD) for every entity using the entity table name"),
+    ("backend/api.py", "Flask CRUD REST API: routes /api/<entity_route> and /api/<entity_route>/<id> for CRUD; /api/health for readiness; bound to 0.0.0.0 with --port arg and CORS"),
     ("requirements.txt", "Flask>=3.0 and any other needed packages, one per line"),
 ]
 
@@ -470,6 +477,20 @@ def ai_generate_project(
 
     spec_str = json.dumps(spec, ensure_ascii=False)
 
+    # Derive the authoritative API route from the spec — used in the Stage-2
+    # prompt context so every file (frontend & backend) is consistent.
+    entities = spec.get("entities") or []
+    main_entity_name = entities[0].get("name", "Submission") if entities else "Submission"
+    entity_route = re.sub(r"[^a-z0-9]+", "-", main_entity_name.lower()).strip("-") + "s"
+    entity_route_context = (
+        f"\n\n### Authoritative API Route (use EXACTLY this route in ALL files):\n"
+        f"Entity: {main_entity_name}\n"
+        f"Backend table: {re.sub(r'[^a-z0-9_]+', '_', main_entity_name.lower()).strip('_')}\n"
+        f"API route: /api/{entity_route}\n"
+        f"Frontend JS must POST to /api/{entity_route} and GET from /api/{entity_route}.\n"
+        f"Flask backend must expose /api/{entity_route} and /api/{entity_route}/<id>.\n"
+    )
+
     # ------------------------------------------------------------------
     # Stage 2 — per-file generation with per-file fallback
     # ------------------------------------------------------------------
@@ -478,6 +499,7 @@ def ai_generate_project(
 
     written = 0
     fallback_count = 0
+    provenance: dict[str, str] = {}  # path_hint -> "ai_generated" | "template_fallback"
     for path_hint, description in manifest:
         _emit(f"  Generating {path_hint} ({written + 1}/{len(manifest)})…")
         content = _stage2_file(
@@ -488,17 +510,22 @@ def ai_generate_project(
             _emit,
             model=active_model or _NEMOTRON_MODEL,
             layout_context=layout_context,
+            entity_route_context=entity_route_context,
         )
         if content is None or not str(content).strip():
             log.warning("AI model returned no content for %s; using template fallback.", path_hint)
             content = get_fallback_file_content(path_hint, spec)
+            provenance[path_hint] = "template_fallback"
             fallback_count += 1
             _emit(f"  Fallback: filled {path_hint} from verified template.")
+        else:
+            provenance[path_hint] = "ai_generated"
 
         dest = (root / path_hint).resolve()
         if not dest.is_relative_to(root):
             log.warning("Ignoring model-generated path outside the project: %s", path_hint)
             content = get_fallback_file_content(path_hint, spec)
+            provenance[path_hint] = "template_fallback"
             dest = (root / path_hint).resolve()
             fallback_count += 1
 
@@ -510,11 +537,32 @@ def ai_generate_project(
             log.warning("Could not write %s (%s); writing fallback template.", dest, exc)
             fallback_text = get_fallback_file_content(path_hint, spec)
             dest.write_text(fallback_text, encoding="utf-8")
+            provenance[path_hint] = "template_fallback"
             written += 1
             fallback_count += 1
 
     (root / "data").mkdir(exist_ok=True)
     _ensure_entry(root)
+
+    # Write provenance record so the UI can show AI vs fallback status per file.
+    try:
+        import json as _json
+        ai_count = len(manifest) - fallback_count
+        meta = {
+            "generation": "ai_generated" if fallback_count == 0 else (
+                "template_fallback" if ai_count == 0 else "mixed"
+            ),
+            "ai_model": active_model or _NEMOTRON_MODEL,
+            "total_files": len(manifest),
+            "ai_generated_count": ai_count,
+            "template_fallback_count": fallback_count,
+            "file_provenance": provenance,
+        }
+        (root / ".sketchforge_meta.json").write_text(
+            _json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+    except Exception:  # noqa: BLE001
+        pass  # provenance record is best-effort
     status_summary = (
         f"AI generation complete: {root.name} ({len(manifest)}/{len(manifest)} files written; "
         f"{len(manifest) - fallback_count} from AI, {fallback_count} from fallback template)."
@@ -842,6 +890,7 @@ def _stage2_file(
     emit: Callable[[str], None],
     model: str = _NEMOTRON_MODEL,
     layout_context: str | None = None,
+    entity_route_context: str | None = None,
 ) -> str | None:
     """Stage 2: generate ONE file and return its content string, or None on failure."""
     from sketchforge.integrations.provider_interface import ChatMessage, CompletionRequest
@@ -865,11 +914,14 @@ def _stage2_file(
             f"Faithfully reproduce these component bounding boxes, alignments, and hierarchy in {path_hint}."
         )
 
+    # Always include the entity route context so every file uses the same endpoint.
+    route_section = entity_route_context or ""
+
     user_msg = _FILE_USER.format(
         spec=spec_str,
         path=path_hint,
         description=description,
-    ) + layout_section + rag_section
+    ) + route_section + layout_section + rag_section
 
     request = CompletionRequest(
         messages=(

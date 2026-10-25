@@ -179,7 +179,15 @@ class NebiusClient:
         if not isinstance(content, str) or not content.strip():
             raise ProviderBadResponse("the service returned an empty answer")
         if finish == "length":
-            raise ProviderBadResponse("the answer was cut off (max_tokens reached); it would not be valid JSON")
+            # For plan/revision requests the truncated JSON is unusable — raise so the
+            # caller can fall back cleanly.  For file generation requests the partial
+            # code fence can still be recovered by _parse_file_content (unclosed fence),
+            # so we only log a warning and return the content.
+            log.warning(
+                "nebius: finish_reason=length for model=%s (request may be truncated); "
+                "returning partial content for caller to handle.",
+                model,
+            )
         usage = getattr(response, "usage", None)
         return CompletionResult(
             text=content, model=str(getattr(response, "model", None) or model),

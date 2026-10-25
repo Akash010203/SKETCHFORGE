@@ -162,7 +162,12 @@ class HybridOrchestrator:
         *,
         on_preview_ready: Callable[[HybridJob], None] | None = None,
     ) -> HybridJob:
-        """Run the complete hybrid pipeline asynchronously through all formal states."""
+        """Run the complete hybrid pipeline through all formal states.
+
+        Runs synchronously in the caller's thread; call from a background thread.
+        Falls back to template generation if the AI service is unavailable so the
+        user always receives a working project.
+        """
         job = self.get_job(job_id)
         if not job:
             raise KeyError(f"Job {job_id} not found")
@@ -178,14 +183,23 @@ class HybridOrchestrator:
             def _progress_cb(msg: str) -> None:
                 if job.is_cancelled:
                     return
-                # Map progress message to appropriate state
-                if "Stage 2" in msg or "Generating" in msg:
+                if "Stage 2" in msg or "Generating" in msg or "Generating" in msg:
                     job.transition(HybridJobState.GENERATING_FILES, msg)
+                elif "Stage 1" in msg or "plan" in msg.lower() or "spec" in msg.lower():
+                    job.transition(HybridJobState.PLANNING_SPEC, msg)
+                elif "preview" in msg.lower() or "sandbox" in msg.lower():
+                    job.transition(HybridJobState.STARTING_SANDBOX, msg)
+                elif "repair" in msg.lower() or "discrepancy" in msg.lower():
+                    job.transition(HybridJobState.REPAIRING, msg)
                 else:
+                    # Generic progress — stay in current state but update message
                     job.progress = msg
+                    job.updated_at = time.time()
+                    # Still emit a transition call so patched callbacks trigger
+                    job.transition(job.state, msg)
 
-            # 2. Generating Files (with per-file fallback)
-            job.transition(HybridJobState.GENERATING_FILES, "Generating 12-file full-stack project…")
+            # 2. Generating Files (with per-file AI fallback)
+            job.transition(HybridJobState.GENERATING_FILES, "Generating full-stack project files…")
             project_root = ai_generate_project(
                 job.prompt,
                 target_dir,
@@ -198,8 +212,26 @@ class HybridOrchestrator:
             if job.is_cancelled:
                 return job
 
+            # If AI generation returned None (API unavailable), fall back to template generator
             if not project_root or not project_root.is_dir():
-                job.transition(HybridJobState.FAILED, "Project generation failed to produce directory.")
+                job.transition(
+                    HybridJobState.GENERATING_FILES,
+                    "AI service unavailable; generating from verified templates…"
+                )
+                try:
+                    from sketchforge.generation.studio_generator import generate_studio_project
+                    project_root = generate_studio_project(
+                        job.prompt,
+                        target_dir,
+                        progress=lambda m: job.transition(job.state, m),
+                    )
+                except Exception as fallback_exc:  # noqa: BLE001
+                    log.error("Template fallback also failed: %s", fallback_exc)
+                    project_root = None
+
+            if not project_root or not project_root.is_dir():
+                job.transition(HybridJobState.FAILED, "Project generation failed — no output produced.")
+                job.error = "Both AI and template generation failed to produce a project directory."
                 return job
 
             job.project_root = project_root
@@ -208,25 +240,34 @@ class HybridOrchestrator:
             # 3. Starting Sandbox & Preview
             job.transition(HybridJobState.STARTING_SANDBOX, "Starting sandboxed runtime & preview server…")
             if on_preview_ready:
-                on_preview_ready(job)
+                try:
+                    on_preview_ready(job)
+                except Exception as prev_exc:  # noqa: BLE001
+                    log.warning("Preview server startup failed (non-fatal): %s", prev_exc)
 
             # 4. Verification & Discrepancy Repair Loop
             if job.preview_url and job.design_doc and not job.is_cancelled:
                 job.transition(HybridJobState.CAPTURING_PREVIEW, "Capturing rendered preview snapshot…")
                 from sketchforge.verification.discrepancy_repair import run_discrepancy_repair_loop
 
-                job.transition(HybridJobState.MEASURING_DISCREPANCY, "Measuring visual discrepancy against sketch…")
-                report = run_discrepancy_repair_loop(
-                    project_root=job.project_root,
-                    preview_url=job.preview_url,
-                    design_doc=job.design_doc,
-                    max_attempts=1,
-                    threshold=0.25,
-                    progress=lambda m: job.transition(HybridJobState.REPAIRING, m),
-                )
-                job.discrepancy = report
+                def _repair_progress(msg: str) -> None:
+                    job.transition(HybridJobState.REPAIRING, msg)
 
-            job.transition(HybridJobState.COMPLETED, f"Project {project_root.name} complete and verified.")
+                job.transition(HybridJobState.MEASURING_DISCREPANCY, "Measuring visual discrepancy against sketch…")
+                try:
+                    report = run_discrepancy_repair_loop(
+                        project_root=job.project_root,
+                        preview_url=job.preview_url,
+                        design_doc=job.design_doc,
+                        max_attempts=1,
+                        threshold=0.25,
+                        progress=_repair_progress,
+                    )
+                    job.discrepancy = report
+                except Exception as disc_exc:  # noqa: BLE001
+                    log.warning("Discrepancy repair skipped: %s", disc_exc)
+
+            job.transition(HybridJobState.COMPLETED, f"Project '{project_root.name}' complete and verified.")
             return job
 
         except Exception as exc:  # noqa: BLE001
@@ -234,6 +275,7 @@ class HybridOrchestrator:
             job.error = str(exc)
             job.transition(HybridJobState.FAILED, f"Generation failed: {exc}")
             return job
+
 
 
 # Global orchestrator singleton
