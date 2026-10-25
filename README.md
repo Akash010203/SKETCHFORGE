@@ -1,15 +1,38 @@
 # SketchForge
 
-A local-first browser application that turns a photo of a hand-drawn UI sketch into a structured,
-**editable** design, then **measures** that design, finds layout faults, proposes the smallest
-patch that fixes each one, re-renders, re-measures, and **keeps the patch only if the numbers
-improve and nothing else gets worse**.
+SketchForge is a local-first workbench for turning a photo of a hand-drawn interface into an
+editable design. It detects the layout, builds a structured Design IR, renders it, checks it for
+layout problems, and keeps only repairs that improve the measured result without causing a
+regression.
 
-The closed loop (create → measure → diagnose → patch → verify → accept or roll back) is the point
-of the project. The primary interface is a local browser Studio; its HTTP API delegates to the
-same Python services used by compatibility commands.
+The browser Studio is the main interface. Its API and the desktop compatibility workbench share
+the same Python services, so importing, editing, rendering, measuring, and repairing follow the
+same path.
 
-> **Status: Core workbench & generation pipeline operational** (sketch → Design IR → editable render → measure → repair → full app generation). Milestone 1 is verified; Nebius provider integration, natural-language edit assist, React/TS and Python backend generators, and sandboxed verification are implemented. 318 automated tests pass with 0 skips. See [TASKS.md](TASKS.md) for the per-feature status and [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
+The core sketch-to-design loop and the generation pipeline are implemented. The repository also
+contains Nebius integration, natural-language edit planning, React/TypeScript and Python backend
+generation, and sandboxed verification. The checked-in test record is 318 tests with no skips;
+run the commands below to verify the state of your checkout. Feature-level evidence and known
+limits live in [TASKS.md](TASKS.md) and [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
+
+## Product direction
+
+The project is organised around two practical phases.
+
+Phase 1 turns a sketch, screenshot, or photographed drawing into an editable design. OpenCV
+preprocessing, component detection, OCR when enabled, geometric relationships, typography, colour,
+spacing, and alignment feed the Design IR. The IR gives the editor concrete components to change:
+for example, a user can change a button colour, move a card, or replace text without editing raw
+pixels.
+
+Phase 2 turns that structured design into a working project. It generates a frontend and optional
+Python backend, captures the rendered result, compares it with the intended layout, and uses the
+existing repair loop to make and verify bounded corrections. Remote generation is optional and
+goes through Nebius; the local deterministic fallback remains available when no credential is set.
+
+Training and retrieval are deliberately separate from the editor path. Dataset adapters and local
+hybrid retrieval exist, but large training data, trained weights, and claims about real-world
+photograph accuracy must be supported by measured results before they become product promises.
 
 ## Try it in two minutes
 

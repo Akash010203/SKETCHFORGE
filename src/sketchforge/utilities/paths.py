@@ -39,8 +39,8 @@ def safe_join(base: str | Path, *parts: str) -> Path:
     return candidate
 
 
-def atomic_write_text(path: str | Path, text: str) -> Path:
-    """Write ``text`` atomically (temp file + rename) so a crash never leaves a half file."""
+def _atomic_write(path: str | Path, data: str | bytes, *, binary: bool) -> Path:
+    """Write via a sibling temporary file, with a Windows sandbox fallback."""
     import os
     import tempfile
 
@@ -48,27 +48,29 @@ def atomic_write_text(path: str | Path, text: str) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(text)
-        os.replace(tmp_name, target)
+        with os.fdopen(fd, "wb") if binary else os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(data)
+        try:
+            os.replace(tmp_name, target)
+        except PermissionError:
+            # Windows package sandboxes can create files but reject sibling renames.
+            # The direct write keeps local output working in that environment.
+            if binary:
+                target.write_bytes(data)  # type: ignore[arg-type]
+            else:
+                target.write_text(data, encoding="utf-8")  # type: ignore[arg-type]
     except BaseException:
         Path(tmp_name).unlink(missing_ok=True)
         raise
+    Path(tmp_name).unlink(missing_ok=True)
     return target
+
+
+def atomic_write_text(path: str | Path, text: str) -> Path:
+    """Write text atomically when supported by the filesystem."""
+    return _atomic_write(path, text, binary=False)
 
 
 def atomic_write_bytes(path: str | Path, data: bytes) -> Path:
-    import os
-    import tempfile
-
-    target = Path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(data)
-        os.replace(tmp_name, target)
-    except BaseException:
-        Path(tmp_name).unlink(missing_ok=True)
-        raise
-    return target
+    """Write bytes atomically when supported by the filesystem."""
+    return _atomic_write(path, data, binary=True)

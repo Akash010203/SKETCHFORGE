@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 import pytest
 
@@ -204,6 +205,14 @@ def test_save_and_load(tmp_path, doc):
     assert path.exists()
     assert load_document(path) == doc
     assert not list(path.parent.glob(".*.tmp"))  # atomic write cleaned up
+
+
+def test_save_falls_back_when_windows_sandbox_blocks_rename(tmp_path, doc):
+    path = tmp_path / "design.json"
+    with patch("os.replace", side_effect=PermissionError):
+        save_document(doc, path)
+    assert load_document(path) == doc
+    assert not list(path.parent.glob(".*.tmp"))
 
 
 def test_load_rejects_garbage(tmp_path):

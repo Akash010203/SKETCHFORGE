@@ -29,12 +29,9 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sketchforge.exceptions import SketchForgeError
-
-if TYPE_CHECKING:
-    pass  # heavy imports deferred to call time
 
 log = logging.getLogger(__name__)
 
