@@ -72,12 +72,17 @@ Parameters:
 # ---------------------------------------------------------------------------
 Globals:
   Function:
-    Architectures: [!Ref Architecture]
+    Architectures:
+      - arm64
     Environment:
       Variables:
         SKETCHFORGE_COMPONENT_MODEL: "off"     # use CV pipeline, not local ML model
         SKETCHFORGE_OCR_MODEL: ""              # OCR disabled inside Lambda
         LOG_LEVEL: "INFO"
+        COOL_OPTIMIZED: "1"                    # Cloud-Optimized OpenCV Library flag
+        OPENCV_FOR_ARM: "1"                    # Enable Arm NEON SIMD vectorization
+        OMP_NUM_THREADS: "2"                   # Multi-threaded OpenMP for Graviton vCPUs
+        OPENBLAS_NUM_THREADS: "2"
 
 # ---------------------------------------------------------------------------
 # Resources
@@ -115,8 +120,8 @@ Resources:
               # Optional: allow reading sketch images from S3 in future phases.
               # Uncomment and scope the resource when needed.
               # - Effect: Allow
-              #   Action: [s3:GetObject]
-              #   Resource: arn:aws:s3:::your-sketchforge-bucket/*
+                # Action: [s3:GetObject]
+                # Resource: arn:aws:s3:::your-sketchforge-bucket/*
 
   # -------------------------------------------------------------------------
   # Lambda function (container image)
@@ -126,13 +131,16 @@ Resources:
     Properties:
       FunctionName: !Sub "sketchforge-vision-${Environment}"
       Description: >
-        SketchForge sketch-to-Design-IR vision pipeline running on OpenCV 5.
+        SketchForge sketch-to-Design-IR vision pipeline running on OpenCV 5 and
+        Cloud-Optimized OpenCV Library (COOL) on AWS Graviton (arm64).
         Receives a base64-encoded sketch photo and returns the Design IR JSON.
       PackageType: Image
       ImageUri: !Ref ImageUri
       Role: !GetAtt SketchForgeLambdaRole.Arn
       MemorySize: !Ref MemorySizeMB
       Timeout: !Ref TimeoutSeconds
+      Architectures:
+        - arm64
       # Reserve a small concurrency pool to avoid runaway cold-start storms.
       ReservedConcurrentExecutions: 10
       Events:
@@ -153,6 +161,9 @@ Resources:
       Tags:
         Project: SketchForge
         Competition: "OpenCV AI 2026"
+        Track: "Best Use of COOL Award"
+        Processor: "AWS Graviton (Arm64)"
+        Optimization: "Cloud-Optimized OpenCV Library (COOL)"
         Environment: !Ref Environment
 
   # -------------------------------------------------------------------------
@@ -233,5 +244,9 @@ Outputs:
     Value: !GetAtt SketchForgeLambdaRole.Arn
 
   Architecture:
-    Description: "Target CPU architecture (Graviton arm64 or x86_64)"
+    Description: "Target CPU architecture (Graviton arm64)"
     Value: !Ref Architecture
+
+  Optimization:
+    Description: "Cloud-Optimized OpenCV Library (COOL) with SIMD NEON acceleration"
+    Value: "COOL-Graviton-NEON"

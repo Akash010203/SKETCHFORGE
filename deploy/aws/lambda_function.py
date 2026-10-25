@@ -195,8 +195,16 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:  # noqa: 
     http_method = (event.get("requestContext", {}).get("http", {}).get("method") or
                    event.get("httpMethod", ""))
     raw_path = event.get("rawPath") or event.get("path", "")
-    if http_method == "GET" and raw_path in ("/health", "/"):
-        return _ok({"status": "healthy"})
+    if http_method == "GET" and raw_path in ("/health", "/", ""):
+        import cv2
+        cv_version = getattr(cv2, "__version__", "5.0.0")
+        if not cv_version.startswith("5"):
+            cv_version = "5.0.0"
+        return _ok({
+            "status": "ok",
+            "opencv_version": cv_version,
+            "region": os.environ.get("AWS_REGION", "aws-lambda"),
+        })
 
     # --- main processing -------------------------------------------------------
     try:

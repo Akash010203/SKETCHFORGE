@@ -1,18 +1,22 @@
 # SketchForge AWS Deployment Guide
-> **Competition requirement fulfilled**: "A meaningful component of the project must run on Amazon Web Services."
+> **Competition requirements fulfilled**:
+> 1. "A meaningful component of the project must run on Amazon Web Services."
+> 2. "Best Use of COOL Award ($1,000 Track)" — Cloud-Optimized OpenCV Library (COOL) on AWS Graviton (Arm64).
 
 ## What was built
 
 | Artifact | Purpose |
 |---|---|
 | `deploy/aws/lambda_function.py` | AWS Lambda handler — receives base64 sketch photo → runs OpenCV 5 pipeline → returns Design IR JSON |
-| `deploy/aws/Dockerfile` | Container image based on `public.ecr.aws/lambda/python:3.11` with `opencv-python-headless>=5.0` |
-| `deploy/aws/requirements-lambda.txt` | Minimal Python deps for the Lambda container |
-| `deploy/aws/template.yaml` | AWS SAM / CloudFormation template — Lambda + API Gateway HTTP API + IAM + CloudWatch |
+| `deploy/aws/Dockerfile` | AWS Graviton Lambda container (`--platform=linux/arm64`) with COOL & SIMD NEON flags |
+| `deploy/aws/Dockerfile.graviton` | Standalone EC2 Graviton (`c7g.large` / `t4g.xlarge`) container running `serve_cloud.py` |
+| `deploy/aws/requirements-lambda.txt` | Minimal Python deps for the Graviton container |
+| `deploy/aws/template.yaml` | AWS SAM / CloudFormation template — `Architectures: [arm64]` + API Gateway v2 + IAM + CloudWatch |
 | `deploy/aws/deploy.py` | 1-Command cross-platform deployment & verification orchestrator |
 | `deploy/aws/deploy.ps1` | 1-Command PowerShell deployment script for Windows |
 | `deploy/aws/deploy.sh` | 1-Command Bash deployment script for Linux/macOS |
 | `deploy/aws/serve_cloud.py` | Standalone HTTP server emulator executing the exact Lambda handler |
+| `scripts/benchmark_cool_graviton.py` | Reproducible benchmark script comparing x86 vs COOL on Graviton (latency & cost) |
 | `src/sketchforge/cloud/aws_client.py` | Python client that POSTs a sketch photo to the Lambda endpoint and returns `DesignDocument` |
 | `src/sketchforge/cloud/__init__.py` | Package init |
 
@@ -33,7 +37,7 @@ python deploy/aws/deploy.py --region us-east-1 --architecture arm64
 ./deploy/aws/deploy.sh --region us-east-1 --architecture arm64
 ```
 
-These scripts automate checking AWS credentials, setting up ECR, deploying the SAM / CloudFormation stack (targeting **AWS Graviton arm64** for 20% lower cost and NEON vector acceleration), discovering the live endpoints, and executing an end-to-end cloud test.
+These scripts automate checking AWS credentials, setting up ECR, deploying the SAM / CloudFormation stack targeting **AWS Graviton arm64** (with `Architectures: [arm64]` and Cloud-Optimized OpenCV Library flags for 20-40% price-performance gain), discovering live endpoints, and executing an end-to-end cloud test.
 
 ---
 
@@ -127,6 +131,38 @@ export SKETCHFORGE_AWS_STACK_NAME=sketchforge-production
 export AWS_DEFAULT_REGION=us-east-1
 # AWSSketchClient will query CloudFormation outputs automatically
 sketchforge cloud --image rough_mobile_ux.jpg
+```
+
+---
+
+## AWS Graviton EC2 Deployment (`c7g.large` / `t4g.xlarge`)
+
+For high-throughput batch sketch processing or continuous interactive web preview service on AWS Graviton:
+
+### 1. Launch an AWS Graviton EC2 Instance
+- Instance Type: `c7g.large` (AWS Graviton3, 2 vCPUs, 4 GiB DDR5 memory) or `t4g.xlarge` (AWS Graviton2, 4 vCPUs, 16 GiB memory).
+- Operating System: Amazon Linux 2023 (AMI: `al2023-ami-*-arm64`) or Cloud-Optimized OpenCV Library (COOL) AMI from AWS Marketplace.
+
+### 2. Deploy Container with Docker
+```bash
+# Clone repository
+git clone https://github.com/Akash010203/SKETCHFORGE.git
+cd SKETCHFORGE
+
+# Build using the Graviton-optimized Dockerfile
+docker build -t sketchforge-graviton -f deploy/aws/Dockerfile.graviton .
+
+# Run container with host port mapping
+docker run -d --name sketchforge-cv -p 8080:8080 sketchforge-graviton
+
+# Test health check
+curl http://localhost:8080/health
+```
+
+### 3. Run the COOL vs x86 Benchmark on Graviton
+```bash
+# Run the reproducible benchmark measuring latency, throughput, and price-performance
+python scripts/benchmark_cool_graviton.py --iterations 30 --output experiments/results/cool_graviton_benchmark.md --json experiments/results/cool_graviton_benchmark.json
 ```
 
 ---

@@ -6,6 +6,147 @@ It operates without hard cloud dependencies, running a sub-second OpenCV compute
 
 ---
 
+## OpenCV AI Competition 2026 Submission
+
+> **Judge Submission Checklist & Quick Links:**
+> - 📄 **Technical Report (8 Mandatory Sections)**: [`docs/TECHNICAL_REPORT.md`](docs/TECHNICAL_REPORT.md)
+> - 🤖 **Special Prize: Agentic Vision Award Track ($1,000)**: [`docs/AGENTIC_VISION_AWARD.md`](docs/AGENTIC_VISION_AWARD.md)
+> - 🚀 **Special Prize: Best Use of COOL Award Track ($1,000)**: [`docs/COOL_GRAVITON_AWARD.md`](docs/COOL_GRAVITON_AWARD.md)
+> - 📊 **Real Benchmark Data**: [`experiments/results/detection_benchmark.json`](experiments/results/detection_benchmark.json) (F1: **0.9727**, IoU: **0.8402**, Latency: **156.55 ms**)
+> - ⚡ **Pinned OpenCV 5 Dependencies**: `pyproject.toml` (`opencv-python-headless>=5.0.0`) & `deploy/aws/requirements-lambda.txt` (`opencv-python-headless>=5.0.0`)
+
+### 1. Working Web Endpoints & Live Demo
+
+SketchForge provides an AWS Lambda / API Gateway compatible cloud endpoint running locally or in AWS:
+
+```bash
+# Launch the cloud endpoint server locally on port 8080:
+python deploy/aws/serve_cloud.py --host 127.0.0.1 --port 8080
+```
+
+#### Test Endpoints:
+* **Health Check**:
+  ```bash
+  curl http://127.0.0.1:8080/health
+  ```
+  **Response**:
+  ```json
+  {
+    "status": "ok",
+    "opencv_version": "5.0.0",
+    "region": "aws-lambda",
+    "ok": true,
+    "processing_region": "aws-lambda",
+    "pipeline_version": "opencv5"
+  }
+  ```
+
+* **Process Sketch Photo (Base64 → Design IR)**:
+  ```bash
+  # Send base64-encoded sketch photo, receive structured Design IR AST:
+  curl -X POST http://127.0.0.1:8080/process \
+       -H "Content-Type: application/json" \
+       -d '{"image_b64": "<base64_jpeg_or_png>"}'
+  ```
+
+* **Interactive Web Studio**:
+  ```bash
+  python -m sketchforge studio
+  # Open in browser: http://127.0.0.1:8000/studio
+  ```
+
+---
+
+### 2. System Architecture & Diagrams
+
+#### System Module Topology & Codebase Architecture
+![SketchForge System Architecture](assets/system_architecture.png)
+
+#### Diagram 1: High-Level Architecture (OpenCV 5 + AWS Lambda/Graviton + Web Studio)
+
+```mermaid
+graph TD
+    classDef client fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef gateway fill:#312e81,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    classDef lambda fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+    classDef storage fill:#3f3f46,stroke:#a1a1aa,stroke-width:1px,color:#f8fafc;
+
+    subgraph Client_Plane ["1. Interactive Client Tier (Local / Browser)"]
+        WEB["SketchForge Web Studio<br/>(127.0.0.1:8000 / Native ES6)"]:::client
+        DESKTOP["Desktop Workbench<br/>(PySide6 / Local Engine)"]:::client
+        SDK["AWSSketchClient SDK<br/>(aws_client.py)"]:::client
+        WEB & DESKTOP --> SDK
+    end
+
+    subgraph Transport_Plane ["2. AWS Serverless Transport Tier"]
+        APIGW["AWS API Gateway HTTP API (v2)<br/>(POST /process | GET /health)"]:::gateway
+        SDK -->|HTTPS / Base64 Payload| APIGW
+
+        subgraph Graviton_Container ["AWS Lambda (Arm64 Graviton / c7g.large)"]
+            HANDLER["lambda_function.py<br/>(Lambda Handler)"]:::lambda
+            COOL["Cloud-Optimized OpenCV (COOL)<br/>(Arm NEON SIMD + KleidiCV)"]:::lambda
+            PIPE["OpenCV 5 Vision Pipeline<br/>(Deskew, 40x40 Flatten, Contours)"]:::lambda
+            AST["Design IR AST Compiler<br/>(schema.py)"]:::lambda
+            
+            HANDLER --> COOL --> PIPE --> AST
+        end
+        APIGW --> HANDLER
+
+        CW["Amazon CloudWatch<br/>(Structured JSON Logs & Timings)"]:::storage
+        S3["Amazon S3 Bucket<br/>(Design IR & Screenshot Artifact Cache)"]:::storage
+        
+        HANDLER -.->|Log Metrics| CW
+        HANDLER -.->|Cache Artifacts| S3
+    end
+
+    AST -->|Design IR AST JSON| APIGW
+    APIGW -->|Design IR Payload| SDK
+```
+
+#### Diagram 2: Detailed Agentic Vision Loop (Perception → Decision → Action → Re-scan)
+
+```mermaid
+graph TD
+    classDef perception fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef decision fill:#312e81,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    classDef action fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+    classDef artifact fill:#3f3f46,stroke:#a1a1aa,stroke-width:1px,color:#f8fafc;
+    classDef stop fill:#065f46,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+
+    subgraph Step_1 ["1. Initial Perception"]
+        A["Source Hand-Drawn Sketch"]:::artifact --> B["OpenCV 5 Vision Pipeline<br/>(40x40 Dilation, Perspective Deskew,<br/>Contour Hierarchy & approxPolyDP)"]:::perception
+        B --> C["Design IR Document (AST)<br/>Components, Bounding Boxes, Types"]:::artifact
+    end
+
+    subgraph Step_2 ["2. Synthesis & Runtime Execution"]
+        C --> D["Full-Stack Project Generator<br/>(React 18 + Vite Frontend, Flask REST Backend)"]:::action
+        D --> E["Headless Browser Runtime<br/>(Playwright renders application)"]:::action
+    end
+
+    subgraph Step_3 ["3. Runtime Visual Perception Probe"]
+        E --> F["Headless Viewport Snapshot<br/>(preview_rendered.png)"]:::perception
+        F --> G["OpenCV 5 Element Extraction<br/>(Canny edges, contours & bounding boxes)"]:::perception
+    end
+
+    subgraph Step_4 ["4. Agentic Decision & Verification"]
+        G & C --> H["Discrepancy Evaluator<br/>(discrepancy_repair.py)"]:::decision
+        H --> I{"Visual Discrepancy > 0.25?<br/>Mean IoU < 0.90?<br/>Missing Components?"}:::decision
+    end
+
+    subgraph Step_5 ["5. Targeted Autonomous Code Repair"]
+        I -- "YES (Discrepancy Detected)" --> J["Formulate Structured Repair Plan<br/>(Identifies: Missing Element, Misalignment px, Overflow)"]:::decision
+        J --> K["Agentic Code Repair Engine<br/>(ai_revise_project / surgical DOM & CSS patch)"]:::action
+        K --> L["Update Project Files<br/>(home.html, css/style.css)"]:::artifact
+        L --> E
+    end
+
+    subgraph Step_6 ["6. Convergence & Verification"]
+        I -- "NO (Verified Alignment)" --> M["Mark State VERIFIED (Mean IoU ≥ 0.95)<br/>Autonomous Loop Complete"]:::stop
+    end
+```
+
+---
+
 ## Architecture: Two Practical Phases
 
 ```
@@ -149,6 +290,10 @@ The visual verification loop in `src/sketchforge/verification/discrepancy_repair
 3. **Compare**: Computes Intersection-over-Union (IoU) and centroid Euclidean distance against the source Design IR.
 4. **Diagnose**: Formulates structured discrepancies (e.g. `MISSING_COMPONENT: btn_submit`, `POSITION_MISMATCH: inp_search (offset 42px)`).
 5. **Repair**: Sends targeted diff requests to Nebius or local rule-based patchers, reapplies changes, and confirms the discrepancy score drops below threshold.
+
+> 🏆 **Special Prize 1 Track Reference**: See [`docs/AGENTIC_VISION_AWARD.md`](file:///c:/Users/akash/Downloads/sketchforge/docs/AGENTIC_VISION_AWARD.md) for full architecture diagrams, the multi-step perception-decision-action loop explanation, and execution traces ([`agentic_vision_trace.json`](file:///c:/Users/akash/Downloads/sketchforge/experiments/results/agentic_vision_trace.json)).
+>
+> 🚀 **Special Prize 2 Track Reference (Best Use of COOL Award - $1,000)**: See [`docs/COOL_GRAVITON_AWARD.md`](file:///c:/Users/akash/Downloads/sketchforge/docs/COOL_GRAVITON_AWARD.md) for the AWS Graviton (Arm64) + Cloud-Optimized OpenCV Library (COOL) hybrid architecture, reproducible benchmarks ([`scripts/benchmark_cool_graviton.py`](file:///c:/Users/akash/Downloads/sketchforge/scripts/benchmark_cool_graviton.py)), and 40% price-performance cost analysis ([`cool_graviton_benchmark.md`](file:///c:/Users/akash/Downloads/sketchforge/experiments/results/cool_graviton_benchmark.md)). Deploy in 1 command via [`deploy/aws/deploy.py`](file:///c:/Users/akash/Downloads/sketchforge/deploy/aws/deploy.py).
 
 ---
 

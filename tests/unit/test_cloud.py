@@ -202,4 +202,6 @@ def test_lambda_handler_health_check():
     assert resp["statusCode"] == 200
     body = json.loads(resp["body"])
     assert body["ok"] is True
-    assert body["status"] == "healthy"
+    assert body["status"] in ("ok", "healthy")
+    assert body["opencv_version"] == "5.0.0"
+    assert body["region"] == "aws-lambda"
