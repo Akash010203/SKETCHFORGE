@@ -15,6 +15,7 @@ UI always gets a usable project.
 
 from __future__ import annotations
 
+import datetime as _dt
 import json
 import logging
 import re
@@ -33,6 +34,56 @@ _CANDIDATE_MODELS = (
     "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
 )
 _NEMOTRON_MODEL = _CANDIDATE_MODELS[0]
+
+
+def _ts() -> str:
+    """Return a compact HH:MM:SS timestamp string for progress messages."""
+    return _dt.datetime.now().strftime("%H:%M:%S")
+
+
+def _select_active_model(
+    client,
+    emit,
+    *,
+    ping_max_tokens: int = 8,
+) -> tuple[str | None, str | None]:
+    """Probe each candidate model with a trivial 1-token request.
+
+    Returns ``(model_id, None)`` for the first responding model, or
+    ``(None, last_error_str)`` when all candidates are unreachable.
+
+    A single ``emit()`` call is made for each probe attempt so the browser
+    always shows the *latest* stable state without oscillating — the caller
+    does NOT emit anything before calling this function.
+    """
+    from sketchforge.integrations.provider_interface import ChatMessage, CompletionRequest
+
+    last_err: str | None = None
+    for idx, model in enumerate(_CANDIDATE_MODELS, start=1):
+        short = model.split("/")[-1]
+        emit(f"[{_ts()}] Stage 1 — verifying model {idx}/{len(_CANDIDATE_MODELS)}: {short}…")
+        ping = CompletionRequest(
+            messages=(
+                ChatMessage(role="user", content="ping"),
+            ),
+            purpose="studio_plan",
+            max_tokens=ping_max_tokens,
+            temperature=0.0,
+            model=model,
+        )
+        try:
+            client.complete(ping)
+            emit(f"[{_ts()}] Stage 1 — model ready: {short}")
+            return model, None
+        except Exception as exc:  # noqa: BLE001
+            last_err = f"{type(exc).__name__}: {exc}"
+            log.warning("Model probe failed for %s — %s", model, exc)
+            emit(
+                f"[{_ts()}] Stage 1 — {short} unavailable "
+                f"({type(exc).__name__}: {exc}); "
+                f"{'trying next candidate…' if idx < len(_CANDIDATE_MODELS) else 'no more candidates.'}"
+            )
+    return None, last_err
 
 # ---------------------------------------------------------------------------
 # Stage-1 prompt: AppSpec plan
@@ -439,85 +490,126 @@ def _stage1_plan(
     include_backend: bool,
     emit: Callable[[str], None],
 ) -> tuple[dict | None, str | None]:
-    """Stage 1: request a compact AppSpec JSON from an available NVIDIA Nemotron model.
+    """Stage 1: request a compact AppSpec JSON from a single verified Nemotron model.
+
+    The model is selected **once** at the start of this call via
+    :func:`_select_active_model`, which probes each candidate in priority order
+    and emits a timestamped status for every probe attempt.  This eliminates the
+    previous flapping behaviour where:
+
+    * ``emit("trying model 0…")`` fires,
+    * model 0 fails,
+    * ``emit("trying model 1…")`` immediately overwrites it,
+
+    …so the browser (polling every 900 ms) never displayed the failure reason.
+
+    With this approach:
+    - One probe phase with timestamped per-attempt statuses.
+    - On probe failure the exact exception type + message is emitted before
+      falling back to the seeded spec or template generator.
+    - One plan request against the verified model; on parse failure the error
+      is emitted explicitly before the fallback path is taken.
 
     When the prompt contains a ``<SketchDesignDocument>`` block we first extract
     a pre-seeded AppSpec from the embedded ``layout_block`` (exact bbox geometry,
     containment hierarchy, and heuristic AppSpec derived by ``spec_from_document``).
-    The pre-seeded spec is merged into whatever Nemotron returns so the final plan
-    is always grounded in the sketch detections, not invented by the model.
-
-    When Nemotron is completely unavailable the pre-seeded spec is returned as a
-    fallback so generation can still proceed with a sketch-informed layout.
-
-    Emits a single stable status line per attempt so the browser progress display
-    never oscillates between a failure message and a new-attempt message within
-    the same 900 ms poll window.
+    The pre-seeded spec is merged into whatever the model returns so the final
+    plan is always grounded in the sketch detections, not invented by the model.
     """
     from sketchforge.integrations.provider_interface import ChatMessage, CompletionRequest
 
+    # ------------------------------------------------------------------
     # Extract pre-seeded spec from the sketch layout block (if present).
+    # ------------------------------------------------------------------
     seeded_spec = _spec_from_layout_block(prompt)
     if seeded_spec:
-        log.info("Stage 1: pre-seeded spec from sketch layout block — %s page(s), %s entity/entities.",
-                 len(seeded_spec.get("pages", [])), len(seeded_spec.get("entities", [])))
+        log.info(
+            "Stage 1: pre-seeded spec from sketch layout block — %s page(s), %s entity/entities.",
+            len(seeded_spec.get("pages", [])),
+            len(seeded_spec.get("entities", [])),
+        )
 
+    # ------------------------------------------------------------------
+    # Probe once — select a single verified model before planning.
+    # ------------------------------------------------------------------
+    active_model, probe_err = _select_active_model(client, emit)
+
+    if active_model is None:
+        # All candidates unreachable — emit the failure cause explicitly.
+        if seeded_spec:
+            emit(
+                f"[{_ts()}] Stage 1 — all models unreachable ({probe_err}); "
+                "using sketch-derived layout as fallback plan."
+            )
+            log.warning("Stage 1 Nemotron unavailable — falling back to sketch-seeded spec.")
+            seeded_spec.setdefault("include_backend", include_backend)
+            return seeded_spec, None
+        emit(
+            f"[{_ts()}] Stage 1 — all models unreachable ({probe_err}); "
+            "falling back to template generator."
+        )
+        return None, None
+
+    # ------------------------------------------------------------------
+    # Single plan request against the verified model.
+    # ------------------------------------------------------------------
     user_msg = _PLAN_USER.format(
         brief=prompt.strip(),
         backend="yes" if include_backend else "no",
     )
+    short_model = active_model.split("/")[-1]
+    emit(f"[{_ts()}] Stage 1 — requesting AppSpec plan from {short_model}…")
 
-    total = len(_CANDIDATE_MODELS)
-    last_exc = None
-    for idx, model in enumerate(_CANDIDATE_MODELS, start=1):
-        # Single stable message — overwrites itself in the browser on each poll.
-        emit(f"Stage 1 — planning ({idx}/{total}): trying {model}…")
-        request = CompletionRequest(
-            messages=(
-                ChatMessage(role="system", content=_PLAN_SYSTEM),
-                ChatMessage(role="user", content=user_msg),
-            ),
-            purpose="studio_plan",
-            max_tokens=1536,
-            temperature=0.2,
-            model=model,
-        )
-        try:
-            result = client.complete(request)
-            spec = _parse_response(result.text)
-            # Merge: use the model's enriched spec but fall back to seeded values
-            # for any field the model left empty or omitted.
-            if seeded_spec:
-                if not spec.get("pages"):
-                    spec["pages"] = seeded_spec["pages"]
-                if not spec.get("entities"):
-                    spec["entities"] = seeded_spec["entities"]
-                if not spec.get("name") or spec["name"] in {"Sketch App", "GeneratedApp"}:
-                    spec["name"] = seeded_spec.get("name", spec.get("name", "Sketch App"))
-                spec.setdefault("include_backend", seeded_spec.get("include_backend", include_backend))
-            emit(f"Stage 1 complete — app: '{spec.get('name', '?')}', "
-                 f"{len(spec.get('pages', []))} page(s), "
-                 f"{len(spec.get('entities', []))} entity/entities.")
-            return spec, model
-        except Exception as exc:  # noqa: BLE001
-            last_exc = exc
-            log.warning("Stage 1 attempt with %s failed: %s", model, exc)
-            # Do NOT call emit() here — avoid the flap where the failure string
-            # becomes the last visible progress message before the next loop
-            # iteration overwrites it with another "requesting" line.
-
-    # All Nemotron models failed — use the pre-seeded spec as a last resort.
-    if seeded_spec:
+    request = CompletionRequest(
+        messages=(
+            ChatMessage(role="system", content=_PLAN_SYSTEM),
+            ChatMessage(role="user", content=user_msg),
+        ),
+        purpose="studio_plan",
+        max_tokens=1536,
+        temperature=0.2,
+        model=active_model,
+    )
+    try:
+        result = client.complete(request)
+        spec = _parse_response(result.text)
+    except Exception as exc:  # noqa: BLE001
+        # Emit the actual failure cause — it will be a distinct string from the
+        # previous "requesting…" message so the browser log shows both.
+        failure_reason = f"{type(exc).__name__}: {exc}"
+        log.warning("Stage 1 plan request with %s failed: %s", active_model, exc)
+        if seeded_spec:
+            emit(
+                f"[{_ts()}] Stage 1 — plan request failed ({failure_reason}); "
+                "using sketch-derived layout as fallback plan."
+            )
+            seeded_spec.setdefault("include_backend", include_backend)
+            return seeded_spec, None
         emit(
-            f"All AI candidate models unavailable ({last_exc}); "
-            "using sketch-derived layout as fallback plan."
+            f"[{_ts()}] Stage 1 — plan request failed ({failure_reason}); "
+            "falling back to template generator."
         )
-        log.warning("Stage 1 Nemotron unavailable — falling back to sketch-seeded spec.")
-        seeded_spec.setdefault("include_backend", include_backend)
-        return seeded_spec, None
+        return None, None
 
-    emit(f"All AI candidate models unavailable ({last_exc}); using template generator.")
-    return None, None
+    # ------------------------------------------------------------------
+    # Merge: use the model's enriched spec but honour seeded values for
+    # any field the model left empty or omitted.
+    # ------------------------------------------------------------------
+    if seeded_spec:
+        if not spec.get("pages"):
+            spec["pages"] = seeded_spec["pages"]
+        if not spec.get("entities"):
+            spec["entities"] = seeded_spec["entities"]
+        if not spec.get("name") or spec["name"] in {"Sketch App", "GeneratedApp"}:
+            spec["name"] = seeded_spec.get("name", spec.get("name", "Sketch App"))
+        spec.setdefault("include_backend", seeded_spec.get("include_backend", include_backend))
+
+    emit(
+        f"[{_ts()}] Stage 1 complete — app: '{spec.get('name', '?')}', "
+        f"{len(spec.get('pages', []))} page(s), "
+        f"{len(spec.get('entities', []))} entity/entities."
+    )
+    return spec, active_model
 
 
 def _stage2_file(
