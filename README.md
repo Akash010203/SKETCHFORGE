@@ -60,7 +60,9 @@ python deploy/aws/serve_cloud.py --host 127.0.0.1 --port 8080
 ### 2. System Architecture & Diagrams
 
 #### System Module Topology & Codebase Architecture
-![SketchForge System Architecture](assets/system_architecture.png)
+![SketchForge System Architecture](assets/system_architecture.svg)
+
+*(Vector SVG: scalable to any zoom level without quality loss. High-res PNG also available at [`assets/system_architecture.png`](assets/system_architecture.png))*
 
 #### Diagram 1: High-Level Architecture (OpenCV 5 + AWS Lambda/Graviton + Web Studio)
 

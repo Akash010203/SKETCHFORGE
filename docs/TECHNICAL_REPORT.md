@@ -227,10 +227,9 @@ SketchForge implements a two-stage suppression pipeline:
 
 To satisfy the competition mandate (*"A meaningful component of the project must run on Amazon Web Services"*), SketchForge implements a production-ready, hybrid cloud deployment leveraging **AWS Graviton (Arm64)** and the **Cloud-Optimized OpenCV Library (COOL)**.
 
-### 4.0 End-to-End System Module Map
-The complete module topology and data-flow map of the codebase is shown below:
+![SketchForge System Module Topology and Subsystem Map](../assets/system_architecture.svg)
 
-![SketchForge System Module Topology and Subsystem Map](../assets/system_architecture.png)
+*(High-resolution vector SVG: infinitely scalable without pixelation. High-res PNG also available at [`assets/system_architecture.png`](../assets/system_architecture.png))*
 
 ```mermaid
 graph TD

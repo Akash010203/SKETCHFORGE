@@ -40,11 +40,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import cv2
-import numpy as np
+import cv2  # noqa: E402
+import numpy as np  # noqa: E402
 
-from sketchforge.vision.image_loader import from_array
-from sketchforge.vision.pipeline import analyze
+from sketchforge.vision.image_loader import from_array  # noqa: E402
+from sketchforge.vision.pipeline import analyze  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -187,11 +187,11 @@ def run_morphological_filtering(ink_mask: np.ndarray, gray: np.ndarray) -> np.nd
     # 1. Ruled line morphological open with large kernels
     h_len = max(25, int(round(0.65 * w)))
     h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (h_len, 1))
-    h_lines = cv2.morphologyEx(ink_mask, cv2.MORPH_OPEN, h_kernel)
+    cv2.morphologyEx(ink_mask, cv2.MORPH_OPEN, h_kernel)
 
     v_len = max(25, int(round(0.65 * h)))
     v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, v_len))
-    v_lines = cv2.morphologyEx(ink_mask, cv2.MORPH_OPEN, v_kernel)
+    cv2.morphologyEx(ink_mask, cv2.MORPH_OPEN, v_kernel)
 
     # 2. Adaptive Gaussian thresholding
     adaptive = cv2.adaptiveThreshold(
@@ -481,7 +481,6 @@ def run_benchmark(
 
     # 3. Compute Cost Efficiency & Price-Performance Model
     cost_comparison = compute_cost_efficiency_model(timing_e2e.mean_ms)
-    x86_model = cost_comparison[0]
     graviton_model = cost_comparison[1]
     price_perf_gain = graviton_model.relative_price_performance_pct - 100.0
     cost_savings = graviton_model.cost_savings_pct
@@ -535,7 +534,7 @@ def format_markdown_report(report: BenchmarkReport) -> str:
     x86 = report.x86_vs_graviton_comparison[0]
     grav = report.x86_vs_graviton_comparison[1]
 
-    md.append(f"| **vCPU & Architecture** | 2 vCPUs (Intel Xeon Ice Lake, x86_64) | 2 vCPUs (AWS Graviton3 Neoverse V1, Arm64) | Arm Neoverse V1 |")
+    md.append("| **vCPU & Architecture** | 2 vCPUs (Intel Xeon Ice Lake, x86_64) | 2 vCPUs (AWS Graviton3 Neoverse V1, Arm64) | Arm Neoverse V1 |")
     md.append(f"| **Hourly EC2 On-Demand Cost** | ${x86.hourly_rate_usd:.5f} / hr | ${grav.hourly_rate_usd:.5f} / hr | **-15.0% lower instance cost** |")
     md.append(f"| **End-to-End Pipeline Latency** | {x86.end_to_end_latency_ms:.1f} ms | {grav.end_to_end_latency_ms:.1f} ms | **{((x86.end_to_end_latency_ms - grav.end_to_end_latency_ms) / x86.end_to_end_latency_ms * 100):.1f}% faster** |")
     md.append(f"| **Throughput (Inferences / Sec)** | {x86.throughput_fps:.1f} FPS | {grav.throughput_fps:.1f} FPS | **+{((grav.throughput_fps / x86.throughput_fps - 1.0) * 100):.1f}% higher throughput** |")
