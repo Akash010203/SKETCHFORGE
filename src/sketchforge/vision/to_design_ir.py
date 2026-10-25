@@ -209,3 +209,54 @@ def build_nemotron_layout_block(result: "VisionResult", sketch_name: str = "Sket
         "components": components,
         "hierarchy": hierarchy_text,
     }
+
+
+def build_nemotron_layout_block_from_document(doc: "object", app_name: str | None = None) -> dict:
+    """Build the Nemotron layout block directly from an existing DesignDocument."""
+    import dataclasses
+    from sketchforge.design_ir.document import preorder
+    from sketchforge.generation.app_specification import spec_from_document
+
+    spec = spec_from_document(doc, app_name=app_name or getattr(doc, "name", "Sketch App"))
+
+    components = []
+    for comp in preorder(doc):
+        if comp.id == doc.root_id:
+            continue
+        components.append({
+            "id": comp.id,
+            "type": comp.type.value if hasattr(comp.type, "value") else str(comp.type),
+            "parent_id": comp.parent_id,
+            "bbox_design_px": {
+                "x": comp.bbox.x,
+                "y": comp.bbox.y,
+                "w": comp.bbox.w,
+                "h": comp.bbox.h,
+            },
+            "label": comp.text or "",
+            "confidence": comp.confidence,
+        })
+
+    def _hierarchy_lines(parent_id: str, depth: int = 0) -> list[str]:
+        lines = []
+        children = [c for c in doc.components if c.parent_id == parent_id and c.id != doc.root_id]
+        for child in children:
+            ctype = child.type.value if hasattr(child.type, "value") else str(child.type)
+            label = f' "{child.text}"' if child.text else ""
+            lines.append("  " * depth + f"* {ctype}{label}")
+            lines.extend(_hierarchy_lines(child.id, depth + 1))
+        return lines
+
+    hierarchy_text = "\n".join(_hierarchy_lines(doc.root_id)) or "(no components detected)"
+
+    return {
+        "canvas": {
+            "width_design_px": doc.page.width,
+            "height_design_px": doc.page.height,
+            "device": doc.page.viewport.device,
+        },
+        "app_spec": dataclasses.asdict(spec),
+        "components": components,
+        "hierarchy": hierarchy_text,
+    }
+

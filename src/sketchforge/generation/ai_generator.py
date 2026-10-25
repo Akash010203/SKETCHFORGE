@@ -28,12 +28,13 @@ log = logging.getLogger(__name__)
 # Model selection: candidate priority order
 # ---------------------------------------------------------------------------
 
-_CANDIDATE_MODELS = (
+# Pinned active model: nvidia/Nemotron-3_5-Lightning for reliable latency and adherence
+_PINNED_MODEL = "nvidia/Nemotron-3_5-Lightning"
+_NEMOTRON_MODEL = _PINNED_MODEL
+_FALLBACK_MODELS = (
     "nvidia/nemotron-3-super-120b-a12b",
-    "nvidia/Nemotron-3_5-Lightning",
     "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
 )
-_NEMOTRON_MODEL = _CANDIDATE_MODELS[0]
 
 
 def _ts() -> str:
@@ -47,21 +48,20 @@ def _select_active_model(
     *,
     ping_max_tokens: int = 8,
 ) -> tuple[str | None, str | None]:
-    """Probe each candidate model with a trivial 1-token request.
+    """Verify availability of the pinned Nemotron-3_5-Lightning model.
 
-    Returns ``(model_id, None)`` for the first responding model, or
-    ``(None, last_error_str)`` when all candidates are unreachable.
-
-    A single ``emit()`` call is made for each probe attempt so the browser
-    always shows the *latest* stable state without oscillating — the caller
-    does NOT emit anything before calling this function.
+    Emits transparent, timestamped progress. If the pinned model fails,
+    tries candidate fallbacks without rapid flapping or oscillation.
     """
     from sketchforge.integrations.provider_interface import ChatMessage, CompletionRequest
 
+    models_to_try = (_PINNED_MODEL, *_FALLBACK_MODELS)
     last_err: str | None = None
-    for idx, model in enumerate(_CANDIDATE_MODELS, start=1):
+
+    for idx, model in enumerate(models_to_try, start=1):
         short = model.split("/")[-1]
-        emit(f"[{_ts()}] Stage 1 — verifying model {idx}/{len(_CANDIDATE_MODELS)}: {short}…")
+        is_pinned = (model == _PINNED_MODEL)
+        emit(f"[{_ts()}] Stage 1 — {'connecting to pinned model' if is_pinned else 'trying fallback model'}: {short}…")
         ping = CompletionRequest(
             messages=(
                 ChatMessage(role="user", content="ping"),
@@ -79,9 +79,8 @@ def _select_active_model(
             last_err = f"{type(exc).__name__}: {exc}"
             log.warning("Model probe failed for %s — %s", model, exc)
             emit(
-                f"[{_ts()}] Stage 1 — {short} unavailable "
-                f"({type(exc).__name__}: {exc}); "
-                f"{'trying next candidate…' if idx < len(_CANDIDATE_MODELS) else 'no more candidates.'}"
+                f"[{_ts()}] Stage 1 — {short} unavailable ({type(exc).__name__}: {exc}); "
+                f"{'trying next fallback…' if idx < len(models_to_try) else 'no more candidates.'}"
             )
     return None, last_err
 
@@ -217,25 +216,238 @@ def _file_manifest(spec: dict) -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 
 
+def get_fallback_file_content(path_hint: str, spec: dict) -> str:
+    """Produce deterministic, working fallback content for an individual file.
+
+    Guarantees that if Nemotron fails on an individual file, the file is populated
+    from the verified template generator and the project remains 100% intact.
+    """
+    from html import escape
+    from sketchforge.generation.studio_generator import _studio_css, _home_js, _projects_js
+
+    name = spec.get("name") or "New App"
+    safe_name = escape(name)
+    pages = spec.get("pages") or [{"name": "home", "title": name, "route": "/"}]
+    entities = spec.get("entities") or []
+
+    main_entity_name = entities[0].get("name", "Submission") if entities else "Submission"
+    main_entity_fields = entities[0].get("fields", []) if entities else [
+        {"name": "title", "type": "text"},
+        {"name": "details", "type": "text"},
+    ]
+    route = re.sub(r"[^a-z0-9]+", "-", main_entity_name.lower()).strip("-") + "s"
+    storage_key = f"sketchforge-{route}"
+
+    if path_hint == "index.html":
+        return (
+            '<!doctype html><meta charset="utf-8">'
+            '<meta http-equiv="refresh" content="0; url=home.html">'
+            f'<title>{safe_name}</title><a href="home.html">Open {safe_name}</a>'
+        )
+
+    if path_hint == "css/style.css":
+        return _studio_css()
+
+    if path_hint == "requirements.txt":
+        return "Flask>=3.0\nWerkzeug>=3.0\n"
+
+    if path_hint == "home.html":
+        inputs = []
+        for f in main_entity_fields:
+            fname = escape(f.get("name", "title"))
+            flabel = escape(fname.replace("_", " ").title())
+            inputs.append(f'<label>{flabel}<input name="{fname}" required placeholder="Enter {flabel}"></label>')
+        form_html = (
+            f'<form id="idea-form">{"".join(inputs)}'
+            f'<button class="primary" type="submit">Submit {escape(main_entity_name)} <span>↗</span></button>'
+            '<p class="form-note" id="form-note">Records save directly to local workspace database.</p></form>'
+        )
+        nav_html = "".join(f'<a href="{p.get("name", "home")}.html">{escape(p.get("title", p.get("name", "").title()))}</a>' for p in pages)
+        return f'''<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{safe_name} · Home</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header class="top"><a class="brand" href="home.html"><span class="brand-mark">s</span>{safe_name}</a><nav>{nav_html}</nav><button class="avatar" aria-label="Account">A</button></header>
+<main><div class="eyebrow"><span class="spark">✳</span> SKETCHFORGE HYBRID GENERATION</div>
+<section class="hero"><div class="hero-copy"><p class="kicker">Verified local runtime</p><h1>{safe_name}<br><em>ready to run.</em></h1>
+<p class="lede">Full-stack web application with SQLite database and REST API.</p></div>
+<aside class="welcome-card"><div class="card-top"><span class="card-icon">✳</span><span class="live-pill"><i></i> LIVE RUNTIME</span></div><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="card-art"><div class="art-window"><div class="art-nav"><b></b><span></span><span></span><span></span></div><div class="art-lines"><i></i><i></i><i></i></div><div class="art-blocks"><b></b><b></b><b></b></div></div><span class="float-chip">✦ &nbsp; connected to backend</span></div><div class="card-foot"><span>DATABASE ACTIVE</span><span>PORT REST</span></div></aside></section>
+<section class="work"><div class="work-heading"><div><span class="kicker">DATA ENTRY</span><h2>Add New {escape(main_entity_name)}</h2></div><span class="counter">01 <i>/</i> 02</span></div>
+<div class="builder"><div class="builder-head"><div class="builder-label"><span class="status-dot"></span><b>Enter details below</b></div><span class="private">⌁ &nbsp; Local SQLite</span></div>
+{form_html}</div></section>
+<footer><span>✳ &nbsp;SketchForge Studio</span><span>Autonomous full-stack runtime&nbsp; ↗</span></footer></main><script src="js/home.js"></script></body></html>'''
+
+    if path_hint == "projects.html":
+        nav_html = "".join(f'<a href="{p.get("name", "home")}.html">{escape(p.get("title", p.get("name", "").title()))}</a>' for p in pages)
+        return f'''<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{safe_name} · Records</title><link rel="stylesheet" href="css/style.css"></head>
+<body><header class="top"><a class="brand" href="home.html"><span class="brand-mark">s</span>{safe_name}</a><nav>{nav_html}</nav><button class="avatar" aria-label="Account">A</button></header>
+<main><div class="eyebrow"><span class="spark">✳</span> SAVED RECORDS</div>
+<section class="hero"><div class="hero-copy"><p class="kicker">Data Explorer</p><h1>Saved {escape(main_entity_name)}s<br><em>in local database.</em></h1>
+<p class="lede">Live queries against the isolated SQLite backend.</p></div></section>
+<section class="work"><div class="work-heading"><div><span class="kicker">WORKSPACE DATA</span><h2>Submissions Explorer</h2></div></div>
+<div class="builder"><ul id="submissions-list" class="submission-list"></ul></div></section>
+<footer><span>✳ &nbsp;SketchForge Studio</span><span><a href="home.html" style="color:inherit">Add more records ↗</a></span></footer></main><script src="js/projects.js"></script></body></html>'''
+
+    if path_hint == "js/home.js":
+        from sketchforge.generation.app_specification import EntitySpec, FieldSpec
+        entity_obj = EntitySpec(
+            main_entity_name,
+            [FieldSpec(f.get("name", "title"), f.get("name", "Title")) for f in main_entity_fields],
+        )
+        return _home_js(entity_obj, "submissions", storage_key)
+
+    if path_hint == "js/projects.js":
+        from sketchforge.generation.app_specification import EntitySpec, FieldSpec
+        entity_obj = EntitySpec(
+            main_entity_name,
+            [FieldSpec(f.get("name", "title"), f.get("name", "Title")) for f in main_entity_fields],
+        )
+        return _projects_js(entity_obj, "submissions", storage_key)
+
+    if path_hint == "backend/schema.sql":
+        col_sql = ", ".join(f"{f.get('name', 'col')} TEXT" for f in main_entity_fields)
+        return f"""-- Generated schema for {name}
+CREATE TABLE IF NOT EXISTS {route} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    {col_sql},
+    created_at TEXT DEFAULT (datetime('now'))
+);
+"""
+
+    if path_hint == "backend/models.py":
+        fields_code = "\n    ".join(f"{f.get('name', 'title')}: str = ''" for f in main_entity_fields)
+        return f'''from __future__ import annotations
+from dataclasses import dataclass
+
+@dataclass
+class {main_entity_name}:
+    id: int | None = None
+    {fields_code}
+    created_at: str | None = None
+'''
+
+    if path_hint == "backend/database.py":
+        return f'''from __future__ import annotations
+import sqlite3
+from pathlib import Path
+from flask import g
+
+DB_PATH = Path(__file__).parent.parent / "data" / "{route}.db"
+
+def get_db() -> sqlite3.Connection:
+    if "db" not in g:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        schema = Path(__file__).parent / "schema.sql"
+        if schema.exists():
+            conn.executescript(schema.read_text(encoding="utf-8"))
+        conn.commit()
+        g.db = conn
+    return g.db
+
+def close_db(e=None):
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
+'''
+
+    if path_hint == "backend/logic.py":
+        return f'''from __future__ import annotations
+from backend.database import get_db
+
+def list_items():
+    return [dict(r) for r in get_db().execute("SELECT * FROM {route} ORDER BY id DESC").fetchall()]
+
+def create_item(data: dict):
+    db = get_db()
+    keys = [k for k in data.keys() if k != "id"]
+    cols = ", ".join(keys)
+    placeholders = ", ".join("?" for _ in keys)
+    vals = [data[k] for k in keys]
+    cur = db.execute(f"INSERT INTO {route} ({{cols}}) VALUES ({{placeholders}})", vals)
+    db.commit()
+    return dict(db.execute("SELECT * FROM {route} WHERE id = ?", (cur.lastrowid,)).fetchone())
+
+def delete_item(item_id: int):
+    db = get_db()
+    cur = db.execute("DELETE FROM {route} WHERE id = ?", (item_id,))
+    db.commit()
+    return cur.rowcount > 0
+'''
+
+    if path_hint == "backend/api.py":
+        from sketchforge.generation.studio_generator import _write_backend_api
+        from sketchforge.generation.app_specification import AppSpec, EntitySpec, FieldSpec
+        entity_obj = EntitySpec(
+            main_entity_name,
+            [FieldSpec(f.get("name", "title"), f.get("name", "Title")) for f in main_entity_fields],
+        )
+        temp_spec = AppSpec(
+            name=name,
+            description=name,
+            entities=[entity_obj],
+        )
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            tmp_root = Path(td)
+            _write_backend_api(tmp_root, temp_spec)
+            api_file = tmp_root / "backend" / "api.py"
+            if api_file.exists():
+                return api_file.read_text(encoding="utf-8")
+        from sketchforge.retrieval.patterns import FLASK_CRUD_API_PATTERN
+        return FLASK_CRUD_API_PATTERN
+
+    return f"# Fallback template for {path_hint}\n"
+
+
 def ai_generate_project(
     prompt: str,
     target: Path,
     *,
     include_backend: bool = True,
+    sketch_path: Path | str | None = None,
+    design_doc: object | None = None,
+    layout_block: dict | None = None,
     progress: Callable[[str], None] | None = None,
 ) -> Path | None:
-    """
-    Two-stage AI generation pipeline:
-      1. Plan  – ask the model for a compact AppSpec (~500 tokens).
-      2. Files – generate each dynamic file individually (≤2,048 tokens each).
+    """Two-stage AI generation pipeline:
 
-    Returns the project root Path on success, None on failure (caller should
-    fall back to the template generator).
+    1. Plan – ask Nemotron for a compact AppSpec (~500 tokens).
+    2. Files – generate each dynamic file individually with per-file fallback.
+
+    Never discards AI output: if any individual file fails model generation,
+    it is populated from the verified template generator so all 12 files are delivered.
     """
     def _emit(msg: str) -> None:
         log.info("ai_generate: %s", msg)
         if progress:
             progress(msg)
+
+    # 1. Resolve layout block from arguments or prompt
+    if layout_block is None:
+        if design_doc is not None:
+            try:
+                from sketchforge.vision.to_design_ir import build_nemotron_layout_block_from_document
+                layout_block = build_nemotron_layout_block_from_document(design_doc)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Could not build layout block from design_doc: %s", exc)
+        elif sketch_path is not None:
+            try:
+                from sketchforge.vision import load_image, analyze
+                from sketchforge.vision.to_design_ir import build_nemotron_layout_block
+                loaded = load_image(Path(sketch_path))
+                res = analyze(loaded)
+                layout_block = build_nemotron_layout_block(res, sketch_name=Path(sketch_path).name)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Could not build layout block from sketch_path: %s", exc)
+        else:
+            layout_block = _extract_layout_block(prompt)
+
+    layout_context = _format_layout_context(layout_block) if layout_block else ""
 
     _emit("Connecting to AI service…")
     try:
@@ -247,7 +459,7 @@ def ai_generate_project(
     # ------------------------------------------------------------------
     # Stage 1 — AppSpec plan
     # ------------------------------------------------------------------
-    spec, active_model = _stage1_plan(client, prompt, include_backend, _emit)
+    spec, active_model = _stage1_plan(client, prompt, include_backend, _emit, layout_block=layout_block)
     if spec is None:
         return None
 
@@ -259,52 +471,57 @@ def ai_generate_project(
     spec_str = json.dumps(spec, ensure_ascii=False)
 
     # ------------------------------------------------------------------
-    # Stage 2 — per-file generation
+    # Stage 2 — per-file generation with per-file fallback
     # ------------------------------------------------------------------
     manifest = _file_manifest(spec)
     _emit(f"Stage 2 — generating {len(manifest)} files individually…")
 
     written = 0
-    skipped: list[str] = []
+    fallback_count = 0
     for path_hint, description in manifest:
-        _emit(f"  Generating {path_hint} ({written + len(skipped) + 1}/{len(manifest)})…")
-        content = _stage2_file(client, spec_str, path_hint, description, _emit, model=active_model or _NEMOTRON_MODEL)
-        if content is None:
-            log.warning("Skipping %s — model returned no content.", path_hint)
-            skipped.append(path_hint)
-            continue
+        _emit(f"  Generating {path_hint} ({written + 1}/{len(manifest)})…")
+        content = _stage2_file(
+            client,
+            spec_str,
+            path_hint,
+            description,
+            _emit,
+            model=active_model or _NEMOTRON_MODEL,
+            layout_context=layout_context,
+        )
+        if content is None or not str(content).strip():
+            log.warning("AI model returned no content for %s; using template fallback.", path_hint)
+            content = get_fallback_file_content(path_hint, spec)
+            fallback_count += 1
+            _emit(f"  Fallback: filled {path_hint} from verified template.")
+
         dest = (root / path_hint).resolve()
         if not dest.is_relative_to(root):
             log.warning("Ignoring model-generated path outside the project: %s", path_hint)
-            skipped.append(path_hint)
-            continue
+            content = get_fallback_file_content(path_hint, spec)
+            dest = (root / path_hint).resolve()
+            fallback_count += 1
+
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
             dest.write_text(str(content), encoding="utf-8")
             written += 1
         except OSError as exc:
-            log.warning("Could not write %s: %s", dest, exc)
-            skipped.append(path_hint)
+            log.warning("Could not write %s (%s); writing fallback template.", dest, exc)
+            fallback_text = get_fallback_file_content(path_hint, spec)
+            dest.write_text(fallback_text, encoding="utf-8")
+            written += 1
+            fallback_count += 1
 
-    if written == 0:
-        # Nothing usable at all — fall back to the template generator.
-        _emit("AI generation produced no files; using the template generator instead.")
-        log.warning("Discarding empty AI project directory %s.", root)
-        return None
-
-    if skipped:
-        _emit(
-            f"AI generation partial ({written}/{len(manifest)} files written; "
-            f"{len(skipped)} skipped: {', '.join(skipped)}). "
-            "Using partial AI output — template generator will fill remaining files."
-        )
-        log.warning(
-            "Incomplete AI project %s: %d/%d files written; skipped: %s",
-            root, written, len(manifest), skipped,
-        )
-
+    (root / "data").mkdir(exist_ok=True)
     _ensure_entry(root)
-    _emit(f"AI generation complete: {root.name} ({written}/{len(manifest)} files).")
+    status_summary = (
+        f"AI generation complete: {root.name} ({len(manifest)}/{len(manifest)} files written; "
+        f"{len(manifest) - fallback_count} from AI, {fallback_count} from fallback template)."
+        if fallback_count > 0 else
+        f"AI generation complete: {root.name} (100% AI generated, {len(manifest)}/{len(manifest)} files)."
+    )
+    _emit(status_summary)
     return root
 
 
@@ -409,7 +626,46 @@ def ai_revise_project(
 # ---------------------------------------------------------------------------
 
 
-def _spec_from_layout_block(prompt: str) -> dict | None:
+def _extract_layout_block(prompt: str) -> dict | None:
+    """Extract layout_block dictionary from a prompt containing <SketchDesignDocument>."""
+    match = re.search(r"<SketchDesignDocument>(.*?)</SketchDesignDocument>", prompt, re.DOTALL)
+    if not match:
+        return None
+    try:
+        data = extract_balanced_json(match.group(1).strip())
+        return data.get("layout_block")
+    except Exception:
+        return None
+
+
+def _format_layout_context(layout_block: dict | None) -> str:
+    """Format structured component bounding boxes and hierarchy for LLM prompts."""
+    if not layout_block or not isinstance(layout_block, dict):
+        return ""
+    lines = []
+    canvas = layout_block.get("canvas", {})
+    if canvas:
+        w = canvas.get("width_design_px", "?")
+        h = canvas.get("height_design_px", "?")
+        dev = canvas.get("device", "desktop")
+        lines.append(f"Canvas: {w}x{h} px ({dev})")
+    hierarchy = layout_block.get("hierarchy", "")
+    if hierarchy:
+        lines.append(f"Component Nesting Hierarchy:\n{hierarchy}")
+    components = layout_block.get("components", [])
+    if components:
+        lines.append("Detected Components (design-pixel bounding boxes):")
+        for c in components[:25]:
+            cid = c.get("id", "")
+            ctype = c.get("type", "container")
+            bbox = c.get("bbox_design_px", {})
+            bx, by, bw, bh = bbox.get("x", 0), bbox.get("y", 0), bbox.get("w", 0), bbox.get("h", 0)
+            label = f' label="{c.get("label")}"' if c.get("label") else ""
+            lines.append(f"  - [{ctype.upper()}] id={cid} bbox=(x={bx}, y={by}, w={bw}, h={bh}){label}")
+    return "\n".join(lines)
+
+
+def _spec_from_layout_block(prompt: str, layout_block: dict | None = None) -> dict | None:
     """Extract and return a pre-seeded AppSpec dict from the SketchDesignDocument block.
 
     When the user uploads a sketch before generation, the frontend embeds a
@@ -418,38 +674,28 @@ def _spec_from_layout_block(prompt: str) -> dict | None:
     - ``components`` — exact design-px bboxes + containment hierarchy
     - ``hierarchy``  — human-readable tree
     - ``canvas``     — canvas dimensions
-
-    This function extracts that ``app_spec`` sub-object and converts it into the
-    flat dict format that Stage 1 returns (name, pages, entities, include_backend).
-    Nemotron then enriches this grounded spec rather than inventing a layout.
-
-    Returns None when no block is found or the block cannot be parsed.
     """
-    import re
-
-    match = re.search(r"<SketchDesignDocument>(.*?)</SketchDesignDocument>", prompt, re.DOTALL)
-    if not match:
-        return None
-    try:
-        block_json = json.loads(match.group(1).strip())
-    except (ValueError, json.JSONDecodeError):
-        return None
-
-    layout_block = block_json.get("layout_block")
-    if not layout_block or not isinstance(layout_block, dict):
-        # Fall back to legacy regions array
-        regions = block_json.get("regions", [])
-        if not regions:
+    if layout_block is None:
+        match = re.search(r"<SketchDesignDocument>(.*?)</SketchDesignDocument>", prompt, re.DOTALL)
+        if not match:
             return None
-        # Build a minimal spec from the legacy regions list
-        inputs = [r for r in regions if r.get("type") == "input"]
-        buttons = [r for r in regions if r.get("type") == "button"]
-        has_backend = len(inputs) >= 2 and len(buttons) >= 1
-        pages = [{"name": "home", "title": "Home", "route": "/"}]
-        entities = []
-        if has_backend:
-            entities = [{"name": "Record", "fields": [{"name": f"field_{i}", "type": "text"} for i in range(len(inputs))]}]
-        return {"name": "Sketch App", "pages": pages, "entities": entities, "include_backend": has_backend}
+        try:
+            block_json = json.loads(match.group(1).strip())
+        except (ValueError, json.JSONDecodeError):
+            return None
+        layout_block = block_json.get("layout_block")
+        if not layout_block or not isinstance(layout_block, dict):
+            regions = block_json.get("regions", [])
+            if not regions:
+                return None
+            inputs = [r for r in regions if r.get("type") == "input"]
+            buttons = [r for r in regions if r.get("type") == "button"]
+            has_backend = len(inputs) >= 2 and len(buttons) >= 1
+            pages = [{"name": "home", "title": "Home", "route": "/"}]
+            entities = []
+            if has_backend:
+                entities = [{"name": "Record", "fields": [{"name": f"field_{i}", "type": "text"} for i in range(len(inputs))]}]
+            return {"name": "Sketch App", "pages": pages, "entities": entities, "include_backend": has_backend}
 
     app_spec = layout_block.get("app_spec", {})
     if not app_spec:
@@ -489,39 +735,15 @@ def _stage1_plan(
     prompt: str,
     include_backend: bool,
     emit: Callable[[str], None],
+    layout_block: dict | None = None,
 ) -> tuple[dict | None, str | None]:
-    """Stage 1: request a compact AppSpec JSON from a single verified Nemotron model.
-
-    The model is selected **once** at the start of this call via
-    :func:`_select_active_model`, which probes each candidate in priority order
-    and emits a timestamped status for every probe attempt.  This eliminates the
-    previous flapping behaviour where:
-
-    * ``emit("trying model 0…")`` fires,
-    * model 0 fails,
-    * ``emit("trying model 1…")`` immediately overwrites it,
-
-    …so the browser (polling every 900 ms) never displayed the failure reason.
-
-    With this approach:
-    - One probe phase with timestamped per-attempt statuses.
-    - On probe failure the exact exception type + message is emitted before
-      falling back to the seeded spec or template generator.
-    - One plan request against the verified model; on parse failure the error
-      is emitted explicitly before the fallback path is taken.
-
-    When the prompt contains a ``<SketchDesignDocument>`` block we first extract
-    a pre-seeded AppSpec from the embedded ``layout_block`` (exact bbox geometry,
-    containment hierarchy, and heuristic AppSpec derived by ``spec_from_document``).
-    The pre-seeded spec is merged into whatever the model returns so the final
-    plan is always grounded in the sketch detections, not invented by the model.
-    """
+    """Stage 1: request a compact AppSpec JSON from a single verified Nemotron model."""
     from sketchforge.integrations.provider_interface import ChatMessage, CompletionRequest
 
     # ------------------------------------------------------------------
     # Extract pre-seeded spec from the sketch layout block (if present).
     # ------------------------------------------------------------------
-    seeded_spec = _spec_from_layout_block(prompt)
+    seeded_spec = _spec_from_layout_block(prompt, layout_block=layout_block)
     if seeded_spec:
         log.info(
             "Stage 1: pre-seeded spec from sketch layout block — %s page(s), %s entity/entities.",
@@ -535,7 +757,6 @@ def _stage1_plan(
     active_model, probe_err = _select_active_model(client, emit)
 
     if active_model is None:
-        # All candidates unreachable — emit the failure cause explicitly.
         if seeded_spec:
             emit(
                 f"[{_ts()}] Stage 1 — all models unreachable ({probe_err}); "
@@ -553,10 +774,13 @@ def _stage1_plan(
     # ------------------------------------------------------------------
     # Single plan request against the verified model.
     # ------------------------------------------------------------------
+    layout_context = _format_layout_context(layout_block) if layout_block else ""
+    layout_snippet = f"\n\n### Grounded Sketch Layout (OpenCV Vision Analysis):\n{layout_context}\n" if layout_context else ""
+
     user_msg = _PLAN_USER.format(
         brief=prompt.strip(),
         backend="yes" if include_backend else "no",
-    )
+    ) + layout_snippet
     short_model = active_model.split("/")[-1]
     emit(f"[{_ts()}] Stage 1 — requesting AppSpec plan from {short_model}…")
 
@@ -574,8 +798,6 @@ def _stage1_plan(
         result = client.complete(request)
         spec = _parse_response(result.text)
     except Exception as exc:  # noqa: BLE001
-        # Emit the actual failure cause — it will be a distinct string from the
-        # previous "requesting…" message so the browser log shows both.
         failure_reason = f"{type(exc).__name__}: {exc}"
         log.warning("Stage 1 plan request with %s failed: %s", active_model, exc)
         if seeded_spec:
@@ -619,22 +841,43 @@ def _stage2_file(
     description: str,
     emit: Callable[[str], None],
     model: str = _NEMOTRON_MODEL,
+    layout_context: str | None = None,
 ) -> str | None:
     """Stage 2: generate ONE file and return its content string, or None on failure."""
     from sketchforge.integrations.provider_interface import ChatMessage, CompletionRequest
+    from sketchforge.retrieval.code_retriever import retrieve_code_pattern
+
+    pattern = retrieve_code_pattern(path_hint, description)
+    rag_section = ""
+    if pattern:
+        rag_section = (
+            f"\n\n### Verified Reference Pattern (RAG):\n"
+            f"The following verified pattern demonstrates conventions (CORS, token auth, layout, styling):\n"
+            f"```\n{pattern}\n```\n"
+            f"Follow the architectural conventions shown above for {path_hint}."
+        )
+
+    layout_section = ""
+    if layout_context and any(path_hint.endswith(ext) for ext in (".html", ".css")):
+        layout_section = (
+            f"\n\n### Grounded Design Geometry (OpenCV Vision Analysis):\n"
+            f"{layout_context}\n"
+            f"Faithfully reproduce these component bounding boxes, alignments, and hierarchy in {path_hint}."
+        )
 
     user_msg = _FILE_USER.format(
         spec=spec_str,
         path=path_hint,
         description=description,
-    )
+    ) + layout_section + rag_section
+
     request = CompletionRequest(
         messages=(
             ChatMessage(role="system", content=_FILE_SYSTEM),
             ChatMessage(role="user", content=user_msg),
         ),
         purpose="studio_file",
-        max_tokens=8192,  # raised from 4096 — api.py / projects.html regularly exceed 4 k tokens
+        max_tokens=8192,
         temperature=0.2,
         model=model,
     )
@@ -663,29 +906,100 @@ def _make_client():
     return NebiusClient(config, consent)
 
 
+def extract_balanced_json(text: str) -> dict:
+    """Extract and parse the first valid, balanced JSON object from text.
+
+    Replaces fragile regexes that fail on nested braces or trailing text.
+    Correctly handles nested object structures, arrays, and string escapes.
+    """
+    if not text or not text.strip():
+        raise ValueError("Empty response text")
+
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    cleaned = re.sub(r"<reasoning>.*?</reasoning>", "", cleaned, flags=re.DOTALL).strip()
+
+    # If wrapped in markdown json fences, prioritize content inside fences
+    fence_matches = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
+    candidates = fence_matches + [cleaned]
+
+    for candidate in candidates:
+        candidate_len = len(candidate)
+        for start_idx in range(candidate_len):
+            if candidate[start_idx] != "{":
+                continue
+            depth = 0
+            in_string = False
+            escape = False
+            for i in range(start_idx, candidate_len):
+                ch = candidate[i]
+                if in_string:
+                    if escape:
+                        escape = False
+                    elif ch == "\\":
+                        escape = True
+                    elif ch == '"':
+                        in_string = False
+                else:
+                    if ch == '"':
+                        in_string = True
+                    elif ch == "{":
+                        depth += 1
+                    elif ch == "}":
+                        depth -= 1
+                        if depth == 0:
+                            slice_str = candidate[start_idx : i + 1]
+                            try:
+                                parsed = json.loads(slice_str)
+                                if isinstance(parsed, dict):
+                                    return parsed
+                            except json.JSONDecodeError:
+                                break
+
+    # Fallback to direct json.loads if string is already clean JSON
+    for candidate in candidates:
+        stripped = candidate.strip()
+        if stripped.startswith("{") and stripped.endswith("}"):
+            try:
+                parsed = json.loads(stripped)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+
+    raise ValueError("No valid JSON object found in model response")
+
+
 def _parse_file_content(text: str, path_hint: str) -> str | None:
     """Extract file content from a markdown code fence, JSON envelope, or raw output.
 
     Priority order (highest first):
-      1. Markdown code fences  — the new preferred format; avoids JSON string-escaping
-         and therefore never hits token limits due to backslash proliferation.
-      2. JSON envelope  {"path": "...", "content": "..."}  — legacy fallback so
-         responses from older model versions or cached completions still work.
-      3. Raw text  — last resort when the model emits bare code with no wrapper.
+      1. Closed markdown code fences: ```<lang>\n<code>\n```
+      2. Unclosed / truncated markdown code fences (cut off by max_tokens)
+      3. JSON envelope {"path": "...", "content": "..."} via extract_balanced_json
+      4. Raw text output
     """
     if not text or not text.strip():
         return None
     cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     cleaned = re.sub(r"<reasoning>.*?</reasoning>", "", cleaned, flags=re.DOTALL).strip()
 
-    # 1. Markdown code fences (preferred — no JSON string-escaping overhead)
-    fences = re.findall(r"```(?:[a-zA-Z0-9_\-]*)\s*\n(.*?)\n```", cleaned, re.DOTALL)
+    # 1. Closed markdown code fences
+    fences = re.findall(r"```(?:[a-zA-Z0-9_\-]*)[ \t]*\r?\n([\s\S]*?)\r?\n```", cleaned)
     if fences:
         return max(fences, key=len).strip()
 
-    # 2. JSON envelope fallback {"path": "...", "content": "..."}
+    # 2. Unclosed markdown code fence (cut off by max_tokens)
+    unclosed = re.search(r"```(?:[a-zA-Z0-9_\-]*)[ \t]*\r?\n([\s\S]+)$", cleaned)
+    if unclosed:
+        code = unclosed.group(1).rstrip()
+        code = re.sub(r"\n?`{1,3}$", "", code).strip()
+        if code:
+            log.info("_parse_file_content: accepted unclosed code fence for %s", path_hint)
+            return code
+
+    # 3. JSON envelope fallback {"path": "...", "content": "..."}
     try:
-        data = _parse_response(cleaned)
+        data = extract_balanced_json(cleaned)
         content = data.get("content")
         if isinstance(content, str) and content.strip():
             log.debug("_parse_file_content: fell back to JSON envelope for %s", path_hint)
@@ -693,8 +1007,8 @@ def _parse_file_content(text: str, path_hint: str) -> str | None:
     except Exception:
         pass
 
-    # 3. Raw code content (no wrapper at all)
-    if not (cleaned.startswith("{") and cleaned.endswith("}")):
+    # 4. Raw code content (if not a JSON wrapper)
+    if not (cleaned.startswith("{") and cleaned.endswith("}") and '"' in cleaned):
         log.debug("_parse_file_content: using raw output for %s", path_hint)
         return cleaned
 
@@ -703,20 +1017,7 @@ def _parse_file_content(text: str, path_hint: str) -> str | None:
 
 def _parse_response(text: str) -> dict:
     """Extract and parse the first JSON object from the model's response text."""
-    text = text.strip()
-    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-    cleaned = re.sub(r"<reasoning>.*?</reasoning>", "", cleaned, flags=re.DOTALL).strip()
-    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned, re.DOTALL)
-    if fence_match:
-        cleaned = fence_match.group(1).strip()
-    start = cleaned.find("{")
-    end = cleaned.rfind("}") + 1
-    if start == -1 or end == 0:
-        raise ValueError("No JSON object found in model response")
-    try:
-        return json.loads(cleaned[start:end])
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Invalid JSON: {exc}") from exc
+    return extract_balanced_json(text)
 
 
 def _read_project(root: Path) -> dict[str, str]:

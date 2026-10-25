@@ -23,6 +23,9 @@ _PREVIEWS: dict[str, str] = {}
 _PREVIEW_SERVERS: list[ThreadingHTTPServer] = []
 _BACKENDS: list[object] = []
 _LOCK = threading.Lock()
+# Tracks the job_id of the currently running generation/revision job.
+# Only one job may run at a time; a second submit is rejected with 409.
+_ACTIVE_JOB: str | None = None
 _WEB_ROOT = Path(__file__).with_name("web_studio")
 
 
@@ -183,13 +186,40 @@ class StudioHandler(BaseHTTPRequestHandler):
                     self._json(400, {"error": "Describe the app you want to create."})
                     return
                 job_id = uuid.uuid4().hex[:12]
+                cancel_event = threading.Event()
+                from sketchforge.orchestration.hybrid_orchestrator import get_hybrid_orchestrator
+                hjob = get_hybrid_orchestrator().create_job(prompt, job_id=job_id)
                 with _LOCK:
-                    _JOBS[job_id] = {"status": "running", "progress": "Starting generation…"}
+                    global _ACTIVE_JOB
+                    if _ACTIVE_JOB is not None:
+                        active_id = _ACTIVE_JOB
+                        self._json(409, {
+                            "error": "A generation job is already running.",
+                            "active_job_id": active_id,
+                        })
+                        return
+                    _ACTIVE_JOB = job_id
+                    _JOBS[job_id] = {
+                        "status": "running",
+                        "progress": "Starting generation…",
+                        "cancel": cancel_event,
+                        "state": hjob.state.value,
+                    }
                 if self.path.startswith("/api/revise/"):
                     slug = unquote(self.path.rsplit("/", 1)[-1])
-                    threading.Thread(target=self._revise, args=(job_id, slug, prompt), daemon=True).start()
+                    threading.Thread(
+                        target=self._revise,
+                        args=(job_id, slug, prompt, cancel_event),
+                        daemon=True,
+                        name=f"sketchforge-revise-{job_id}",
+                    ).start()
                 else:
-                    threading.Thread(target=self._generate, args=(job_id, prompt), daemon=True).start()
+                    threading.Thread(
+                        target=self._generate,
+                        args=(job_id, prompt, cancel_event),
+                        daemon=True,
+                        name=f"sketchforge-generate-{job_id}",
+                    ).start()
                 self._json(202, {"id": job_id})
             except (ValueError, TypeError, json.JSONDecodeError) as exc:
                 self._json(400, {"error": f"Invalid request: {exc}"})
@@ -199,39 +229,99 @@ class StudioHandler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_DELETE(self) -> None:  # noqa: N802
-        if self.path.startswith("/api/"):
+        if self.path.startswith("/api/jobs/"):
+            job_id = self.path.rsplit("/", 1)[-1]
+            from sketchforge.orchestration.hybrid_orchestrator import get_hybrid_orchestrator
+            get_hybrid_orchestrator().cancel_job(job_id)
+            with _LOCK:
+                job = _JOBS.get(job_id)
+            if job is None:
+                self._json(404, {"error": "Job not found."})
+                return
+            cancel: threading.Event | None = job.get("cancel")
+            if cancel is not None:
+                cancel.set()
+            with _LOCK:
+                _JOBS[job_id]["status"] = "cancelled"
+                _JOBS[job_id]["progress"] = "Cancellation requested."
+            self._json(200, {"cancelled": job_id})
+        elif self.path.startswith("/api/"):
             self._proxy_api("DELETE")
         else:
             self.send_error(404)
 
-    def _generate(self, job_id: str, prompt: str) -> None:
+    def _generate(self, job_id: str, prompt: str, cancel: threading.Event) -> None:
         def progress(message: str) -> None:
             with _LOCK:
-                _JOBS[job_id]["progress"] = message
+                if job_id in _JOBS:
+                    _JOBS[job_id]["progress"] = message
+
+        def _release_lock() -> None:
+            global _ACTIVE_JOB
+            with _LOCK:
+                if _ACTIVE_JOB == job_id:
+                    _ACTIVE_JOB = None
 
         try:
+            if cancel.is_set():
+                with _LOCK:
+                    _JOBS[job_id].update(status="cancelled", progress="Cancelled before start.")
+                return
             root = generate_studio_project(
                 prompt, repo_root() / "output" / "projects", progress=progress
             )
+            if cancel.is_set():
+                with _LOCK:
+                    _JOBS[job_id].update(status="cancelled", progress="Cancelled after generation.")
+                return
             slug = root.name
             progress("Starting preview server and SQLite API…")
             preview_url = _start_project_preview(slug, root)
+
+            # Verification & discrepancy repair loop
+            discrepancy_data = None
+            try:
+                from sketchforge.verification.discrepancy_repair import run_discrepancy_repair_loop
+                report = run_discrepancy_repair_loop(
+                    project_root=root,
+                    preview_url=preview_url,
+                    design_doc=None,
+                    max_attempts=1,
+                    progress=progress,
+                )
+                discrepancy_data = report.to_dict()
+            except Exception as d_exc:  # noqa: BLE001
+                log.warning("Discrepancy verification skipped: %s", d_exc)
+
             with _LOCK:
                 _PROJECTS[slug] = root
                 _PREVIEWS[slug] = preview_url
-                _JOBS[job_id].update(status="complete", project={"name": root.name, "slug": slug,
-                                                                    "preview_url": preview_url})
+                _JOBS[job_id].update(
+                    status="complete",
+                    project={"name": root.name, "slug": slug, "preview_url": preview_url},
+                    discrepancy=discrepancy_data,
+                )
         except Exception as exc:  # noqa: BLE001
             log.exception("Web studio generation failed")
             with _LOCK:
                 _JOBS[job_id].update(status="failed", error=str(exc))
+        finally:
+            _release_lock()
 
-    def _revise(self, job_id: str, slug: str, instruction: str) -> None:
+    def _revise(self, job_id: str, slug: str, instruction: str, cancel: threading.Event) -> None:
         with _LOCK:
             root = _PROJECTS.get(slug)
+
+        def _release_lock() -> None:
+            global _ACTIVE_JOB
+            with _LOCK:
+                if _ACTIVE_JOB == job_id:
+                    _ACTIVE_JOB = None
+
         if root is None:
             with _LOCK:
                 _JOBS[job_id].update(status="failed", error="Generated project is no longer available.")
+            _release_lock()
             return
 
         def progress(message: str) -> None:
@@ -239,8 +329,16 @@ class StudioHandler(BaseHTTPRequestHandler):
                 _JOBS[job_id]["progress"] = message
 
         try:
+            if cancel.is_set():
+                with _LOCK:
+                    _JOBS[job_id].update(status="cancelled", progress="Cancelled before start.")
+                return
             from sketchforge.generation.ai_generator import ai_revise_project
             updated = ai_revise_project(root, instruction, progress=progress)
+            if cancel.is_set():
+                with _LOCK:
+                    _JOBS[job_id].update(status="cancelled", progress="Cancelled after revision.")
+                return
             if not updated:
                 raise RuntimeError("AI revision did not produce updated files. Check model configuration.")
             with _LOCK:
@@ -249,6 +347,8 @@ class StudioHandler(BaseHTTPRequestHandler):
             log.exception("Web studio revision failed")
             with _LOCK:
                 _JOBS[job_id].update(status="failed", error=str(exc))
+        finally:
+            _release_lock()
 
     def _serve_preview(self, path: str) -> None:
         parts = path.split("/", 3)
