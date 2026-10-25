@@ -125,6 +125,7 @@ def generate_studio_project(
     api_target: str = "flask",
     authentication: bool = False,
     migrations: bool = False,
+    try_ai: bool = True,
     progress: Callable[[str], None] | None = None,
 ) -> Path:
     """Materialise frontend and optional configurable backend files under ``target``.
@@ -138,7 +139,7 @@ def generate_studio_project(
 
     # AI-generated output has a fixed Flask/SQLite contract; use the canonical
     # target renderers whenever the user selected another backend combination.
-    if (database, orm, api_target, authentication, migrations) == ("sqlite", "dataclass", "flask", False, False):
+    if try_ai and (database, orm, api_target, authentication, migrations) == ("sqlite", "dataclass", "flask", False, False):
         try:
             from sketchforge.generation.ai_generator import ai_generate_project
             ai_root = ai_generate_project(brief, target, include_backend=include_backend, progress=progress)
@@ -251,6 +252,15 @@ When generated from within SketchForge Studio, supported API backends start auto
 {"- Install backend dependencies with `python -m pip install -r requirements.txt`." if include_backend else ""}
 {backend_notes}
 """, encoding="utf-8")
+    # The Studio must tell users which generator actually produced the project.
+    (root / ".sketchforge_meta.json").write_text(
+        json.dumps({
+            "generation": "template_fallback",
+            "ai_generated_count": 0,
+            "template_fallback_count": len(list(root.rglob("*"))),
+        }, indent=2),
+        encoding="utf-8",
+    )
     return root
 
 
@@ -445,7 +455,7 @@ _STUDIO_TOKEN: str | None = os.environ.get("STUDIO_TOKEN") or None
 @app.before_request
 def _require_token():
     """Reject /api/* requests that do not carry the correct session token."""
-    if not request.path.startswith("/api/"):
+    if not request.path.startswith("/api/") or request.path in ("/api/health", "/health"):
         return  # health / static routes pass through
     if request.method == "OPTIONS":
         return  # CORS pre-flight must not be gated

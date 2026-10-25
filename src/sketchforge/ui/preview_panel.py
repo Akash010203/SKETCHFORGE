@@ -201,10 +201,11 @@ class PreviewPanel(QTabWidget):
 
         # Start frontend static server
         self._start_server()
-        frontend_url = f"http://127.0.0.1:{self._server.server_port}/{index.name}"
+        frontend_origin = f"http://127.0.0.1:{self._server.server_port}"
+        frontend_url = f"{frontend_origin}/{index.name}"
 
         # Start backend API server if backend/api.py exists
-        backend_port = self._backend_server.start(project_root)
+        backend_port = self._backend_server.start(project_root, cors_origin=frontend_origin)
 
         # Build the URL we'll load in the web view.
         # When a backend is running we load a thin proxy HTML that rewrites /api/* requests.

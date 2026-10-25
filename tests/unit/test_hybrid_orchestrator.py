@@ -65,3 +65,26 @@ def test_orchestrator_run_pipeline_success(tmp_path):
         completed_job = orch.run_pipeline(job.id, tmp_path)
         assert completed_job.state == HybridJobState.COMPLETED
         assert completed_job.project_slug == "expense-manager"
+
+
+def test_orchestrator_refuses_sketch_backed_generation_after_analysis_failure(tmp_path):
+    orch = HybridOrchestrator()
+    job = orch.create_job("Build a sketch-backed app", sketch_data=b"not an image")
+
+    result = orch.run_pipeline(job.id, tmp_path)
+
+    assert result.state == HybridJobState.FAILED
+    assert result.status == "failed"
+    assert result.error and "Sketch analysis failed" in result.error
+
+
+def test_orchestrator_template_fallback_is_labeled(tmp_path):
+    orch = HybridOrchestrator()
+    job = orch.create_job("Build a note app")
+
+    with patch("sketchforge.generation.ai_generator.ai_generate_project", return_value=None):
+        result = orch.run_pipeline(job.id, tmp_path)
+
+    assert result.state == HybridJobState.COMPLETED
+    meta = (result.project_root / ".sketchforge_meta.json").read_text(encoding="utf-8")
+    assert '"generation": "template_fallback"' in meta

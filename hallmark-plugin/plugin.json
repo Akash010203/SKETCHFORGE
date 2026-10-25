@@ -1,0 +1,28 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hallmark",
+  "version": "2.0.0",
+  "description": "A design skill for building websites and pages that look designed, not generated.",
+  "homepage": "https://www.usehallmark.com/",
+  "repository": "https://github.com/Nutlope/hallmark",
+  "license": "MIT",
+  "keywords": [
+    "design",
+    "ui",
+    "web",
+    "anti-ai-slop",
+    "hallmark"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Hallmark",
+        "shortDescription": "Design websites that look made, not generated.",
+        "longDescription": "Hallmark provides a design workflow, theme references, and browser linting for building or redesigning distinctive web interfaces.",
+        "developerName": "Nutlope / Together AI",
+        "category": "Developer tools",
+        "capabilities": []
+      }
+    }
+  }
+}

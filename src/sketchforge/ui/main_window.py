@@ -100,7 +100,7 @@ class MainWindow(QMainWindow):
         self.training = TrainingPanel(controller)
         self.datasets = DatasetPanel(controller)
         self.progress = TaskProgress()
-        self.generator = GenerationPanel()
+        self.generator = GenerationPanel(self, controller=controller)
         self.setStyleSheet(_studio_stylesheet())
 
         # -- left tab widget --

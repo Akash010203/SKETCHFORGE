@@ -40,22 +40,34 @@ class _GenerateWorker(QObject):
     finished = Signal(str)   # project root path
     failed = Signal(str)     # error message
 
-    def __init__(self, prompt: str, output_base: Path, include_backend: bool, options: dict) -> None:
+    def __init__(self, prompt: str, output_base: Path, include_backend: bool, options: dict, design_doc: object = None) -> None:
         super().__init__()
         self._prompt = prompt
         self._output_base = output_base
         self._include_backend = include_backend
         self._options = options
+        self._design_doc = design_doc
 
     def run(self) -> None:  # called by QThread.started
         try:
-            root = generate_studio_project(
+            from sketchforge.generation.ai_generator import ai_generate_project
+            self.progress.emit("Starting generation with Nemotron-3_5-Lightning…")
+            root = ai_generate_project(
                 self._prompt,
                 self._output_base,
                 include_backend=self._include_backend,
-                **self._options,
+                design_doc=self._design_doc,
                 progress=lambda msg: self.progress.emit(msg),
             )
+            if not root or not Path(root).is_dir():
+                self.progress.emit("AI service unavailable; generating from verified templates…")
+                root = generate_studio_project(
+                    self._prompt,
+                    self._output_base,
+                    include_backend=self._include_backend,
+                    **self._options,
+                    progress=lambda msg: self.progress.emit(msg),
+                )
         except (OSError, ValueError, RuntimeError) as exc:
             self.failed.emit(str(exc))
         else:
@@ -99,8 +111,9 @@ class GenerationPanel(QWidget):
     generation_failed = Signal(str)
     status_message = Signal(str)
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent=None, controller=None) -> None:
         super().__init__(parent)
+        self.controller = controller
         self.setObjectName("generationPanel")
         self._output_base = repo_root() / "output" / "projects"
         self._current_project_root: Path | None = None
@@ -274,7 +287,8 @@ class GenerationPanel(QWidget):
             "authentication": self.auth_option.isChecked(),
             "migrations": self.migrations_option.isChecked(),
         }
-        worker = _GenerateWorker(prompt, self._output_base, self.backend.isChecked(), options)
+        design_doc = self.controller.document if self.controller and self.controller.has_project else None
+        worker = _GenerateWorker(prompt, self._output_base, self.backend.isChecked(), options, design_doc=design_doc)
         thread = QThread(self)
         worker.moveToThread(thread)
         worker.progress.connect(self._on_progress)

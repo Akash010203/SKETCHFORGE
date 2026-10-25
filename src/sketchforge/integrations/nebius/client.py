@@ -127,7 +127,7 @@ class NebiusClient:
         for attempt in range(1, attempts + 1):
             try:
                 response = sdk.chat.completions.create(**kwargs)
-                result = self._parse(response, model, attempt, (self._clock() - started) * 1000)
+                result = self._parse(response, model, attempt, (self._clock() - started) * 1000, request=request)
             except ProviderError as err:  # raised by _parse: not retryable
                 last = err
                 break
@@ -169,7 +169,14 @@ class NebiusClient:
             delay = max(delay, min(err.retry_after_s, self.config.backoff_cap_s))
         return delay
 
-    def _parse(self, response: Any, model: str, attempt: int, latency_ms: float) -> CompletionResult:
+    def _parse(
+        self,
+        response: Any,
+        model: str,
+        attempt: int,
+        latency_ms: float,
+        request: CompletionRequest | None = None,
+    ) -> CompletionResult:
         choices = getattr(response, "choices", None)
         if not choices:
             raise ProviderBadResponse("the service returned no choices")
@@ -179,15 +186,14 @@ class NebiusClient:
         if not isinstance(content, str) or not content.strip():
             raise ProviderBadResponse("the service returned an empty answer")
         if finish == "length":
-            # For plan/revision requests the truncated JSON is unusable — raise so the
-            # caller can fall back cleanly.  For file generation requests the partial
-            # code fence can still be recovered by _parse_file_content (unclosed fence),
-            # so we only log a warning and return the content.
-            log.warning(
-                "nebius: finish_reason=length for model=%s (request may be truncated); "
-                "returning partial content for caller to handle.",
-                model,
-            )
+            if request is not None and getattr(request, "purpose", None) in ("studio_file", "studio_ping"):
+                log.warning(
+                    "nebius: finish_reason=length for model=%s (request may be truncated); "
+                    "returning partial content for caller to handle.",
+                    model,
+                )
+            else:
+                raise ProviderBadResponse("the answer was cut off (max_tokens reached); it would not be valid JSON")
         usage = getattr(response, "usage", None)
         return CompletionResult(
             text=content, model=str(getattr(response, "model", None) or model),

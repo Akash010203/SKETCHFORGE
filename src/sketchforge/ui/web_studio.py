@@ -13,13 +13,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from sketchforge.generation.studio_generator import generate_studio_project
 from sketchforge.utilities.paths import repo_root
 
 log = logging.getLogger(__name__)
 _JOBS: dict[str, dict] = {}
 _PROJECTS: dict[str, Path] = {}
 _PREVIEWS: dict[str, str] = {}
+# Keep canonical Design IR server-side; the browser only holds an opaque analysis id.
+_ANALYSES: dict[str, tuple[object, dict]] = {}
 _PREVIEW_SERVERS: list[ThreadingHTTPServer] = []
 _BACKENDS: list[object] = []
 _LOCK = threading.Lock()
@@ -70,8 +71,73 @@ class StudioHandler(BaseHTTPRequestHandler):
         elif parsed.path.startswith("/api/jobs/"):
             job_id = parsed.path.rsplit("/", 1)[-1]
             with _LOCK:
-                job = _JOBS.get(job_id)
-            self._json(200 if job else 404, job or {"error": "Job not found"})
+                job = dict(_JOBS.get(job_id) or {})
+            if not job:
+                self._json(404, {"error": "Job not found"})
+                return
+            # Merge richer data from the HybridOrchestrator job if available
+            try:
+                from sketchforge.orchestration.hybrid_orchestrator import get_hybrid_orchestrator
+                hjob = get_hybrid_orchestrator().get_job(job_id)
+                if hjob:
+                    hjob_dict = hjob.to_dict()
+                    # Merge: the local _JOBS dict may have cancel Event that we must not serialise
+                    job.pop("cancel", None)
+                    job.update({
+                        "verification_status": hjob_dict.get("verification_status", "skipped"),
+                        "history": hjob_dict.get("history", []),
+                        "discrepancy": hjob_dict.get("discrepancy"),
+                    })
+                    # Read generation_type from the .sketchforge_meta.json if project is ready
+                    if hjob.project_root and hjob.project_root.is_dir():
+                        try:
+                            meta_file = hjob.project_root / ".sketchforge_meta.json"
+                            if meta_file.exists():
+                                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                                job["generation_type"] = meta.get("generation", "template")
+                        except Exception:  # noqa: BLE001
+                            pass
+            except Exception:  # noqa: BLE001
+                pass
+            # Remove non-serialisable Event
+            job.pop("cancel", None)
+            self._json(200, job)
+        elif parsed.path.startswith("/api/design-ir/"):
+            # Expose sketch analysis results for the browser inspector panel.
+            slug = unquote(parsed.path.removeprefix("/api/design-ir/"))
+            try:
+                from sketchforge.orchestration.hybrid_orchestrator import get_hybrid_orchestrator
+                # Find the job whose project matches this slug
+                hjob = next(
+                    (j for j in get_hybrid_orchestrator()._jobs.values() if j.project_slug == slug),
+                    None,
+                )
+                if hjob is None or hjob.design_doc is None:
+                    self._json(404, {"error": "No sketch analysis available for this project."})
+                    return
+                # Build a serialisable representation
+                doc = hjob.design_doc
+                components = []
+                for comp in getattr(doc, "components", []):
+                    try:
+                        bbox = comp.bbox
+                        components.append({
+                            "id": comp.id,
+                            "type": comp.type.value if hasattr(comp.type, "value") else str(comp.type),
+                            "label": getattr(comp, "label", "") or "",
+                            "bbox": {"x": bbox.x, "y": bbox.y, "w": bbox.w, "h": bbox.h},
+                            "parent_id": getattr(comp, "parent_id", None),
+                        })
+                    except Exception:  # noqa: BLE001
+                        pass
+                self._json(200, {
+                    "slug": slug,
+                    "component_count": len(components),
+                    "components": components,
+                    "layout_block": hjob.layout_block,
+                })
+            except Exception as exc:  # noqa: BLE001
+                self._json(500, {"error": str(exc)})
         elif parsed.path.startswith("/preview/"):
             self._serve_preview(parsed.path)
         elif parsed.path.startswith("/api/project-api/"):
@@ -120,7 +186,10 @@ class StudioHandler(BaseHTTPRequestHandler):
                 return
             try:
                 from sketchforge.vision import analyze, load_image_bytes
-                from sketchforge.vision.to_design_ir import build_nemotron_layout_block
+                from sketchforge.vision.to_design_ir import (
+                    build_nemotron_layout_block,
+                    vision_result_to_document,
+                )
 
                 loaded = load_image_bytes(data, f"sketch{extension}")
                 result = analyze(loaded)
@@ -157,9 +226,17 @@ class StudioHandler(BaseHTTPRequestHandler):
                 sketch_name = f"sketch{extension}"
                 try:
                     layout_block = build_nemotron_layout_block(result, sketch_name=sketch_name)
+                    design_doc = vision_result_to_document(result, sketch_name=sketch_name)
                 except Exception as ir_exc:  # noqa: BLE001
                     log.warning("Could not build Design IR from sketch: %s", ir_exc)
                     layout_block = None
+                    design_doc = None
+
+                analysis_id = None
+                if layout_block is not None and design_doc is not None:
+                    analysis_id = uuid.uuid4().hex
+                    with _LOCK:
+                        _ANALYSES[analysis_id] = (design_doc, layout_block)
 
                 n_components = len(layout_block.get("components", [])) if layout_block else 0
                 self._json(200, {
@@ -168,6 +245,7 @@ class StudioHandler(BaseHTTPRequestHandler):
                     # Legacy fields preserved for studio.js frontend
                     "layout": layout,
                     "regions": regions,
+                    "analysis_id": analysis_id,
                     # Structured fields consumed by the Nemotron generation pipeline
                     "layout_block": layout_block,
                     "summary": (
@@ -188,7 +266,19 @@ class StudioHandler(BaseHTTPRequestHandler):
                 job_id = uuid.uuid4().hex[:12]
                 cancel_event = threading.Event()
                 from sketchforge.orchestration.hybrid_orchestrator import get_hybrid_orchestrator
-                hjob = get_hybrid_orchestrator().create_job(prompt, job_id=job_id)
+                analysis_id = str(data.get("analysis_id", "")).strip()
+                design_doc = layout_block = None
+                if analysis_id:
+                    with _LOCK:
+                        analysis = _ANALYSES.get(analysis_id)
+                    if analysis is None:
+                        self._json(400, {"error": "Sketch analysis expired. Upload the sketch again."})
+                        return
+                    design_doc, layout_block = analysis
+                hjob = get_hybrid_orchestrator().create_job(
+                    prompt, design_doc=design_doc, job_id=job_id,
+                )
+                hjob.layout_block = layout_block
                 with _LOCK:
                     global _ACTIVE_JOB
                     if _ACTIVE_JOB is not None:
@@ -204,6 +294,13 @@ class StudioHandler(BaseHTTPRequestHandler):
                         "progress": "Starting generation…",
                         "cancel": cancel_event,
                         "state": hjob.state.value,
+                        "options": {
+                            "database": str(data.get("database", "sqlite")).lower(),
+                            "orm": str(data.get("orm", "dataclass")).lower(),
+                            "api_target": str(data.get("api_target", "flask")).lower(),
+                            "authentication": bool(data.get("authentication", False)),
+                            "migrations": bool(data.get("migrations", False)),
+                        },
                     }
                 if self.path.startswith("/api/revise/"):
                     slug = unquote(self.path.rsplit("/", 1)[-1])
@@ -223,6 +320,35 @@ class StudioHandler(BaseHTTPRequestHandler):
                 self._json(202, {"id": job_id})
             except (ValueError, TypeError, json.JSONDecodeError) as exc:
                 self._json(400, {"error": f"Invalid request: {exc}"})
+        elif self.path.startswith("/api/nl-edit/"):
+            # Natural-language design edit for an existing generated project.
+            # Uses the existing local_parser and model_planner (the same logic as the desktop
+            # "Ask SketchForge" bar) but applied to the generated project via ai_revise_project.
+            slug = unquote(self.path.removeprefix("/api/nl-edit/"))
+            with _LOCK:
+                root = _PROJECTS.get(slug)
+            if root is None:
+                self._json(404, {"error": "Project not found. Generate a project first."})
+                return
+            try:
+                data = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+                instruction = str(data.get("instruction", "")).strip()
+                if not instruction:
+                    self._json(400, {"error": "Provide an instruction, e.g. 'Change the primary color to blue'."})
+                    return
+            except (ValueError, TypeError, json.JSONDecodeError) as exc:
+                self._json(400, {"error": f"Invalid request: {exc}"})
+                return
+            try:
+                from sketchforge.generation.ai_generator import ai_revise_project
+                updated = ai_revise_project(root, instruction, progress=lambda m: log.info("nl-edit: %s", m))
+                if not updated:
+                    self._json(422, {"error": "The AI revision did not produce any file changes. Check model configuration."})
+                    return
+                self._json(200, {"applied": True, "slug": slug, "instruction": instruction})
+            except Exception as exc:  # noqa: BLE001
+                log.exception("NL edit failed")
+                self._json(500, {"error": str(exc)})
         elif self.path.startswith("/api/"):
             self._proxy_api("POST")
         else:

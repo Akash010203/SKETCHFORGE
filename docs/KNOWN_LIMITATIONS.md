@@ -5,9 +5,11 @@ construction, not a hypothetical.
 
 ## Evidence
 
-* **No real sketches have been tested.** Every detection and repair number comes from sketches
-  produced by our own generator (wobbly strokes, shadows, noise, blur, JPEG). Real handwriting,
-  paper curl, pen variety, glare and phone-camera perspective are untested; expect lower numbers.
+* **Real photographed sketches perform poorly.** The checked-in one-image grid-paper benchmark
+  (`experiments/results/current_real_photo.json`) reports F1 **0.0333** and type accuracy
+  **0.0000**. It is too small to generalize from, but it is strong evidence that photo sketch
+  detection is not production-ready. Synthetic measurements must not be represented as photo
+  performance.
 * The classifier rules were tuned on three layouts; two other layouts were held out and scored
   slightly differently (type accuracy 0.985 vs 0.946). The held-out set is small (42 sketches).
 * Confidence values (`type_scores`) are rule scores, **not calibrated probabilities**.
@@ -86,7 +88,9 @@ construction, not a hypothetical.
 * **Integrations**: Nebius client is implemented and verified against an in-process mock transport; live verification requires running `scripts/verify_nebius.py` with a valid `NEBIUS_API_KEY`. NVIDIA local runtime hooks (`integrations/nvidia/runtime.py`) are pending.
 * **Testing & Execution**: TypeScript checking invokes `npx tsc --noEmit` through the command sandbox. Browser smoke tests still rely on a host-installed Playwright CLI, its browser runtime, and a separately running preview server; they are not autonomous in a clean sandbox.
 * **Packaging**: `scripts/package_application.py --pyinstaller` builds a single-file Windows GUI executable when run on Windows with `.[ui]` and PyInstaller installed. This checkout has not produced or interactively verified a distributable `.exe`.
-* **Application**: Desktop UI primary workflow is operational; secondary panels (`layer_panel.py`, `settings_dialog.py`, `training_panel.py`, `dataset_panel.py`) and the natural-language "Ask" prompt bar are pending integration.
+* **Application**: The browser Studio is the primary workflow. The PySide desktop workbench remains
+  a compatibility interface for local Design IR editing; not every desktop panel has a browser
+  equivalent yet. Browser natural-language project revision requires a configured AI provider.
 
 ## Hardware & Environment
 

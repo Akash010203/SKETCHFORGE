@@ -1,26 +1,27 @@
 # SketchForge
 
-A local-first desktop workbench that turns a photo of a hand-drawn UI sketch into a structured,
+A local-first browser application that turns a photo of a hand-drawn UI sketch into a structured,
 **editable** design, then **measures** that design, finds layout faults, proposes the smallest
 patch that fixes each one, re-renders, re-measures, and **keeps the patch only if the numbers
 improve and nothing else gets worse**.
 
 The closed loop (create → measure → diagnose → patch → verify → accept or roll back) is the point
-of the project. Everything runs in one Python process on your machine: **no web server, no REST
-API, no network requests** in the application itself.
+of the project. The primary interface is a local browser Studio; its HTTP API delegates to the
+same Python services used by compatibility commands.
 
 > **Status: Core workbench & generation pipeline operational** (sketch → Design IR → editable render → measure → repair → full app generation). Milestone 1 is verified; Nebius provider integration, natural-language edit assist, React/TS and Python backend generators, and sandboxed verification are implemented. 318 automated tests pass with 0 skips. See [TASKS.md](TASKS.md) for the per-feature status and [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
 
 ## Try it in two minutes
 
-Requirements: Python 3.11+ (developed on 3.13). The GUI additionally needs PySide6.
+Requirements: Python 3.11+ (developed on 3.13). PySide6 is optional and only needed for the
+legacy desktop compatibility workbench.
 
 ```bash
 uv venv --python 3.13 .venv                    # or: python -m venv .venv
-uv pip install --python .venv/bin/python -e ".[ui,dev]"
+uv pip install --python .venv/bin/python -e ".[dev]"
 
 .venv/bin/python -m sketchforge demo           # headless end-to-end demo, ~1.5 s, no credentials
-.venv/bin/python -m sketchforge gui            # desktop workbench (needs a display)
+.venv/bin/python -m sketchforge studio         # primary browser UI: http://127.0.0.1:8000/studio
 ```
 
 The demo imports `assets/sample_sketches/login_page_synthetic.png`, detects components, builds and
@@ -41,7 +42,18 @@ Other faults: `--inject {overflow,misalignment,spacing,text_overflow,low_contras
 your own drawing: `--image path/to/photo.jpg`; measure only: `--no-repair`.
 Headless screenshot of the GUI: `python -m sketchforge gui --screenshot window.png`.
 
-### In the desktop app
+### In the browser Studio
+
+1. Start `python -m sketchforge studio` and open `http://127.0.0.1:8000/studio`.
+2. Drag in a PNG/JPEG/WebP sketch. Studio validates it, analyzes it, and retains the canonical
+   Design IR for the next generation.
+3. Describe the application. Generation runs through the Hybrid Orchestrator; the job log shows
+   analysis, file generation, preview, and verification states. The result is labelled
+   `ai_generated`, `mixed`, or `template_fallback`.
+4. Inspect the generated preview, export the project ZIP, and submit supported natural-language
+   revisions from the prompt. A skipped or failed verification is shown as such; it is not a pass.
+
+### Desktop compatibility workbench
 
 1. *File → Open sample sketch* (or *Import sketch…*). Import runs on a background thread.
 2. Click or drag on the canvas, or pick a row in **Components**; edit text, fill, border, text
@@ -54,8 +66,9 @@ Headless screenshot of the GUI: `python -m sketchforge gui --screenshot window.p
 ## How it works
 
 ```
-Desktop UI ─▶ AppController ─▶ workflows ─▶ vision │ layout │ evaluation │ repair │ rendering │ editor
- (PySide6)     (no Qt types)    (in-process calls, background tasks, events)
+Browser Studio ─▶ Web API ─▶ Hybrid Orchestrator ─▶ vision │ Design IR │ generation │ preview │ verification
+                    │
+Desktop compatibility ─▶ AppController ─▶ shared workflows │ editor │ rendering
 ```
 
 `sketch image → preprocess (illumination flattening, threshold variants) → shapes / lines / text
@@ -65,10 +78,12 @@ spacing snapping → Design IR → SVG / HTML / CSS / PNG → evaluator → repa
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DESIGN_IR_SPEC.md](docs/DESIGN_IR_SPEC.md),
 [docs/EVALUATION.md](docs/EVALUATION.md).
 
-## Measured results (synthetic sketches only)
+## Measured results
 
-All numbers come from sketches drawn by our own generator, whose ground truth is exact. They do
-**not** describe real photographs of human drawings, which have not been tested.
+Synthetic measurements are useful regression signals, not real-sketch performance. The checked-in
+real-photo result in `experiments/results/current_real_photo.json` is poor: one photographed
+grid-paper sketch scored F1 **0.0333** and type accuracy **0.0000**. Do not treat sketch detection
+as production-ready for photographs.
 
 ### Handwriting OCR
 
@@ -114,6 +129,14 @@ Reproduce: `python scripts/evaluate_layout.py`, `python scripts/evaluate_repair.
 pytest tests -q                       # 318 tests, ~35 s; 0 failed, 0 skipped
 ruff check src tests scripts
 ```
+
+## Optional Nebius / Nemotron generation
+
+Without credentials, Studio uses the deterministic template fallback and labels it clearly. To
+enable the remote generator, copy `.env.example` to an ignored `.env` (or set an environment
+variable) and set `NEBIUS_API_KEY`; then run `python scripts/verify_nebius.py --enable --accept-egress`
+to perform an explicit live probe. A mocked test is not evidence of a live model call. See
+[docs/NEBIUS_NVIDIA_INTEGRATION.md](docs/NEBIUS_NVIDIA_INTEGRATION.md) for model and privacy details.
 
 ## Project layout
 

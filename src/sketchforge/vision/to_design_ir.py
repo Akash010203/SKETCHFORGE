@@ -58,7 +58,7 @@ def vision_result_to_document(result: "VisionResult", sketch_name: str = "Sketch
     Returns a :class:`~sketchforge.design_ir.schema.DesignDocument`.
     """
     from sketchforge.design_ir.document import add_component, make_component_id, new_document
-    from sketchforge.design_ir.schema import BBox, Component, ComponentType, Style
+    from sketchforge.design_ir.schema import BBox, Component, ComponentType, DetectionInfo, Style
 
     # Derive canvas dimensions in design pixels.
     frame_x, frame_y, frame_w, frame_h = result.proposals.frame.bbox
@@ -113,7 +113,10 @@ def vision_result_to_document(result: "VisionResult", sketch_name: str = "Sketch
             bbox=_bbox(detection),
             style=Style(),
             text=detection.recognized_text,
-            confidence=round(detection.confidence, 3),
+            detection=DetectionInfo(
+                confidence=round(min(max(float(detection.confidence), 0.0), 1.0), 3),
+                source="heuristic",
+            ),
         )
         add_component(doc, comp)
 
@@ -183,7 +186,7 @@ def build_nemotron_layout_block(result: "VisionResult", sketch_name: str = "Sket
                 "h": comp.bbox.h,
             },
             "label": comp.text or "",
-            "confidence": comp.confidence,
+            "confidence": comp.detection.confidence if comp.detection else 1.0,
         })
 
     # Build a human-readable hierarchy string for the system message.
@@ -234,7 +237,7 @@ def build_nemotron_layout_block_from_document(doc: "object", app_name: str | Non
                 "h": comp.bbox.h,
             },
             "label": comp.text or "",
-            "confidence": comp.confidence,
+            "confidence": comp.detection.confidence if comp.detection else 1.0,
         })
 
     def _hierarchy_lines(parent_id: str, depth: int = 0) -> list[str]:

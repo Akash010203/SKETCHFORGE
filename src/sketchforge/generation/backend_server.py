@@ -129,7 +129,7 @@ class BackendServer:
         with self._lock:
             return self._process is not None and self._process.poll() is None
 
-    def start(self, project_root: Path) -> int | None:
+    def start(self, project_root: Path, cors_origin: str | None = None) -> int | None:
         """Start the backend for *project_root* with a sandboxed env.  Returns the port, or None."""
         self.stop()
         api_script = project_root / "backend" / "api.py"
@@ -146,10 +146,25 @@ class BackendServer:
         child_env = _safe_env(dict(os.environ), port)
 
         # Restrict CORS to the exact origin the preview iframe will use.
-        child_env["CORS_ORIGIN"] = f"http://127.0.0.1:{port}"
+        child_env["CORS_ORIGIN"] = cors_origin or "*"
 
         # Inject the ephemeral session token so the backend can gate /api/.
         child_env["STUDIO_TOKEN"] = session_token
+
+        # Ensure project root is on PYTHONPATH and standard runtime vars are set
+        child_env["PYTHONPATH"] = str(project_root)
+        child_env["PORT"] = str(port)
+        child_env["HOST"] = "127.0.0.1"
+        child_env["FLASK_RUN_PORT"] = str(port)
+        child_env["FLASK_RUN_HOST"] = "127.0.0.1"
+
+        # Ensure backend/__init__.py exists for proper package resolution
+        init_py = project_root / "backend" / "__init__.py"
+        if not init_py.exists():
+            try:
+                init_py.touch(exist_ok=True)
+            except Exception:
+                pass
 
         # If the generated project includes an auth module, inject a preview-only
         # ephemeral secret (never the real AUTH_SECRET from the parent environment).
@@ -160,15 +175,20 @@ class BackendServer:
         is_asgi = "FastAPI(" in api_source or "GraphQL(schema" in api_source
         module_entry = "run python -m backend.api" in api_source
 
+        # Only pass CLI flags that the target script actually parses
+        cli_args: list[str] = []
+        if "--host" in api_source:
+            cli_args.extend(["--host", "127.0.0.1"])
+        if "--port" in api_source:
+            cli_args.extend(["--port", str(port)])
+
         if is_asgi:
             command = [sys.executable, "-m", "uvicorn", "backend.api:app",
                        "--host", "127.0.0.1", "--port", str(port)]
-        elif module_entry:
-            command = [sys.executable, "-m", "backend.api",
-                       "--host", "127.0.0.1", "--port", str(port)]
+        elif module_entry or init_py.is_file():
+            command = [sys.executable, "-m", "backend.api", *cli_args]
         else:
-            command = [sys.executable, str(api_script),
-                       "--host", "127.0.0.1", "--port", str(port)]
+            command = [sys.executable, str(api_script), *cli_args]
 
         try:
             proc = subprocess.Popen(
@@ -185,7 +205,15 @@ class BackendServer:
 
         # Wait up to 5 s for the server to accept connections.
         if not _wait_for_port("127.0.0.1", port, timeout=5.0):
-            log.warning("Backend server did not start in time on port %d.", port)
+            err_output = ""
+            try:
+                if proc.stdout:
+                    err_output = proc.stdout.read()
+            except Exception:
+                pass
+            log.warning("Backend server did not start in time on port %d. Exit code: %s. Output:\n%s",
+                        port, proc.poll(), err_output)
+            print(f"Backend server did not start in time on port {port}. Exit code: {proc.poll()}. Output:\n{err_output}")
             proc.terminate()
             return None
 

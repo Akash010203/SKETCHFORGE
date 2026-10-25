@@ -21,7 +21,7 @@ _STUDIO_TOKEN = os.environ.get("STUDIO_TOKEN") or None
 
 @app.before_request
 def _require_token():
-    if not request.path.startswith("/api/") or request.method == "OPTIONS":
+    if not request.path.startswith("/api/") or request.path in ("/api/health", "/health") or request.method == "OPTIONS":
         return
     if _STUDIO_TOKEN is None:
         return
@@ -58,12 +58,12 @@ def _close_db(exc):
     if db is not None:
         db.close()
 
-@app.route("/api/submissions", methods=["GET"])
+@app.route("/api/records", methods=["GET"])
 def list_records():
     rows = _db().execute("SELECT * FROM items ORDER BY id DESC").fetchall()
     return jsonify([dict(r) for r in rows])
 
-@app.route("/api/submissions", methods=["POST"])
+@app.route("/api/records", methods=["POST"])
 def create_record():
     data = request.get_json(force=True) or {}
     cur = _db().execute("INSERT INTO items (title) VALUES (?)", (data.get("title", ""),))
@@ -71,16 +71,20 @@ def create_record():
     row = _db().execute("SELECT * FROM items WHERE id = ?", (cur.lastrowid,)).fetchone()
     return jsonify(dict(row)), 201
 
-@app.route("/api/submissions/<int:item_id>", methods=["DELETE"])
+@app.route("/api/records/<int:item_id>", methods=["DELETE"])
 def delete_record(item_id: int):
     cur = _db().execute("DELETE FROM items WHERE id = ?", (item_id,))
     _db().commit()
     return ("", 204) if cur.rowcount > 0 else (jsonify(error="not found"), 404)
 
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok", "ok": True})
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=5000)
-    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 5000)))
+    parser.add_argument("--host", default=os.environ.get("HOST", "0.0.0.0"))
     args = parser.parse_args()
     app.run(host=args.host, port=args.port, debug=False)
 '''

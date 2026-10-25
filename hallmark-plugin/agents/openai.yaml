@@ -1,0 +1,6 @@
+interface:
+  display_name: Hallmark
+  short_description: Design websites that look made, not generated.
+  default_prompt: Use Hallmark to design a distinctive, production-ready web page.
+policy:
+  allow_implicit_invocation: true

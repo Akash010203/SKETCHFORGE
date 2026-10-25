@@ -11,6 +11,8 @@
   let pendingSketchLayout = '';
   let pendingSketchRegions = [];   // structured geometry from /api/sketch-analysis (legacy %)
   let pendingSketchLayoutBlock = null; // full Design IR block from /api/sketch-analysis
+  let pendingAnalysisId = null;
+  let sketchAnalysisAttempted = false;
 
   function addLog(text) { log.textContent = text + '\n' + log.textContent; }
 
@@ -206,6 +208,11 @@
         pendingSketchLayout = payload.layout;
         pendingSketchRegions = payload.regions || [];
         pendingSketchLayoutBlock = payload.layout_block || null;  // rich Design IR block
+        pendingAnalysisId = payload.analysis_id || null;
+        sketchAnalysisAttempted = true;
+        if (!pendingAnalysisId) {
+          throw new Error('Sketch analysis did not produce a usable Design IR. Upload a clearer sketch or generate without a sketch.');
+        }
         addLog(`${isVideo ? 'First video frame analyzed. ' : ''}${payload.summary} This reference will guide your next generation.`);
         $('#status').textContent = 'Reference ready · describe the website to generate';
       } catch (error) { addLog('Sketch analysis failed: ' + error.message); }
@@ -264,30 +271,14 @@
   // ---------------------------------------------------------------------------
   async function generate(text) {
     if (!text.trim()) return;
-    if (!currentSlug && pendingSketchLayout) {
-      // Build a structured design-document block so the AI planner uses
-      // precise bounding-box geometry and hierarchy, not just prose percentages.
-      const designDoc = {
-        source: 'sketch_analysis',
-        // Rich Design IR block (canvas dims, exact design-px components, AppSpec, hierarchy tree)
-        layout_block: pendingSketchLayoutBlock,
-        // Legacy percentage regions kept as a human-readable fallback
-        regions: pendingSketchRegions,
-        layout_description: pendingSketchLayout,
-      };
-      const instruction = pendingSketchLayoutBlock
-        ? 'Use the layout_block above as the authoritative layout guide. ' +
-          'Honour the canvas dimensions, exact bbox_design_px coordinates, ' +
-          'parent_id containment hierarchy, and component types. ' +
-          'Reproduce element positions faithfully using CSS (position:absolute or flex/grid). ' +
-          'Use the app_spec fields for page routes, form fields, and entity names.'
-        : 'Use the regions above (x/y/w/h in % of canvas) as the page layout guide. ' +
-          'Preserve the detected element types and their relative positions.';
-      text += `\n\n<SketchDesignDocument>\n${JSON.stringify(designDoc, null, 2)}\n</SketchDesignDocument>\n\n${instruction}`;
-      pendingSketchLayout = '';
-      pendingSketchRegions = [];
-      pendingSketchLayoutBlock = null;
+    if (!currentSlug && sketchAnalysisAttempted && !pendingAnalysisId) {
+      $('#status').textContent = 'Sketch analysis needs attention';
+      addLog('Generation was not started: the uploaded sketch has no usable Design IR. Upload another sketch, or reload to start an ungrounded app.');
+      return;
     }
+    // The API retains the actual Design IR and hands it to the orchestrator.
+    // Do not serialize a parallel browser-owned representation into the prompt.
+    const analysisId = currentSlug ? null : pendingAnalysisId;
     const revising = Boolean(currentSlug);
     const frame = $('#preview');
     let saved = window.pendingPreviewState || {};
@@ -312,7 +303,7 @@
     try {
       const start = await fetch(
         revising ? '/api/revise/' + encodeURIComponent(currentSlug) : '/api/generate',
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text }) }
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text, analysis_id: analysisId }) }
       );
       const payload = await start.json();
       if (!start.ok) throw Error(payload.error);
@@ -330,7 +321,12 @@
           if (job.status === 'complete') {
             clearInterval(pollTimer);
             $('#empty').hidden = true;
-            addLog('Updated ' + job.project.name);
+            const verification = job.verification_status === 'passed' ? 'verification passed'
+              : job.verification_status === 'failed' ? 'verification failed'
+                : 'verification skipped';
+            addLog(`Updated ${job.project.name} · ${job.generation_type || 'generation method unknown'} · ${verification}.`);
+            pendingAnalysisId = null;
+            sketchAnalysisAttempted = false;
             if (revising && frame) {
               window.pendingPreviewState = saved;
               const path = saved.url || frame.src;

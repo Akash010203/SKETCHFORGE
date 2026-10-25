@@ -181,7 +181,7 @@ def test_ai_generate_project_per_file_fallback_preserves_ai_files(tmp_path):
         return spec_dict, "nvidia/Nemotron-3_5-Lightning"
 
     # Patch Stage 2: return AI content for all files EXCEPT backend/api.py (which returns None)
-    def fake_stage2(client, spec_str, path_hint, description, emit, model, layout_context=None):
+    def fake_stage2(client, spec_str, path_hint, description, emit, model, layout_context=None, **kwargs):
         if path_hint == "backend/api.py":
             return None  # simulated failure / token cutoff
         return f"/* AI Generated Content for {path_hint} */"

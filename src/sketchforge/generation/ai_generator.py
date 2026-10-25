@@ -46,7 +46,7 @@ def _select_active_model(
     client,
     emit,
     *,
-    ping_max_tokens: int = 8,
+    ping_max_tokens: int = 64,
 ) -> tuple[str | None, str | None]:
     """Verify availability of the pinned Nemotron-3_5-Lightning model.
 
@@ -66,7 +66,7 @@ def _select_active_model(
             messages=(
                 ChatMessage(role="user", content="ping"),
             ),
-            purpose="studio_plan",
+            purpose="studio_ping",
             max_tokens=ping_max_tokens,
             temperature=0.0,
             model=model,
@@ -302,7 +302,7 @@ def get_fallback_file_content(path_hint: str, spec: dict) -> str:
             main_entity_name,
             [FieldSpec(f.get("name", "title"), f.get("name", "Title")) for f in main_entity_fields],
         )
-        return _home_js(entity_obj, "submissions", storage_key)
+        return _home_js(entity_obj, route, storage_key)
 
     if path_hint == "js/projects.js":
         from sketchforge.generation.app_specification import EntitySpec, FieldSpec
@@ -310,7 +310,7 @@ def get_fallback_file_content(path_hint: str, spec: dict) -> str:
             main_entity_name,
             [FieldSpec(f.get("name", "title"), f.get("name", "Title")) for f in main_entity_fields],
         )
-        return _projects_js(entity_obj, "submissions", storage_key)
+        return _projects_js(entity_obj, route, storage_key)
 
     if path_hint == "backend/schema.sql":
         col_sql = ", ".join(f"{f.get('name', 'col')} TEXT" for f in main_entity_fields)
@@ -502,15 +502,24 @@ def ai_generate_project(
     provenance: dict[str, str] = {}  # path_hint -> "ai_generated" | "template_fallback"
     for path_hint, description in manifest:
         _emit(f"  Generating {path_hint} ({written + 1}/{len(manifest)})…")
+        import inspect
+        _sig = inspect.signature(_stage2_file)
+        _s2_kwargs = {
+            "model": active_model or _NEMOTRON_MODEL,
+            "layout_context": layout_context,
+        }
+        if "entity_route_context" in _sig.parameters:
+            _s2_kwargs["entity_route_context"] = entity_route_context
+        elif entity_route_context:
+            _s2_kwargs["layout_context"] = (layout_context or "") + entity_route_context
+
         content = _stage2_file(
             client,
             spec_str,
             path_hint,
             description,
             _emit,
-            model=active_model or _NEMOTRON_MODEL,
-            layout_context=layout_context,
-            entity_route_context=entity_route_context,
+            **_s2_kwargs,
         )
         if content is None or not str(content).strip():
             log.warning("AI model returned no content for %s; using template fallback.", path_hint)
@@ -520,6 +529,10 @@ def ai_generate_project(
             _emit(f"  Fallback: filled {path_hint} from verified template.")
         else:
             provenance[path_hint] = "ai_generated"
+
+        # Guarantee route alignment: if model emitted /api/submissions, map to entity_route
+        if entity_route and entity_route != "submissions" and isinstance(content, str):
+            content = content.replace("/api/submissions", f"/api/{entity_route}")
 
         dest = (root / path_hint).resolve()
         if not dest.is_relative_to(root):
@@ -838,7 +851,7 @@ def _stage1_plan(
             ChatMessage(role="user", content=user_msg),
         ),
         purpose="studio_plan",
-        max_tokens=1536,
+        max_tokens=4096,
         temperature=0.2,
         model=active_model,
     )
@@ -899,6 +912,11 @@ def _stage2_file(
     pattern = retrieve_code_pattern(path_hint, description)
     rag_section = ""
     if pattern:
+        if entity_route_context:
+            m = re.search(r"API route:\s*/api/([a-zA-Z0-9_\-]+)", entity_route_context)
+            if m:
+                r_slug = m.group(1)
+                pattern = pattern.replace("/api/submissions", f"/api/{r_slug}")
         rag_section = (
             f"\n\n### Verified Reference Pattern (RAG):\n"
             f"The following verified pattern demonstrates conventions (CORS, token auth, layout, styling):\n"
@@ -921,7 +939,7 @@ def _stage2_file(
         spec=spec_str,
         path=path_hint,
         description=description,
-    ) + route_section + layout_section + rag_section
+    ) + layout_section + rag_section + route_section
 
     request = CompletionRequest(
         messages=(
@@ -929,7 +947,7 @@ def _stage2_file(
             ChatMessage(role="user", content=user_msg),
         ),
         purpose="studio_file",
-        max_tokens=8192,
+        max_tokens=4096,
         temperature=0.2,
         model=model,
     )
